@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="250 118 490 370" role="img" aria-labelledby="title">
+  <title id="title">Memoria headset M</title>
+  <g fill="#fff">
+    <path d="M324 435V308C324 250 358 211 413 211C447 211 475 226 495 250C516 226 544 211 578 211C632 211 665 250 665 308V435H619V310C619 277 604 257 578 257C546 257 518 281 518 312V435H471V312C471 281 444 257 413 257C387 257 370 277 370 310V435Z"/>
+    <rect x="256" y="293" width="63" height="105" rx="27"/>
+    <rect x="670" y="293" width="63" height="105" rx="27"/>
+  </g>
+  <g fill="none" stroke="#fff" stroke-linecap="round">
+    <path d="M293 305C293 211 383 134 494 134C606 134 697 211 697 305" stroke-width="21"/>
+    <path d="M697 382C697 441 651 468 579 468" stroke-width="13"/>
+  </g>
+  <rect x="542" y="454" width="52" height="28" rx="14" fill="#e4482e"/>
+</svg>
