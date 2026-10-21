@@ -140,26 +140,16 @@ export function AgentConversations({
           <p role="status">Loading conversation…</p>
         )}
         {state.status === 'error' && error}
-        {state.status === 'ready' &&
-          (conversation ? (
-            <Panel
-              title={
-                conversation.automatedResult === 'processing'
-                  ? 'Feedback is processing'
-                  : 'Call overview is not connected yet'
-              }
-            >
-              <p>
-                {conversation.automatedResult === 'processing'
-                  ? 'Automatic feedback is not ready for this call.'
-                  : 'This conversation opens here. Detailed feedback will be available when the call overview is connected.'}
-              </p>
-            </Panel>
-          ) : (
-            <Panel title="Conversation unavailable">
-              <p>This conversation is not available in your workspace.</p>
-            </Panel>
-          ))}
+        {conversation?.automatedResult === 'processing' && (
+          <Panel title="Feedback is processing">
+            <p>Automatic feedback is not ready for this call.</p>
+          </Panel>
+        )}
+        {state.status === 'ready' && !conversation && (
+          <Panel title="Conversation unavailable">
+            <p>This conversation is not available in your workspace.</p>
+          </Panel>
+        )}
       </div>
     )
   }
@@ -201,57 +191,49 @@ export function AgentConversations({
   return (
     <div className="agent-conversations">
       <h1>My conversations</h1>
-      {state.status === 'ready' && (
-        <>
-          {groups.length > 0 && (
-            <section
-              className="conversation-summary"
-              aria-label="Conversation counts"
-              style={
-                Object.fromEntries(
-                  groups.map((group, index) => [
-                    `--summary-expanded-${index}`,
-                    `${group.count * 1.5}fr`,
-                  ]),
-                ) as CSSProperties
-              }
-            >
-              <div
-                className="conversation-count-bar"
-                role="group"
-                aria-label="Filter conversations by status"
-                style={{ gridTemplateColumns: summaryColumns }}
-                onMouseLeave={() => setPreviewStatus(null)}
-              >
-                {groups.map((group) => (
-                  <button
-                    key={group.status}
-                    type="button"
-                    className={`count-segment count-segment--${group.tone}`}
-                    aria-label={`${conversationStatusLabels[group.status]}: ${group.count}`}
-                    aria-pressed={status === group.status}
-                    onMouseEnter={() => setPreviewStatus(group.status)}
-                    onClick={() => changeFilter('status', group.status)}
-                  />
-                ))}
-              </div>
-              <div
-                className="conversation-count-labels"
-                style={{ gridTemplateColumns: summaryColumns }}
-              >
-                {groups.map((group) => (
-                  <StatusLabel key={group.status} tone={group.tone}>
-                    {conversationStatusLabels[group.status]} {group.count}
-                  </StatusLabel>
-                ))}
-              </div>
-            </section>
-          )}
-          <p className="conversation-owner">
-            {viewer.displayName} · {records.length}{' '}
-            {records.length === 1 ? 'conversation' : 'conversations'}
-          </p>
-        </>
+      {state.status === 'ready' && groups.length > 0 && (
+        <section
+          className="conversation-summary"
+          aria-label="Conversation counts"
+          style={
+            Object.fromEntries(
+              groups.map((group, index) => [
+                `--summary-expanded-${index}`,
+                `${group.count * 1.5}fr`,
+              ]),
+            ) as CSSProperties
+          }
+        >
+          <div
+            className="conversation-count-bar"
+            role="group"
+            aria-label="Filter conversations by status"
+            style={{ gridTemplateColumns: summaryColumns }}
+            onMouseLeave={() => setPreviewStatus(null)}
+          >
+            {groups.map((group) => (
+              <button
+                key={group.status}
+                type="button"
+                className={`count-segment count-segment--${group.tone}`}
+                aria-label={`${conversationStatusLabels[group.status]}: ${group.count}`}
+                aria-pressed={status === group.status}
+                onMouseEnter={() => setPreviewStatus(group.status)}
+                onClick={() => changeFilter('status', group.status)}
+              />
+            ))}
+          </div>
+          <div
+            className="conversation-count-labels"
+            style={{ gridTemplateColumns: summaryColumns }}
+          >
+            {groups.map((group) => (
+              <StatusLabel key={group.status} tone={group.tone}>
+                {conversationStatusLabels[group.status]} {group.count}
+              </StatusLabel>
+            ))}
+          </div>
+        </section>
       )}
       <div
         className="conversation-filters"
