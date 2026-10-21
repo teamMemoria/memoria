@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vscode/codicons": "0.0.45",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "~7.18.4"

@@ -126,7 +126,7 @@
     color 120ms;
 }
 
-.sidebar-item > svg {
+.sidebar-item > .codicon {
   flex-shrink: 0;
 }
 

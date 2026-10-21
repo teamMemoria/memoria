@@ -69,9 +69,12 @@ export function SelectField({
   return (
     <label className="field" htmlFor={id}>
       <span>{label}</span>
-      <select {...props} id={id} className={`control-input ${className}`}>
-        {children}
-      </select>
+      <span className="field-input">
+        <select {...props} id={id} className={`control-input ${className}`}>
+          {children}
+        </select>
+        <Icon name="chevronDown" />
+      </span>
     </label>
   )
 }
