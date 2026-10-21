@@ -1,8 +1,12 @@
 import type { Viewer, ViewerApi, ViewerRole } from '../types/viewer'
 
 const viewers: Record<ViewerRole, Viewer> = {
-  agent: { displayName: 'Alex Morgan', role: 'agent' },
-  manager: { displayName: 'Maya Chen', role: 'manager' },
+  agent: { id: 'agent-alex-morgan', displayName: 'Alex Morgan', role: 'agent' },
+  manager: {
+    id: 'manager-maya-chen',
+    displayName: 'Maya Chen',
+    role: 'manager',
+  },
 }
 
 export function createDevViewerApi(role: ViewerRole): ViewerApi {

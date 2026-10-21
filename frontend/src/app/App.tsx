@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Viewer, ViewerApi } from '../types/viewer'
 import { Button, Panel } from '../components/controls'
 import { AppRoutes } from './routes'
+import type { ConversationsApi } from '../features/conversations/conversations'
 
 type ViewerState =
   | { status: 'loading' }
@@ -9,7 +10,13 @@ type ViewerState =
   | { status: 'unavailable' }
   | { status: 'error' }
 
-export default function App({ viewerApi }: { viewerApi: ViewerApi | null }) {
+export default function App({
+  viewerApi,
+  conversationsApi = null,
+}: {
+  viewerApi: ViewerApi | null
+  conversationsApi?: ConversationsApi | null
+}) {
   const [state, setState] = useState<ViewerState>(
     viewerApi ? { status: 'loading' } : { status: 'unavailable' },
   )
@@ -37,7 +44,10 @@ export default function App({ viewerApi }: { viewerApi: ViewerApi | null }) {
     }
   }, [viewerApi, attempt])
 
-  if (state.status === 'ready') return <AppRoutes viewer={state.viewer} />
+  if (state.status === 'ready')
+    return (
+      <AppRoutes viewer={state.viewer} conversationsApi={conversationsApi} />
+    )
 
   return (
     <main className="startup">
