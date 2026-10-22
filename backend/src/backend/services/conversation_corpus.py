@@ -227,3 +227,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print(serialize_profile(build_profile(result.records)), end="")
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
