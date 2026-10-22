@@ -548,13 +548,13 @@
     "technical_failures": [],
     "missing_verification": 11,
     "timings_ms": {
-      "extraction_ms": 116.51,
-      "grouping_ms": 34.35,
-      "conflicts_ms": 41.03,
-      "verification_ms": 286.38,
-      "total_ms": 478.44
+      "extraction_ms": 106.57,
+      "grouping_ms": 34.0,
+      "conflicts_ms": 28.0,
+      "verification_ms": 268.61,
+      "total_ms": 437.34
     },
-    "ms_per_conversation": 8.25,
+    "ms_per_conversation": 7.54,
     "model_usage": {
       "model": null,
       "calls": 0,
@@ -597,7 +597,7 @@
       }
     ]
   },
-  "evaluation_seconds": 5.93,
+  "evaluation_seconds": 5.52,
   "notes": [
     "Verification is measured against an in-memory copy of the ABCD guideline snapshot marked approved for evaluation only; the committed snapshot is unreviewed and verifies nothing.",
     "Labels are first-pass and have not had a second person's review (human_reviewed: false).",

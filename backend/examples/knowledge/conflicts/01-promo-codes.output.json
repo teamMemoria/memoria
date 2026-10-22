@@ -10,7 +10,7 @@
   },
   "possible_conflicts": [
     {
-      "conflict_id": "conflict_445780f9b7c7097a9bdb",
+      "conflict_id": "conflict_1a6155ee0af26c40f1c1",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -111,7 +111,7 @@
       "subject_overlap": 0.2222
     },
     {
-      "conflict_id": "conflict_60238c411669518626d2",
+      "conflict_id": "conflict_949d5a4902759072987f",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -203,7 +203,7 @@
       "subject_overlap": 0.5
     },
     {
-      "conflict_id": "conflict_8d63b3bdf45704ff1b0a",
+      "conflict_id": "conflict_e4db1079f84346e693e7",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -287,7 +287,7 @@
       "subject_overlap": 1.0
     },
     {
-      "conflict_id": "conflict_2e8e5aeabce4d86008df",
+      "conflict_id": "conflict_6fce758221459bcdbec4",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -373,7 +373,7 @@
       "subject_overlap": 0.4444
     },
     {
-      "conflict_id": "conflict_921290ab640a5e8869a4",
+      "conflict_id": "conflict_c934829959c62817489b",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -468,7 +468,7 @@
   ],
   "explained_differences": [
     {
-      "conflict_id": "conflict_5dfa348492306e516481",
+      "conflict_id": "conflict_b65cbde751e4fe7871c6",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",

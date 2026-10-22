@@ -74,7 +74,6 @@ _WORD_NUMBERS = {
     "thirty": "30",
     "sixty": "60",
     "ninety": "90",
-    "a week": "7 days",
 }
 
 

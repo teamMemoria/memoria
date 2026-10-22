@@ -407,13 +407,13 @@
     "technical_failures": [],
     "missing_verification": 6,
     "timings_ms": {
-      "extraction_ms": 47.54,
-      "grouping_ms": 7.09,
-      "conflicts_ms": 9.5,
-      "verification_ms": 98.4,
-      "total_ms": 162.63
+      "extraction_ms": 42.56,
+      "grouping_ms": 7.85,
+      "conflicts_ms": 8.53,
+      "verification_ms": 85.97,
+      "total_ms": 145.02
     },
-    "ms_per_conversation": 5.81,
+    "ms_per_conversation": 5.18,
     "model_usage": {
       "model": null,
       "calls": 0,
@@ -456,12 +456,12 @@
       }
     ]
   },
-  "evaluation_seconds": 1.41,
+  "evaluation_seconds": 1.23,
   "notes": [
     "Verification is measured against an in-memory copy of the ABCD guideline snapshot marked approved for evaluation only; the committed snapshot is unreviewed and verifies nothing.",
     "Labels are first-pass and have not had a second person's review (human_reviewed: false).",
     "Technical failures (invalid input, model errors) are counted separately from drafts that are merely unverifiable for lack of a reference.",
     "Held-out cases: report only, never tune on them. The rule extractor's wording rules were developed while reading output over all 100 curated ABCD records, so ABCD held-out scores are optimistic; the SYN-H conversations were written after the rules were fixed.",
-    "Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support). These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1."
+    "Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support) and the problems found in code review. These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1."
   ]
 }

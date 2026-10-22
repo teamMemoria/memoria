@@ -193,7 +193,10 @@ def _read_curated(record: Mapping[str, Any], company_id: str) -> Conversation:
             "source.dataset",
             "must be ABCD (or SYNTHETIC for authored test conversations)",
         )
-    original_id = _require_str(str(source.get("original_id", "")), "source.original_id")
+    raw_original = source.get("original_id")
+    if type(raw_original) not in (str, int) or str(raw_original).strip() == "":
+        raise invalid("source.original_id", "must be a non-empty string or integer")
+    original_id = str(raw_original)
 
     raw_turns = record.get("turns")
     if not isinstance(raw_turns, list):
@@ -273,6 +276,10 @@ def _read_curated(record: Mapping[str, Any], company_id: str) -> Conversation:
 def _raw_customer(scenario: Mapping[str, Any]) -> dict[str, Any]:
     personal = scenario.get("personal") or {}
     order = scenario.get("order") or {}
+    if not isinstance(personal, Mapping):
+        raise invalid("scenario.personal", "must be an object")
+    if not isinstance(order, Mapping):
+        raise invalid("scenario.order", "must be an object")
     record: dict[str, Any] = {k: v for k, v in personal.items() if isinstance(v, str)}
     record["address"] = {
         "street": order.get("street_address"),

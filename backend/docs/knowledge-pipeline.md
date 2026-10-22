@@ -80,8 +80,11 @@ out-of-order turns and unknown speakers return `invalid_input`. Over 400
 turns, over 4,000 characters in one turn, or over 120,000 characters in total
 returns `oversized_input`. A model that fails, times out or replies with
 something other than JSON returns `model_failure`, and a reply in the wrong
-shape returns `model_output_invalid`. In every error case `drafts` is empty
-and `status` is `"error"`. A conversation with nothing reusable is the other
+shape returns `model_output_invalid`. An unexpected bug inside an extractor
+returns `internal_error`. Configuration is validated too: `topics` given as a
+plain string, or `max_drafts_per_conversation: 0`, is refused rather than
+quietly producing no drafts. In every error case `drafts` is empty and
+`status` is `"error"`. A conversation with nothing reusable is the other
 case: it returns `status: "ok"`, no drafts, and a `no_draft_reason`
 (`no_reusable_answer`, `no_customer_request` or `topic_not_selected`).
 
@@ -172,7 +175,8 @@ company is ignored. Knowledge bases never mix.
 ABCD subflow (`scope_level="flow"` widens this to the flow). A draft joins a
 group when its similarity to the group's members is at least
 `group_threshold` **and** its conditions are compatible with every member's.
-Conditions are compatible unless one of these holds:
+Conditions (the draft's conditions, plus any membership level its answer
+names) are compatible unless one of these holds:
 
 - the membership levels named are disjoint (gold vs guest);
 - only one of the two depends on membership at all;
@@ -405,10 +409,11 @@ passage.
 
 - **Who approves verification sources**, and where that is recorded (in
   this file or in the backend).
-- **Whether every claim needs support.** `VerificationConfig(require_every_claim=True)`
-  is the default. Small talk that slipped into an answer ("Thank you for
-  contacting us") then keeps a draft at `partially_supported`. That is
-  deliberately strict.
+- **Whether every claim needs support.** Today it does: a draft is only
+  `supported` when every claim is. Small talk that slipped into an answer
+  ("Thank you for contacting us") therefore keeps a draft at
+  `partially_supported`. That is deliberately strict. Relaxing it would be a
+  code change, with the release check changed to match.
 - **How to approve and credit adapted ABCD guidelines.** Passages are kept
   verbatim with their source commit and SHA-256. An adapted version should be
   a new snapshot with its own version.
@@ -416,9 +421,12 @@ passage.
 ### Known limits
 
 - Support is lexical. A claim that paraphrases a guideline in very different
-  words comes out `partially_supported` or `unverifiable`, never wrongly
-  `supported`. The error is on the safe side, but it does create reviewer
-  work.
+  words usually comes out `partially_supported` or `unverifiable`, which errs
+  on the safe side but creates reviewer work. Lexical matching can still be
+  wrong in the other direction. The first held-out run and the code review
+  each found a way a claim could be wrongly supported, and both are fixed
+  with regression tests. Every supported claim keeps its citation, so the
+  reviewer can check it.
 - "Or" conditions in guidelines (within 90 days *or* with a receipt *or* in
   original packaging) are read as separate limits. A draft that states only
   one alternative is flagged as missing the others.
@@ -452,7 +460,7 @@ anything is shown to people. The CLI exits with code 3 when it doesn't.
 |---|---|
 | `no_fabricated_citations` | any draft quote isn't the exact text at its span, a conflict quotes a passage its draft doesn't have, or a verification citation quotes text its reference doesn't have |
 | `no_unsupported_verified_claims` | a `supported` claim lacks an approved, eligible, authoritative citation, or a draft is `supported` while one of its claims isn't |
-| `no_personal_data_leaks` | any value from any input customer record appears anywhere in the output |
+| `no_personal_data_leaks` | any value from any input customer record (full name, any name part, email, username, address, city, zip, order id, purchase date, phone), or any email or card number, appears as a whole word in a text field of the output. The check is Unicode-normalised. Ids and versions are not text fields. Account ids the customer types are not in the record, so they rely on the redaction patterns |
 | `ml_approves_nothing` | a draft isn't an untrusted draft, a group isn't `draft`, a verification has a decision, or an approval or dispute field appears |
 | `repeat_processing` (in `evaluate`) | a second run differs, or doubled input changes a group or count |
 
@@ -513,6 +521,20 @@ columns. Run 1 found two bugs, now fixed with regression tests:
   "*only* silver", which falsely contradicted a correct gold-member draft.
 - FAQ instruction lines, which are lists of topics, were counted as support.
   That one was a false support of a claim that isn't in any guideline.
+
+An independent code review found more, also fixed with regression tests
+(`tests/knowledge/test_review_fixes.py`):
+
+- A claim could be "supported" by a reference that says the opposite ("Gold
+  members cannot ..." against "Gold members can ...").
+- Model-written text (a no-draft reason, a made-up turn id) could carry
+  personal data, and the leak check was too narrow to catch it.
+- Several malformed inputs crashed instead of returning errors.
+- Customer names close to ordinary words ("Gould" against "Gold") could
+  replace those words.
+- Conflict ids could collide.
+- Unresolved conflicts didn't hold back a recommendation.
+- Other companies' reference ids were listed in the output.
 
 After the fixes the held-out set is no longer blind. The remaining misses are
 documented, not tuned away:

@@ -23,7 +23,7 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 
 - 28 conversations, 17 drafts, 14 groups, 3 possible conflicts, 0 unresolved.
 - Verification: {'contradicted': 2, 'partially_supported': 6, 'supported': 3, 'unverifiable': 6}. Technical failures: 0 (counted separately from missing verification: 6 unverifiable).
-- About 5.81 ms per conversation on this machine; model calls: 0.
+- About 5.18 ms per conversation on this machine; model calls: 0.
 
 ## Failed cases
 
@@ -43,4 +43,4 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 - Labels are first-pass and have not had a second person's review (human_reviewed: false).
 - Technical failures (invalid input, model errors) are counted separately from drafts that are merely unverifiable for lack of a reference.
 - Held-out cases: report only, never tune on them. The rule extractor's wording rules were developed while reading output over all 100 curated ABCD records, so ABCD held-out scores are optimistic; the SYN-H conversations were written after the rules were fixed.
-- Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support). These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1.
+- Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support) and the problems found in code review. These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1.

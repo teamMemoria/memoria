@@ -29,7 +29,7 @@ from .abcd import read_conversation
 from .conflicts import find_conflicts
 from .extraction import Extractor, RuleExtractor, check_draft_citations, extract_drafts
 from .grouping import group_drafts
-from .pipeline import release_checks, repeat_processing_check, run_pipeline
+from .pipeline import output_text, release_checks, repeat_processing_check, run_pipeline
 from .privacy import Redactor
 from .verification import check_drafts, load_reference_snapshot
 
@@ -111,9 +111,12 @@ def eval_extraction(
         condition_hits += len(case.get("conditions_must_include", [])) - len(
             missed_conditions
         )
-        output = json.dumps(result.to_dict(), ensure_ascii=False)
+        output = output_text(result.to_dict())
+        # Report which kinds of value leaked, never the values themselves.
         leaked = [
-            v for v in case.get("must_not_include", []) if v.lower() in output.lower()
+            f"must_not_include[{i}]"
+            for i, v in enumerate(case.get("must_not_include", []))
+            if v.lower() in output.lower()
         ]
         leaked += Redactor(conversation.customer_record).leaks(output)
         privacy_errors += len(leaked)

@@ -30,10 +30,9 @@ from typing import Any
 
 from . import text as tx
 from .errors import PipelineError, invalid
-from .grouping import scope_key
+from .grouping import MAX_DRAFTS, MAX_EXISTING_ENTRIES, scope_key
 
 CONFLICTS_SCHEMA_VERSION = "knowledge-conflicts/1"
-MAX_ITEMS = 5_000
 MEMBER_LEVELS = frozenset({"gold", "silver", "bronze"})
 ALL_LEVELS = MEMBER_LEVELS | {"guest"}
 
@@ -258,13 +257,22 @@ def _draft_owner(draft: Any, index: int, company_id: str) -> _Owner:
     passages = draft.get("answer_passages")
     if not isinstance(passages, list) or not passages:
         raise invalid(f"{where}.answer_passages", "must be a non-empty array")
-    scope = draft.get("scope") or {}
+    scope = draft.get("scope")
+    if not isinstance(scope, Mapping):
+        raise invalid(f"{where}.scope", "must be an object")
+    raw_conditions = draft.get("conditions") or []
+    if not isinstance(raw_conditions, list):
+        raise invalid(f"{where}.conditions", "must be an array")
     conditions = [
         c["text"]
-        for c in draft.get("conditions", [])
+        for c in raw_conditions
         if isinstance(c, Mapping) and isinstance(c.get("text"), str)
     ]
-    source = draft.get("source") or {}
+    source = draft.get("source")
+    if not isinstance(source, Mapping) or not isinstance(source.get("source_key"), str):
+        raise invalid(f"{where}.source.source_key", "is required")
+    if not isinstance(draft.get("draft_id"), str) or not draft["draft_id"]:
+        raise invalid(f"{where}.draft_id", "must be a non-empty string")
     owner = _Owner(
         kind="draft",
         owner_id=str(draft.get("draft_id")),
@@ -311,9 +319,14 @@ def _entry_owner(entry: Any, index: int, company_id: str) -> _Owner | None:
     if entry["company_id"] != company_id:
         return None
     scope = entry.get("scope") or {}
+    if not isinstance(scope, Mapping):
+        raise invalid(f"{where}.scope", "must be an object")
+    raw_conditions = entry.get("conditions") or []
+    if not isinstance(raw_conditions, list):
+        raise invalid(f"{where}.conditions", "must be an array")
     conditions = [
         c if isinstance(c, str) else str(c.get("text", ""))
-        for c in entry.get("conditions", [])
+        for c in raw_conditions
         if isinstance(c, str | Mapping)
     ]
     owner = _Owner(
@@ -489,11 +502,11 @@ def _conflict_id(company_id: str, a: _Claim, b: _Claim) -> str:
         [
             [
                 a.owner.owner_id,
-                json.dumps(a.passage.get("turn_id") or a.passage.get("span")),
+                json.dumps([a.passage.get("turn_id"), a.passage.get("span")]),
             ],
             [
                 b.owner.owner_id,
-                json.dumps(b.passage.get("turn_id") or b.passage.get("span")),
+                json.dumps([b.passage.get("turn_id"), b.passage.get("span")]),
             ],
         ]
     )
@@ -518,11 +531,16 @@ def find_conflicts(
         existing_entries, list | tuple
     ):
         raise invalid("drafts", "drafts and existing_entries must be arrays")
-    if len(drafts) + len(existing_entries) > MAX_ITEMS:
+    # The same limits as grouping, so a batch that groups also gets compared.
+    if len(drafts) > MAX_DRAFTS:
+        raise PipelineError(
+            "oversized_input", f"more than {MAX_DRAFTS} drafts in one call", "drafts"
+        )
+    if len(existing_entries) > MAX_EXISTING_ENTRIES:
         raise PipelineError(
             "oversized_input",
-            f"more than {MAX_ITEMS} drafts and entries in one call",
-            "drafts",
+            f"more than {MAX_EXISTING_ENTRIES} entries in one call",
+            "existing_entries",
         )
     owners: dict[str, _Owner] = {}
     for index, draft in enumerate(drafts):
@@ -534,8 +552,16 @@ def find_conflicts(
         if (o := _entry_owner(e, i, company_id))
     ]
     group_of: dict[str, str] = {}
-    if groups:
+    if groups is not None:
+        if not isinstance(groups, Mapping) or not isinstance(
+            groups.get("groups", []), list
+        ):
+            raise invalid("groups", "must be the output of group_drafts")
         for group in groups.get("groups", []):
+            if not isinstance(group, Mapping) or not isinstance(
+                group.get("group_id"), str
+            ):
+                raise invalid("groups", "every group needs a group_id")
             for draft_id in group.get("member_draft_ids", []):
                 group_of[draft_id] = group["group_id"]
 

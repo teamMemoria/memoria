@@ -5,8 +5,7 @@
   "as_of": "2026-10-22",
   "config": {
     "support_threshold": 0.6,
-    "partial_threshold": 0.35,
-    "require_every_claim": true
+    "partial_threshold": 0.35
   },
   "results": [
     {
@@ -577,7 +576,7 @@
       ],
       "possible_conflicts": [
         {
-          "conflict_id": "conflict_445780f9b7c7097a9bdb",
+          "conflict_id": "conflict_1a6155ee0af26c40f1c1",
           "status": "possible_conflict",
           "kind": "eligibility",
           "explanation": "One says this applies to guest; the other says it does not."
@@ -609,7 +608,7 @@
       ],
       "requirements_remaining": [
         "Resolve the contradiction with abcd:purchase_dispute/promo_code_invalid#a4.4: 'A promo code has been created.'",
-        "Resolve possible conflict conflict_445780f9b7c7097a9bdb.",
+        "Resolve possible conflict conflict_1a6155ee0af26c40f1c1.",
         "An authorized person must review the evidence and record the verification decision in the backend."
       ]
     },
@@ -781,7 +780,7 @@
       ],
       "possible_conflicts": [
         {
-          "conflict_id": "conflict_445780f9b7c7097a9bdb",
+          "conflict_id": "conflict_1a6155ee0af26c40f1c1",
           "status": "possible_conflict",
           "kind": "eligibility",
           "explanation": "One says this applies to guest; the other says it does not."
@@ -814,7 +813,7 @@
       "requirements_remaining": [
         "Confirm the part of this claim the references do not state: 'However, depending on your membership level, I may be able to provide a new code for you'",
         "Confirm the part of this claim the references do not state: \"Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members\"",
-        "Resolve possible conflict conflict_445780f9b7c7097a9bdb.",
+        "Resolve possible conflict conflict_1a6155ee0af26c40f1c1.",
         "An authorized person must review the evidence and record the verification decision in the backend."
       ]
     }

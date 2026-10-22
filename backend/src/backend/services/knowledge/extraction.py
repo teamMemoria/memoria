@@ -36,7 +36,7 @@ from typing import Any, Protocol
 
 from . import text as tx
 from .abcd import Conversation, read_conversation
-from .errors import MODEL_OUTPUT_INVALID, PipelineError
+from .errors import INTERNAL_ERROR, MODEL_OUTPUT_INVALID, PipelineError, invalid
 from .llm import ModelClient
 from .privacy import Redactor, placeholder_share
 
@@ -166,6 +166,36 @@ class ExtractionConfig:
     allow_action_only_answers: bool = True
     max_drafts_per_conversation: int = 3
 
+    def __post_init__(self) -> None:
+        topics = self.topics
+        if topics is not None and (
+            isinstance(topics, str)
+            or not isinstance(topics, frozenset | set | list | tuple)
+            or not all(isinstance(t, str) and t for t in topics)
+        ):
+            raise invalid(
+                "config.extraction.topics",
+                "must be null or a list of flow or flow/subflow names",
+            )
+        if topics is not None and not isinstance(topics, frozenset):
+            object.__setattr__(self, "topics", frozenset(topics))
+        for name, low in (("min_answer_words", 1), ("max_drafts_per_conversation", 1)):
+            value = getattr(self, name)
+            if type(value) is not int or value < low:
+                raise invalid(
+                    f"config.extraction.{name}", f"must be an integer >= {low}"
+                )
+        share = self.max_placeholder_share
+        if type(share) not in (int, float) or not 0 <= share <= 1:
+            raise invalid(
+                "config.extraction.max_placeholder_share",
+                "must be a number between 0 and 1",
+            )
+        if type(self.allow_action_only_answers) is not bool:
+            raise invalid(
+                "config.extraction.allow_action_only_answers", "must be true or false"
+            )
+
     def topic_selected(self, scope: Mapping[str, str]) -> bool:
         if self.topics is None:
             return True
@@ -287,8 +317,8 @@ class Extractor(Protocol):
 
     def select(
         self, redacted: RedactedConversation, config: ExtractionConfig
-    ) -> tuple[list[Selection], str | None]:
-        """Return the chosen selections, or ([], reason) when nothing is worth reusing."""
+    ) -> tuple[list[Selection], str | None, list[dict[str, Any]]]:
+        """Return (selections, no-draft reason or None, rejected proposals)."""
         ...
 
 
@@ -437,7 +467,7 @@ class RuleExtractor:
         ]
         if not answer:
             if not (config.allow_action_only_answers and outcome):
-                return [], "no_reusable_answer"
+                return [], "no_reusable_answer", []
             answer = outcome
             first_answer_n = min(conversation.turn(p.turn_id).n for p in outcome)
             last_answer_n = max(conversation.turn(p.turn_id).n for p in outcome)
@@ -453,14 +483,20 @@ class RuleExtractor:
             answer.sort(key=lambda p: (conversation.turn(p.turn_id).n, p.start))
         question_ids = _question_turns(redacted, first_answer_n or 10**9)
         if not question_ids:
-            return [], "no_customer_request"
+            return [], "no_customer_request", []
         question = tuple(redacted.passage(turn_id) for turn_id in question_ids)
         conditions = _conditions(redacted, answer, last_answer_n)
-        return [
-            Selection(
-                question=question, answer=tuple(answer), conditions=tuple(conditions)
-            )
-        ], None
+        return (
+            [
+                Selection(
+                    question=question,
+                    answer=tuple(answer),
+                    conditions=tuple(conditions),
+                )
+            ],
+            None,
+            [],
+        )
 
 
 # --------------------------------------------------------------------------- model extractor
@@ -529,17 +565,20 @@ class ModelExtractor:
     max_output_tokens: int = 1_500
     name: str = "model-extractor"
     version: str = "1"
-    rejected: list[dict[str, Any]] = field(default_factory=list, init=False)
 
     def select(
         self, redacted: RedactedConversation, config: ExtractionConfig
-    ) -> tuple[list[Selection], str | None]:
+    ) -> tuple[list[Selection], str | None, list[dict[str, Any]]]:
         reply = self.client.complete_json(
             system=MODEL_SYSTEM_PROMPT,
             prompt=_model_prompt(redacted),
             max_output_tokens=self.max_output_tokens,
         )
-        self.rejected = []
+        if not isinstance(reply, Mapping):
+            raise PipelineError(
+                MODEL_OUTPUT_INVALID, "model reply is not a JSON object", "model"
+            )
+        rejected: list[dict[str, Any]] = []
         drafts = reply.get("drafts")
         if not isinstance(drafts, list):
             raise PipelineError(
@@ -555,7 +594,9 @@ class ModelExtractor:
                     "model returned no drafts and no reason",
                     "model.no_draft_reason",
                 )
-            return [], f"model: {reason.strip()[:200]}"
+            # The model's own words: remove personal details before they go anywhere.
+            safe = redacted.redactor.redact(reason.strip()[:200]).text
+            return [], f"model: {safe}", []
         if len(drafts) > _MAX_MODEL_DRAFTS:
             raise PipelineError(
                 MODEL_OUTPUT_INVALID,
@@ -566,11 +607,11 @@ class ModelExtractor:
         for index, item in enumerate(drafts):
             try:
                 selections.append(self._selection(redacted, item))
-            except _Rejected as rejected:
-                self.rejected.append({"index": index, "reason": str(rejected)})
+            except _Rejected as problem:
+                rejected.append({"index": index, "reason": str(problem)})
         if not selections:
-            return [], "model: every proposed draft was rejected"
-        return selections, None
+            return [], "model: every proposed draft was rejected", rejected
+        return selections, None, rejected
 
     def _turns(
         self, redacted: RedactedConversation, ids: Any, what: str
@@ -584,7 +625,8 @@ class ModelExtractor:
         known = redacted.texts.keys()
         unknown = [i for i in ids if i not in known]
         if unknown:
-            raise _Rejected(f"{what} cites turns that do not exist: {unknown}")
+            # Not echoed back: a made-up id could carry anything.
+            raise _Rejected(f"{what} cites {len(unknown)} turn id(s) that do not exist")
         return [redacted.passage(i) for i in dict.fromkeys(ids)]
 
     def _selection(self, redacted: RedactedConversation, item: Any) -> Selection:
@@ -605,11 +647,13 @@ class ModelExtractor:
             raise _Rejected("question must cite a customer turn")
         if not any(p.speaker in {"agent", "system_action"} for p in a_passages):
             raise _Rejected("answer must cite an agent or system_action turn")
-        conditions_raw = item.get("conditions", [])
+        raw_conditions = item.get("conditions")
+        if raw_conditions is None:
+            raw_conditions = []
+        if not isinstance(raw_conditions, list):
+            raise _Rejected("conditions must be an array")
         wording = [question, answer] + [
-            c.get("text", "")
-            for c in conditions_raw
-            if isinstance(conditions_raw, list) and isinstance(c, Mapping)
+            c.get("text", "") for c in raw_conditions if isinstance(c, Mapping)
         ]
         for statement in wording:
             if isinstance(statement, str) and (
@@ -625,9 +669,6 @@ class ModelExtractor:
             if problem:
                 raise _Rejected(f"{label} {problem}")
         conditions = []
-        raw_conditions = item.get("conditions", [])
-        if not isinstance(raw_conditions, list):
-            raise _Rejected("conditions must be an array")
         for condition in raw_conditions:
             if not isinstance(condition, Mapping) or not isinstance(
                 condition.get("text"), str
@@ -767,7 +808,7 @@ def extract_drafts(
         return result
     redacted = redact_conversation(conversation)
     try:
-        selections, reason = extractor.select(redacted, config)
+        selections, reason, rejected = extractor.select(redacted, config)
     except PipelineError as error:
         return ExtractionResult(
             conversation.conversation_id,
@@ -775,7 +816,17 @@ def extract_drafts(
             "error",
             errors=[error.to_dict()],
         )
-    result.rejected = list(getattr(extractor, "rejected", []) or [])
+    except Exception as error:  # noqa: BLE001 - a bug must surface as an error, never as "no drafts"
+        failure = PipelineError(
+            INTERNAL_ERROR, f"extractor failed: {type(error).__name__}", "extractor"
+        )
+        return ExtractionResult(
+            conversation.conversation_id,
+            conversation.source_key,
+            "error",
+            errors=[failure.to_dict()],
+        )
+    result.rejected = rejected
     if not selections:
         result.no_draft_reason = reason or "no_reusable_answer"
         return result

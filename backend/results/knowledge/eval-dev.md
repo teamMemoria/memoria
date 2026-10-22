@@ -23,7 +23,7 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 
 - 58 conversations, 44 drafts, 32 groups, 14 possible conflicts, 7 unresolved.
 - Verification: {'contradicted': 7, 'partially_supported': 18, 'supported': 8, 'unverifiable': 11}. Technical failures: 0 (counted separately from missing verification: 11 unverifiable).
-- About 8.25 ms per conversation on this machine; model calls: 0.
+- About 7.54 ms per conversation on this machine; model calls: 0.
 
 ## Failed cases
 

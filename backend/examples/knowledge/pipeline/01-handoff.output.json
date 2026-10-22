@@ -1455,8 +1455,7 @@
     "as_of": "2026-10-22",
     "config": {
       "support_threshold": 0.6,
-      "partial_threshold": 0.35,
-      "require_every_claim": true
+      "partial_threshold": 0.35
     },
     "results": [
       {

@@ -16,6 +16,7 @@ Two sources of personal data are used:
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -28,7 +29,7 @@ PHONE = re.compile(
     r"(?<!\w)(?:\+?1[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}(?!\w)"
 )
 LONG_NUMBER = re.compile(r"(?<![\w$.])\d{5,}(?![\w%]|\.\d)")
-CARD = re.compile(r"(?<!\d)(?:\d{4}[ -]?){3}\d{1,7}(?!\d)")
+CARD = re.compile(r"(?<![\w])(?:\d{4}[ -]?){3}\d{1,7}(?![\w])")
 NUMERIC_DATE = re.compile(
     r"(?<![\d/])\d{1,2}[/-]\d{1,2}[/-]\d{2,4}(?![\d/])|\b\d{4}-\d{2}-\d{2}\b"
 )
@@ -64,8 +65,22 @@ class Redaction:
     counts: Counter[str] = field(default_factory=Counter)
 
 
+# Words a name part must never replace: removing them would change what a
+# sentence means ("Gold members ..." for a customer named Gould).
+_PROTECTED_TEXT = """
+    gold silver bronze guest guests member members membership can cannot code codes card order orders
+    refund refunds return returns ship shipping item items day days week weeks month months year years
+    promo price account help need will would could should may might must new old free fee fees bill
+    """
+PROTECTED_WORDS = frozenset(_PROTECTED_TEXT.split())
+
+
+def nfc(text: str) -> str:
+    return unicodedata.normalize("NFC", text)
+
+
 def _strings(values: Iterable[Any]) -> list[str]:
-    return [v.strip() for v in values if isinstance(v, str) and v.strip()]
+    return [nfc(v.strip()) for v in values if isinstance(v, str) and v.strip()]
 
 
 def _digits(value: str) -> str:
@@ -96,15 +111,18 @@ class Redactor:
         # Longest first so "4146 circle drive  raleigh, tx" wins over "raleigh".
         self._literals.sort(key=lambda item: -len(item[1]))
         name = record.get("customer_name")
+        name = nfc(name) if isinstance(name, str) else None
         self._name_parts = sorted(
-            {part for part in re.split(r"\s+", name.strip()) if len(part) >= 2}
-            if isinstance(name, str)
+            {
+                part
+                for part in re.split(r"\s+", name.strip())
+                if len(part) >= 2 and part.lower() not in PROTECTED_WORDS
+            }
+            if name
             else set(),
             key=lambda part: -len(part),
         )
-        self._full_name = (
-            name.strip() if isinstance(name, str) and name.strip() else None
-        )
+        self._full_name = name.strip() if name and name.strip() else None
         phone = record.get("phone")
         self._phone_digits = _digits(phone) if isinstance(phone, str) else ""
 
@@ -119,6 +137,7 @@ class Redactor:
 
     def redact(self, text: str) -> Redaction:
         counts: Counter[str] = Counter()
+        text = nfc(text)
         out = text
         out = self._sub(EMAIL, "EMAIL", out, counts)
         out = self._sub(CARD, "CARD_NUMBER", out, counts)
@@ -199,8 +218,10 @@ class Redactor:
             if not candidate or len(token) < 3:
                 continue
             lowered = token.lower()
+            if lowered in PROTECTED_WORDS or lowered in _COMMON_WORDS:
+                continue
             for part in self._name_parts:
-                if len(part) < 3 or lowered == part.lower():
+                if len(part) < 4 or lowered == part.lower():
                     continue
                 limit = 1 if len(part) < 6 else 2
                 if _edit_distance(lowered, part.lower(), limit) <= limit:
@@ -211,21 +232,42 @@ class Redactor:
         return "".join(tokens)
 
     def leaks(self, text: str) -> list[str]:
-        """Labels of record values still present in ``text`` (used by tests and evaluation)."""
+        """Labels of this record's values still present in ``text``, matched as whole words.
+
+        Used by the release check and the tests. Checks every record value the
+        redactor knows (name, each name part, email, username, address, city,
+        zip, order id, purchase date, phone) plus any email or card number.
+        """
         found = []
-        lowered = text.lower()
+        flat = " ".join(nfc(text).lower().split())
+
+        def present(value: str) -> bool:
+            value = " ".join(value.lower().split())
+            return bool(re.search(r"(?<![\w])" + re.escape(value) + r"(?![\w])", flat))
+
         for label, value in self._literals:
-            if label == "CITY":
-                continue  # a city name alone is not a leak; it is redacted for tidiness
-            if " ".join(value.lower().split()) in " ".join(lowered.split()):
+            if present(value):
                 found.append(label)
-        if self._full_name and self._full_name.lower() in lowered:
+        if self._full_name and present(self._full_name):
+            found.append("CUSTOMER_NAME")
+        if any(len(part) >= 3 and present(part) for part in self._name_parts):
             found.append("CUSTOMER_NAME")
         if len(self._phone_digits) >= 7 and self._phone_digits[-7:] in _digits(text):
             found.append("PHONE")
         if EMAIL.search(text):
             found.append("EMAIL")
+        if CARD.search(text):
+            found.append("CARD_NUMBER")
         return sorted(set(found))
+
+
+_COMMON_TEXT = """
+    the and but for not you your yes can could would should will shall may might must have has had was were
+    are been being this that these those then than them they their there here what when where which who why
+    how all any each few more most other some such only own same very just also into onto over under again
+    hello thanks thank please sorry okay sure great good fine nice well done mine hers his him she her
+    """
+_COMMON_WORDS = frozenset(_COMMON_TEXT.split())
 
 
 def _edit_distance(a: str, b: str, limit: int) -> int:

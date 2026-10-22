@@ -26,14 +26,13 @@ block release.
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Mapping
 from typing import Any
 
-from .abcd import Conversation, read_conversation
+from .abcd import MAX_BATCH_CONVERSATIONS, Conversation, read_conversation
 from .conflicts import ConflictConfig, find_conflicts
-from .errors import PipelineError, invalid
+from .errors import INTERNAL_ERROR, PipelineError, invalid
 from .extraction import (
     ExtractionConfig,
     Extractor,
@@ -62,8 +61,6 @@ def _config(raw: Any, cls: type, name: str):
     if not isinstance(raw, Mapping):
         raise invalid(f"config.{name}", "must be an object")
     try:
-        if cls is ExtractionConfig and "topics" in raw and raw["topics"] is not None:
-            raw = {**raw, "topics": frozenset(raw["topics"])}
         return cls(**raw)
     except TypeError as error:
         raise invalid(f"config.{name}", str(error)) from error
@@ -86,6 +83,12 @@ def run_pipeline(
         records = payload.get("conversations")
         if not isinstance(records, list):
             raise invalid("conversations", "must be an array")
+        if len(records) > MAX_BATCH_CONVERSATIONS:
+            raise PipelineError(
+                "oversized_input",
+                f"has {len(records)} conversations; the limit is {MAX_BATCH_CONVERSATIONS}",
+                "conversations",
+            )
         config = payload.get("config") or {}
         if not isinstance(config, Mapping):
             raise invalid("config", "must be an object")
@@ -156,6 +159,16 @@ def run_pipeline(
             "errors": [error.to_dict()],
             "technical_failures": failures,
         }
+    except Exception as error:  # noqa: BLE001 - a bug must surface as an error, never as an empty result
+        failure = PipelineError(
+            INTERNAL_ERROR, f"pipeline failed: {type(error).__name__}", "pipeline"
+        )
+        return {
+            "schema": PIPELINE_SCHEMA_VERSION,
+            "status": "error",
+            "errors": [failure.to_dict()],
+            "technical_failures": failures,
+        }
     output: dict[str, Any] = {
         "schema": PIPELINE_SCHEMA_VERSION,
         "status": "completed_with_failures" if failures else "ok",
@@ -224,6 +237,46 @@ def _walk(value: Any, path: str = "$"):
     elif isinstance(value, list):
         for index, item in enumerate(value):
             yield from _walk(item, f"{path}[{index}]")
+
+
+_ID_KEYS = {
+    "schema",
+    "source_key",
+    "source_keys",
+    "version",
+    "source_version",
+    "dataset_version",
+    "snapshot_id",
+    "span",
+}
+
+
+def output_text(value: Any) -> str:
+    """Every human-readable string in an output, one per line, leaving out ids, keys and versions.
+
+    Personal-data checks run on this, so an id such as "ABCD:8620" is never
+    mistaken for a zip code and a number in a hash for a card number.
+    """
+    lines: list[str] = []
+
+    def visit(item: Any, key: str = "") -> None:
+        if (
+            key in _ID_KEYS
+            or key.endswith(("_id", "_ids"))
+            or key in {"combined_from", "parent"}
+        ):
+            return
+        if isinstance(item, str):
+            lines.append(item)
+        elif isinstance(item, Mapping):
+            for k, v in item.items():
+                visit(v, str(k))
+        elif isinstance(item, list):
+            for v in item:
+                visit(v, key)
+
+    visit(value)
+    return "\n".join(lines)
 
 
 def release_checks(
@@ -320,7 +373,7 @@ def release_checks(
 
     # 3. No personal data from any input customer record appears anywhere in the output.
     problems = []
-    text = json.dumps(output, ensure_ascii=False)
+    text = output_text(output)
     for conversation in conversations.values():
         leaks = Redactor(conversation.customer_record).leaks(text)
         if leaks:

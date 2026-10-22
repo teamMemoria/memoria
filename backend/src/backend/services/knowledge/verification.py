@@ -48,16 +48,20 @@ class VerificationConfig:
 
     ``support_threshold``: share of a claim's subject words a reference passage must contain to support it.
     ``partial_threshold``: share below which a claim is unverifiable rather than partly supported.
-    ``require_every_claim``: whether a draft needs every claim supported to be recommended
-    (False lets claims that are only procedural, like "A link will be sent.", be partly supported).
+
+    A draft is only ``supported`` when every one of its claims is. Whether
+    that should be relaxed is still to agree (#19).
     """
 
     support_threshold: float = 0.6
     partial_threshold: float = 0.35
-    require_every_claim: bool = True
 
     def __post_init__(self) -> None:
-        if not 0 <= self.partial_threshold <= self.support_threshold <= 1:
+        values = (self.partial_threshold, self.support_threshold)
+        if (
+            not all(type(v) in (int, float) for v in values)
+            or not 0 <= values[0] <= values[1] <= 1
+        ):
             raise invalid(
                 "config", "need 0 <= partial_threshold <= support_threshold <= 1"
             )
@@ -89,13 +93,17 @@ def load_reference_snapshot(path: Path, company_id: str) -> list[dict[str, Any]]
 
 
 def _applies(reference: Mapping[str, Any], scope: Mapping[str, str]) -> bool:
-    ref_scope = reference.get("scope") or {}
+    ref_scope = reference["scope"]
     if ref_scope.get("flow") != scope.get("flow"):
         return False
     if "subflow" in ref_scope:
         return ref_scope["subflow"] == scope.get("subflow")
     prefix = ref_scope.get("subflow_prefix")
-    return bool(prefix) and str(scope.get("subflow", "")).startswith(prefix)
+    return (
+        isinstance(prefix, str)
+        and bool(prefix)
+        and str(scope.get("subflow", "")).startswith(prefix)
+    )
 
 
 def _ineligible(
@@ -144,6 +152,20 @@ def _check_reference(reference: Any, index: int) -> Mapping[str, Any]:
                 f"{key} must be a non-empty string",
                 f"{where}.{key}",
             )
+    for key in ("approval", "eligibility"):
+        if reference.get(key) is not None and not isinstance(reference[key], Mapping):
+            raise PipelineError(
+                "reference_invalid", f"{key} must be an object", f"{where}.{key}"
+            )
+    scope = reference.get("scope")
+    if isinstance(scope, Mapping) and not all(
+        isinstance(scope.get(k), str)
+        for k in ("flow", "subflow", "subflow_prefix")
+        if k in scope
+    ):
+        raise PipelineError(
+            "reference_invalid", "scope values must be strings", f"{where}.scope"
+        )
     if not isinstance(reference.get("scope"), Mapping):
         raise PipelineError(
             "reference_invalid", "scope must be an object", f"{where}.scope"
@@ -240,9 +262,15 @@ def _contradiction(claim, unit: _Unit) -> str | None:
     """A reason the reference contradicts the claim, or None."""
     ref_claim = unit.claim
     shared = claim.subject & ref_claim.subject
+    on_topic = bool(claim.subject & unit.topic)
     clash = claim.allowed & ref_claim.denied
-    if clash and claim.subject & unit.topic:
+    if clash and on_topic:
         return f"The reference excludes {', '.join(sorted(clash))}, which the claim includes."
+    clash = claim.denied & ref_claim.allowed
+    # A level the reference merely mentions ("enter the member level, even if just
+    # a Guest") is not an allowance; it has to talk about the same thing.
+    if clash and len(shared) >= 2:
+        return f"The reference includes {', '.join(sorted(clash))}, which the claim excludes."
     for measure in sorted(claim.quantities.keys() & ref_claim.quantities.keys()):
         if (
             not claim.quantities[measure] & ref_claim.quantities[measure]
@@ -259,8 +287,8 @@ def _contradiction(claim, unit: _Unit) -> str | None:
                 f"the claim gives {sorted(claim.quantities[measure])}."
             )
     finding = _compare(claim, ref_claim, ConflictConfig())
-    if finding and finding.kind == "polarity" and finding.status == "possible_conflict":
-        return "The reference says the opposite."
+    if finding and finding.status == "possible_conflict":
+        return f"The reference says otherwise: {finding.explanation}"
     return None
 
 
@@ -385,6 +413,8 @@ def check_drafts(
         )
     as_of_date = None
     if as_of is not None:
+        if not isinstance(as_of, str):
+            raise invalid("as_of", "must be an ISO date string (YYYY-MM-DD)")
         try:
             as_of_date = dt.date.fromisoformat(as_of)
         except ValueError as error:
@@ -412,7 +442,12 @@ def check_drafts(
 
     packets = []
     for owner in owners:
-        in_scope = [r for r in checked if _applies(r, owner.scope)]
+        # Another company's references are never looked at, not even to list them.
+        in_scope = [
+            r
+            for r in checked
+            if r.get("company_id") == company_id and _applies(r, owner.scope)
+        ]
         usable, ignored = [], []
         for reference in in_scope:
             reason = _ineligible(reference, company_id, as_of_date) or _framing(
@@ -497,16 +532,8 @@ def _packet(
         overall, advice = "partially_supported", "needs_more_evidence"
     else:
         overall, advice = "unverifiable", "cannot_be_verified"
-    if (
-        not config.require_every_claim
-        and overall == "partially_supported"
-        and "unverifiable" not in statuses
-        and "supported" in statuses
-    ):
-        overall, advice = "supported", "supported_by_references"
-    blocking = any(c["missing_conditions"] for c in claims) or any(
-        c["status"] == "possible_conflict" for c in draft_conflicts
-    )
+    # Any open conflict, resolved or not, keeps a draft from being recommended.
+    blocking = any(c["missing_conditions"] for c in claims) or bool(draft_conflicts)
     if advice == "supported_by_references" and blocking:
         advice = "needs_more_evidence"
     return {
