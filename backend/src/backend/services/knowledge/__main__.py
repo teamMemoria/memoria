@@ -17,6 +17,7 @@ from .errors import PipelineError
 from .extraction import ModelExtractor, RuleExtractor, extract_drafts
 from .grouping import group_drafts
 from .llm import OpenAICompatibleClient
+from .verification import check_drafts, load_reference_snapshot
 
 
 def _read(path: str) -> Any:
@@ -89,6 +90,24 @@ def cmd_conflicts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    try:
+        references = load_reference_snapshot(Path(args.references), args.company)
+        result = check_drafts(
+            _drafts_from(args.drafts),
+            args.company,
+            references,
+            conflicts=_read(args.conflicts) if args.conflicts else None,
+            groups=_read(args.groups) if args.groups else None,
+            as_of=args.as_of,
+        )
+    except PipelineError as error:
+        _write({"status": "error", "errors": [error.to_dict()]}, args.out)
+        return 1
+    _write(result, args.out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m backend.services.knowledge")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -128,6 +147,18 @@ def build_parser() -> argparse.ArgumentParser:
     conflicts.add_argument("--groups", help="output of `group`, to label each side")
     conflicts.add_argument("--out")
     conflicts.set_defaults(func=cmd_conflicts)
+
+    verify = sub.add_parser(
+        "verify", help="check drafts against approved sources (#19)"
+    )
+    verify.add_argument("drafts", help="output of `extract`, or a JSON array of drafts")
+    verify.add_argument("--company", required=True)
+    verify.add_argument("--references", required=True, help="a reference snapshot file")
+    verify.add_argument("--conflicts", help="output of `conflicts`")
+    verify.add_argument("--groups", help="output of `group`")
+    verify.add_argument("--as-of", help="ISO date used for reference expiry")
+    verify.add_argument("--out")
+    verify.set_defaults(func=cmd_verify)
     return parser
 
 

@@ -56,7 +56,7 @@ _WORD = re.compile(r"\[[A-Z_]+\]|[a-z0-9]+(?:'[a-z]+)?")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\[\"'])|\n+")
 _NUMBER_UNIT = re.compile(
     r"(?P<currency>\$)\s?(?P<amount>\d+(?:[.,]\d+)?)"
-    r"|(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>%|percent|days?|business days?|weeks?|months?|years?|hours?|minutes?|items?|dollars?)\b",
+    r"|(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>%|(?:percent|business days?|days?|weeks?|months?|years?|hours?|minutes?|items?|dollars?)\b)",
     re.IGNORECASE,
 )
 _WORD_NUMBERS = {
@@ -216,6 +216,9 @@ def quantities(text: str) -> list[Quantity]:
     """Numbers with units ("$50", "7 days", "20%", "a week"), normalised to comparable values."""
     lowered = _digits_for_words(normalise(text))
     found = []
+    # "2 of the 3 following", "3 out of 4 items": how many of a list are needed.
+    for match in re.finditer(r"\b(\d+) (?:out )?of (?:the )?(\d+)\b", lowered):
+        found.append(Quantity(f"{match.group(1)}/{match.group(2)}", "count_of"))
     for match in _NUMBER_UNIT.finditer(lowered):
         if match.group("currency"):
             found.append(Quantity(match.group("amount").replace(",", ""), "usd"))

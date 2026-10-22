@@ -1,0 +1,793 @@
+{
+  "schema": "knowledge-verification/1",
+  "status": "ok",
+  "company_id": "acme",
+  "as_of": "2026-10-22",
+  "config": {
+    "support_threshold": 0.6,
+    "partial_threshold": 0.35,
+    "require_every_claim": true
+  },
+  "results": [
+    {
+      "draft_id": "draft_9945d80e8b3d860c6c7d",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "verification_status": "supported",
+      "ml_recommendation": "supported_by_references",
+      "decision": null,
+      "claims": [
+        {
+          "claim": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              83
+            ],
+            "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+            "source_version": "authored"
+          },
+          "status": "supported",
+          "best_support": 0.9667,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a2",
+                "abcd:purchase_dispute/promo_code_invalid#a2.1",
+                "abcd:purchase_dispute/promo_code_invalid#a2.2"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid' Both flows follow the same instructions below.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "N/A",
+                "type": "communication"
+              },
+              "support": 0.9667
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "N/A",
+                "type": "communication"
+              },
+              "support": 0.8556
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "N/A",
+                "type": "communication"
+              },
+              "support": 0.6333
+            }
+          ],
+          "contradicted_by": [],
+          "missing_conditions": []
+        },
+        {
+          "claim": "If you are a gold, silver or bronze member I can issue you a new code.",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t4",
+            "speaker": "agent",
+            "span": [
+              0,
+              70
+            ],
+            "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+            "source_version": "authored"
+          },
+          "status": "supported",
+          "best_support": 0.75,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.3",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.75
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a4",
+                "abcd:purchase_dispute/promo_code_invalid#a4.1",
+                "abcd:purchase_dispute/promo_code_invalid#a4.2",
+                "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                "abcd:purchase_dispute/promo_code_invalid#a4.4"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer is wrong (Oracle says No), then: Ask the customer for their membership level. Enter the member level (even if just a Guest) into [Membership Privileges] and submit. Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member. Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.75
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "N/A",
+                "type": "communication"
+              },
+              "support": 0.5
+            }
+          ],
+          "contradicted_by": [],
+          "missing_conditions": []
+        },
+        {
+          "claim": "A promo code has been created.",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t7",
+            "speaker": "system_action",
+            "span": [
+              0,
+              30
+            ],
+            "quote": "A promo code has been created.",
+            "source_version": "authored"
+          },
+          "status": "supported",
+          "best_support": 0.6667,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.2",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Click on [Promo Code]",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Promo Code",
+                "type": "interaction"
+              },
+              "support": 0.6667
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Generate the promo code and share that with them",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Promo Code",
+                "type": "interaction"
+              },
+              "support": 0.6667
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.4",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer is right (Oracle says Yes), skip to the Promo Code step below",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Ask the Oracle",
+                "type": "kb query"
+              },
+              "support": 0.6667
+            }
+          ],
+          "contradicted_by": [],
+          "missing_conditions": []
+        },
+        {
+          "claim": "I've sent you a new code, it is for 20% off your next purchase.",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t8",
+            "speaker": "agent",
+            "span": [
+              0,
+              63
+            ],
+            "quote": "I've sent you a new code, it is for 20% off your next purchase.",
+            "source_version": "authored"
+          },
+          "status": "supported",
+          "best_support": 0.8,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a5",
+                "abcd:purchase_dispute/promo_code_invalid#a5.1",
+                "abcd:purchase_dispute/promo_code_invalid#a5.2",
+                "abcd:purchase_dispute/promo_code_invalid#a5.3"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Generate the promo code and share that with them No need to enter anything into the form. Click on [Promo Code] If the customer asks, you can say it is for 20% off their next purchase.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Promo Code",
+                "type": "interaction"
+              },
+              "support": 0.8
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.3",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer asks, you can say it is for 20% off their next purchase.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Promo Code",
+                "type": "interaction"
+              },
+              "support": 0.6333
+            }
+          ],
+          "contradicted_by": [],
+          "missing_conditions": []
+        }
+      ],
+      "possible_conflicts": [],
+      "supporting_conversations": {
+        "source_keys": [
+          "SYNTHETIC:SYN-0006"
+        ],
+        "note": "Conversations that repeat the answer. Repetition is not verification."
+      },
+      "references_considered": 19,
+      "ignored_references": [
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "not eligible (stale: example: replaced by a newer version)"
+        }
+      ],
+      "requirements_remaining": [
+        "An authorized person must review the evidence and record the verification decision in the backend."
+      ]
+    },
+    {
+      "draft_id": "draft_f37d2ae30b7026614eea",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "verification_status": "contradicted",
+      "ml_recommendation": "contradicted_by_references",
+      "decision": null,
+      "claims": [
+        {
+          "claim": "A promo code has been created.",
+          "passage": {
+            "conversation_id": "ABCD-0046",
+            "source_key": "ABCD:5326",
+            "turn_id": "ABCD-0046#t11",
+            "speaker": "system_action",
+            "span": [
+              0,
+              30
+            ],
+            "quote": "A promo code has been created.",
+            "source_version": "genesys-curated@c39d2e061041"
+          },
+          "status": "contradicted",
+          "best_support": 0.6667,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.2",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Click on [Promo Code]",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Promo Code",
+                "type": "interaction"
+              },
+              "support": 0.6667
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Generate the promo code and share that with them",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Promo Code",
+                "type": "interaction"
+              },
+              "support": 0.6667
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.4",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer is right (Oracle says Yes), skip to the Promo Code step below",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Ask the Oracle",
+                "type": "kb query"
+              },
+              "support": 0.6667
+            }
+          ],
+          "contradicted_by": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.4",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.0,
+              "reason": "The reference excludes guest, which the claim includes."
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a4",
+                "abcd:purchase_dispute/promo_code_invalid#a4.1",
+                "abcd:purchase_dispute/promo_code_invalid#a4.2",
+                "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                "abcd:purchase_dispute/promo_code_invalid#a4.4"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer is wrong (Oracle says No), then: Ask the customer for their membership level. Enter the member level (even if just a Guest) into [Membership Privileges] and submit. Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member. Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.6667,
+              "reason": "The reference excludes guest, which the claim includes."
+            }
+          ],
+          "missing_conditions": []
+        }
+      ],
+      "possible_conflicts": [
+        {
+          "conflict_id": "conflict_445780f9b7c7097a9bdb",
+          "status": "possible_conflict",
+          "kind": "eligibility",
+          "explanation": "One says this applies to guest; the other says it does not."
+        }
+      ],
+      "supporting_conversations": {
+        "source_keys": [
+          "ABCD:5326"
+        ],
+        "note": "Conversations that repeat the answer. Repetition is not verification."
+      },
+      "references_considered": 19,
+      "ignored_references": [
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "not eligible (stale: example: replaced by a newer version)"
+        }
+      ],
+      "requirements_remaining": [
+        "Resolve the contradiction with abcd:purchase_dispute/promo_code_invalid#a4.4: 'A promo code has been created.'",
+        "Resolve possible conflict conflict_445780f9b7c7097a9bdb.",
+        "An authorized person must review the evidence and record the verification decision in the backend."
+      ]
+    },
+    {
+      "draft_id": "draft_ae32e8c290618a962673",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "verification_status": "partially_supported",
+      "ml_recommendation": "needs_more_evidence",
+      "decision": null,
+      "claims": [
+        {
+          "claim": "However, depending on your membership level, I may be able to provide a new code for you",
+          "passage": {
+            "conversation_id": "ABCD-0041",
+            "source_key": "ABCD:1686",
+            "turn_id": "ABCD-0041#t15",
+            "speaker": "agent",
+            "span": [
+              0,
+              88
+            ],
+            "quote": "However, depending on your membership level, I may be able to provide a new code for you",
+            "source_version": "genesys-curated@c39d2e061041"
+          },
+          "status": "partially_supported",
+          "best_support": 0.4286,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a4",
+                "abcd:purchase_dispute/promo_code_invalid#a4.1",
+                "abcd:purchase_dispute/promo_code_invalid#a4.2",
+                "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                "abcd:purchase_dispute/promo_code_invalid#a4.4"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer is wrong (Oracle says No), then: Ask the customer for their membership level. Enter the member level (even if just a Guest) into [Membership Privileges] and submit. Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member. Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.4286
+            }
+          ],
+          "contradicted_by": [],
+          "missing_conditions": []
+        },
+        {
+          "claim": "Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members",
+          "passage": {
+            "conversation_id": "ABCD-0041",
+            "source_key": "ABCD:1686",
+            "turn_id": "ABCD-0041#t21",
+            "speaker": "agent",
+            "span": [
+              0,
+              89
+            ],
+            "quote": "Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members",
+            "source_version": "genesys-curated@c39d2e061041"
+          },
+          "status": "partially_supported",
+          "best_support": 0.5,
+          "citations": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.3",
+              "combined_from": null,
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.5
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a4",
+                "abcd:purchase_dispute/promo_code_invalid#a4.1",
+                "abcd:purchase_dispute/promo_code_invalid#a4.2",
+                "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                "abcd:purchase_dispute/promo_code_invalid#a4.4"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "If the customer is wrong (Oracle says No), then: Ask the customer for their membership level. Enter the member level (even if just a Guest) into [Membership Privileges] and submit. Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member. Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "Membership Privileges",
+                "type": "faq/policy"
+              },
+              "support": 0.5
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+              "combined_from": [
+                "abcd:purchase_dispute/promo_code_invalid#a2",
+                "abcd:purchase_dispute/promo_code_invalid#a2.1",
+                "abcd:purchase_dispute/promo_code_invalid#a2.2"
+              ],
+              "version": "abcd-guidelines@6b8700ce67c6",
+              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid' Both flows follow the same instructions below.",
+              "approval": {
+                "status": "approved",
+                "approved_by": "example-reviewer",
+                "approved_at": "2026-10-01"
+              },
+              "eligibility": {
+                "status": "eligible",
+                "valid_until": null,
+                "reason": null
+              },
+              "guideline": {
+                "flow": "Purchase Dispute",
+                "subflow": "Promo Code Invalid",
+                "button": "N/A",
+                "type": "communication"
+              },
+              "support": 0.375
+            }
+          ],
+          "contradicted_by": [],
+          "missing_conditions": []
+        }
+      ],
+      "possible_conflicts": [
+        {
+          "conflict_id": "conflict_445780f9b7c7097a9bdb",
+          "status": "possible_conflict",
+          "kind": "eligibility",
+          "explanation": "One says this applies to guest; the other says it does not."
+        }
+      ],
+      "supporting_conversations": {
+        "source_keys": [
+          "ABCD:1686"
+        ],
+        "note": "Conversations that repeat the answer. Repetition is not verification."
+      },
+      "references_considered": 19,
+      "ignored_references": [
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "not eligible (stale: example: replaced by a newer version)"
+        }
+      ],
+      "requirements_remaining": [
+        "Confirm the part of this claim the references do not state: 'However, depending on your membership level, I may be able to provide a new code for you'",
+        "Confirm the part of this claim the references do not state: \"Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members\"",
+        "Resolve possible conflict conflict_445780f9b7c7097a9bdb.",
+        "An authorized person must review the evidence and record the verification decision in the backend."
+      ]
+    }
+  ],
+  "note": "Findings for an authorized reviewer. Nothing here approves, rejects or replaces an entry, renews a verification date or makes a draft available for audit use."
+}

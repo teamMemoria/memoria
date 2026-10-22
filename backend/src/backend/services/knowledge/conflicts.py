@@ -120,6 +120,76 @@ def _subject(text: str) -> set[str]:
     return {t for t in tx.content_terms(text) if t not in drop and not t.isdigit()}
 
 
+# Verbs that make a negation about eligibility ("cannot get", "can't help",
+# "not eligible") rather than about something else ("not valid", "not charged").
+_ELIGIBILITY_TERMS = {
+    "get",
+    "receiv",
+    "help",
+    "issu",
+    "return",
+    "refund",
+    "qualif",
+    "qualify",
+    "eligibl",
+    "allow",
+    "use",
+    "offer",
+    "provid",
+    "giv",
+    "give",
+    "new",
+    "extension",
+    "ship",
+    "cancel",
+    "do",
+    "can",
+}
+_PARTS = re.compile(r"\s*(?:>|;|(?<=[.!?])\s+)\s*")
+
+
+def _eligibility(text: str, levels: set[str]) -> tuple[set[str], set[str]]:
+    """Membership levels a statement allows and denies, part by part.
+
+    "Gold, Silver and Bronze all qualify. > ... even if the code is not valid ..."
+    allows the three levels: the negation is about validity, not about them.
+    "Guest > If they are just a regular user, ... you cannot help them" denies guests.
+    """
+    if not levels:
+        return set(), set()
+    parts = [p for p in _PARTS.split(text) if p.strip()]
+    merged: list[str] = []
+    carry = ""
+    for part in parts:
+        if len(part.split()) <= 2:
+            carry += part + " "  # a heading such as "Guest" belongs to what follows it
+            continue
+        merged.append(carry + part)
+        carry = ""
+    if carry:
+        merged.append(carry)
+    allowed: set[str] = set()
+    denied: set[str] = set()
+    for part in merged:
+        part_levels = tx.membership_levels(part) or (
+            levels if len(merged) == 1 else set()
+        )
+        if not part_levels:
+            continue
+        scope = tx.negated_terms(part, window=5)
+        about_eligibility = bool(scope & _ELIGIBILITY_TERMS) or bool(
+            re.search(
+                r"\b(cannot|can't|can not|unable to|not able to|not eligible|no longer)\b",
+                tx.normalise(part),
+            )
+        )
+        if tx.is_negated(part) and about_eligibility:
+            denied |= part_levels
+        else:
+            allowed |= part_levels
+    return allowed - denied, denied
+
+
 def _claim(
     owner: _Owner, text: str, passage: dict[str, Any], from_action: bool
 ) -> _Claim:
@@ -135,15 +205,9 @@ def _claim(
     if not levels and from_action:
         # "A promo code has been created." happened for this customer's level.
         levels = set(owner.context_levels)
-    allowed: set[str] = set()
-    denied: set[str] = set()
-    if levels:
-        if negated:
-            denied = set(levels)
-        else:
-            allowed = set(levels)
-            if exclusive:
-                denied = set(ALL_LEVELS - levels)
+    allowed, denied = _eligibility(text, levels)
+    if exclusive and allowed:
+        denied |= ALL_LEVELS - allowed
     quantities: dict[str, set[str]] = {}
     for q in tx.quantities(text):
         quantities.setdefault(q.unit, set()).add(q.value)
@@ -336,7 +400,11 @@ def _compare(a: _Claim, b: _Claim, config: ConflictConfig) -> _Finding | None:
     # Members-only on one side and "guests cannot" on the other say the same thing.
     if a.negated != b.negated:
         negative, positive = (a, b) if a.negated else (b, a)
-        if positive.exclusive and negative.denied and negative.denied <= positive.denied:
+        if (
+            positive.exclusive
+            and negative.denied
+            and negative.denied <= positive.denied
+        ):
             return None
 
     # 2. Values: the same unit with different figures.

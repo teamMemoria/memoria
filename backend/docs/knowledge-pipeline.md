@@ -12,7 +12,8 @@ Code lives in `src/backend/services/knowledge/`.
 |---|---|---|---|
 | Extract knowledge drafts | #16 | `extract_drafts` | done |
 | Group drafts and find duplicates | #17 | `group_drafts` | done |
-| Find possible knowledge conflicts | #18 | `find_conflicts` | this PR |
+| Find possible knowledge conflicts | #18 | `find_conflicts` | done |
+| Check drafts against approved sources | #19 | `check_drafts` | this PR |
 
 ## Running it
 
@@ -23,6 +24,7 @@ uv run pytest tests/knowledge                      # offline, about 2 s
 uv run python -m backend.services.knowledge extract data/abcd/conversations --company acme --out /tmp/drafts.json
 uv run python -m backend.services.knowledge group /tmp/drafts.json --company acme --out /tmp/groups.json
 uv run python -m backend.services.knowledge conflicts /tmp/drafts.json --company acme --groups /tmp/groups.json --out /tmp/conflicts.json
+uv run python -m backend.services.knowledge verify /tmp/drafts.json --company acme --references data/references/abcd-guidelines.snapshot.json --conflicts /tmp/conflicts.json --groups /tmp/groups.json --as-of 2026-10-22
 uv run python scripts/knowledge_examples.py        # rewrite examples/knowledge/ after a deliberate change
 ```
 
@@ -314,3 +316,106 @@ one (ABCD-0041 against ABCD-0046).
   negation scope and exception clauses. A contradiction expressed in other
   terms is missed, for example "in store only" against "by mail". A model
   comparator could sit behind `_compare` with the same output shape.
+
+## #19: Check drafts against approved sources
+
+```python
+from pathlib import Path
+from backend.services.knowledge import check_drafts, load_reference_snapshot
+
+references = load_reference_snapshot(Path("data/references/abcd-guidelines.snapshot.json"), "acme")
+result = check_drafts(drafts, "acme", references, conflicts=conflicts, groups=groups, as_of="2026-10-22")
+```
+
+**References.** These are local, reviewable snapshots of ABCD's guidelines
+(`data/references/`, built by `scripts/build_reference_snapshot.py`, with no
+dependency on Nick's retrieval code). Every passage is word for word and
+carries its own approval and eligibility. **The committed snapshot is entirely
+`unreviewed`, so it verifies nothing until a person reviews it.** See
+`data/references/README.md`. A reference can support or contradict a claim
+only when all of these hold:
+
+- it is an `authoritative_reference` (never another draft, a repeated agent
+  answer or a knowledge entry);
+- it belongs to the same company and applies to the draft's subflow;
+- `approval.status` is `approved`;
+- `eligibility.status` is `eligible`, and it isn't past `valid_until`. An
+  expiry date with no `as_of` date counts as not current.
+
+Every other reference in scope is listed in `ignored_references` with the
+reason.
+
+**Claims.** Each answer passage is one claim. A claim is checked against each
+usable passage, and against each guideline action read together with its
+sub-points, because a rule is often split across them ("Ask for 3 out of 4
+items below" plus the list). The claim then gets one of these statuses:
+
+- `contradicted`: the reference excludes a membership level the claim
+  includes (a guest given a new code), gives a different figure for the same
+  thing (2 of 3 details against 3 out of 4), or says the opposite.
+- `supported`: at least 60 % of the claim's subject words appear in one
+  passage, and any figure in the claim is the same figure in the passage.
+- `partially_supported`: between 35 % and 60 %, or a figure the reference
+  doesn't confirm.
+- `unverifiable`: no usable passage comes close.
+
+Each claim lists `citations` (reference id, version, snapshot, quote, approval,
+eligibility, guideline, support score), `contradicted_by` (with the reason) and
+`missing_conditions`. A missing condition is a membership level or limit that
+the matching reference attaches to what the agent said, which the draft
+leaves out. These stay unresolved and become requirements.
+
+**Per draft:**
+
+- `verification_status`: `supported` only when every claim is supported.
+- `ml_recommendation`: `supported_by_references`, `needs_more_evidence`,
+  `contradicted_by_references` or `cannot_be_verified`. A supported draft with
+  a missing condition or an open possible conflict from #18 is downgraded to
+  `needs_more_evidence`. Missing verification never gives a supported
+  recommendation.
+- `decision: null`.
+- `requirements_remaining`. This always ends with a human verification step.
+  Having permission to approve is not the same as having checked the
+  evidence.
+- `possible_conflicts`, taken from #18.
+- `supporting_conversations`, taken from #17's groups. These are labelled as
+  repetition, not verification.
+
+**ML cannot** approve or reject, replace entries, renew verification dates or
+make a draft available for audit use. Tests check that the inputs, including
+every reference's approval and eligibility, are unchanged after a call, and
+that no decision field is set. The backend checks knowledge permission,
+completed verification and current reference versions before it saves an
+approval.
+
+**Tests.** `tests/knowledge/test_verification.py`. The labelled drafts in
+`labels/verification.json` (first pass, `human_reviewed: false`) cover
+supported, partly supported, contradicted, conditional and unverifiable
+drafts. They run against an in-memory copy of the snapshot that the test
+approves. Other tests cover unreviewed, rejected, stale, expired, disputed,
+out-of-scope and other-company references, references that aren't
+authoritative, missing conditions, carried conflicts, and the rule that every
+supported claim across the ABCD corpus cites an approved authoritative
+passage.
+
+### Still to agree (#19)
+
+- **Who approves verification sources**, and where that is recorded (in
+  this file or in the backend).
+- **Whether every claim needs support.** `VerificationConfig(require_every_claim=True)`
+  is the default. Small talk that slipped into an answer ("Thank you for
+  contacting us") then keeps a draft at `partially_supported`. That is
+  deliberately strict.
+- **How to approve and credit adapted ABCD guidelines.** Passages are kept
+  verbatim with their source commit and SHA-256. An adapted version should be
+  a new snapshot with its own version.
+
+### Known limits
+
+- Support is lexical. A claim that paraphrases a guideline in very different
+  words comes out `partially_supported` or `unverifiable`, never wrongly
+  `supported`. The error is on the safe side, but it does create reviewer
+  work.
+- "Or" conditions in guidelines (within 90 days *or* with a receipt *or* in
+  original packaging) are read as separate limits. A draft that states only
+  one alternative is flagged as missing the others.
