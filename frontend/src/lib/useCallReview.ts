@@ -24,11 +24,18 @@ export function useCallReview(
     state: { status: 'loading' },
   })
   const [attempt, setAttempt] = useState(0)
+  const isCurrentRequest =
+    request.api === api &&
+    request.agentId === agentId &&
+    request.conversationId === conversationId
+
+  if (!isCurrentRequest) {
+    setRequest({ api, agentId, conversationId, state: { status: 'loading' } })
+  }
+
   const state: CallState = !api
     ? { status: 'unavailable' }
-    : request.api === api &&
-        request.agentId === agentId &&
-        request.conversationId === conversationId
+    : isCurrentRequest
       ? request.state
       : { status: 'loading' }
 

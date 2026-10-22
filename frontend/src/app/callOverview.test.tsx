@@ -106,6 +106,20 @@ describe('call overview routing', () => {
     expect(screen.queryByRole('region', { name: 'Automatic feedback' })).toBeNull()
   })
 
+  it('shows an unavailable call through the real route when no record exists', async () => {
+    const call = await callFixture()
+    const getCallForAgent = vi.fn<CallApi['getCallForAgent']>()
+      .mockResolvedValue(null)
+    open(call, '/agent/conversations/MISSING', agent, { getCallForAgent })
+    await screen.findByRole('heading', { name: 'Conversation unavailable' })
+    expect(getCallForAgent).toHaveBeenCalledWith(agent.id, 'MISSING')
+    expect(screen.queryByText(call.summary)).toBeNull()
+    fireEvent.click(within(screen.getByRole('main')).getByRole('link', {
+      name: 'Conversations',
+    }))
+    await screen.findByRole('table')
+  })
+
   it('does not supply development call data in production', () => {
     vi.stubEnv('DEV', false)
     vi.stubEnv('VITE_DEV_ROLE', 'agent')

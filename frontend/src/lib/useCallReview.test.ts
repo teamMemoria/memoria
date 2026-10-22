@@ -105,6 +105,64 @@ describe('call loading', () => {
 
 describe('request changes and stale responses', () => {
   it.each(['api', 'agent', 'conversation'] as const)(
+    'waits for a fresh response when the %s changes back during loading',
+    async (change) => {
+      const call = await callFixture()
+      const intermediate = deferred<CallReview | null>()
+      const current = deferred<CallReview | null>()
+      const getCallForAgent = vi.fn<CallApi['getCallForAgent']>()
+        .mockResolvedValueOnce(call)
+        .mockReturnValueOnce(intermediate.promise)
+        .mockReturnValueOnce(current.promise)
+      const request: Request = {
+        api: { getCallForAgent },
+        agentId: agent.id,
+        conversationId: call.id,
+      }
+      const next = {
+        ...request,
+        ...(change === 'api' ? { api: { getCallForAgent } } : {}),
+        ...(change === 'agent' ? { agentId: 'another-agent' } : {}),
+        ...(change === 'conversation' ? { conversationId: 'C1050' } : {}),
+      }
+      const { result, rerender } = open(request)
+      await waitFor(() => expect(result.current.status).toBe('ready'))
+      rerender(next)
+      expect(result.current.status).toBe('loading')
+      rerender(request)
+      expect(result.current.status).toBe('loading')
+      expect(result.current).not.toHaveProperty('call')
+      await act(async () => intermediate.resolve(null))
+      expect(result.current.status).toBe('loading')
+      const updated = { ...call, summary: 'The updated call summary.' }
+      await act(async () => current.resolve(updated))
+      expect(result.current).toMatchObject({ status: 'ready', call: updated })
+    },
+  )
+
+  it('waits for a fresh response after the same API reconnects', async () => {
+    const call = await callFixture()
+    const pending = deferred<CallReview | null>()
+    const getCallForAgent = vi.fn<CallApi['getCallForAgent']>()
+      .mockResolvedValueOnce(call)
+      .mockReturnValueOnce(pending.promise)
+    const request: Request = {
+      api: { getCallForAgent },
+      agentId: agent.id,
+      conversationId: call.id,
+    }
+    const { result, rerender } = open(request)
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    rerender({ ...request, api: null })
+    expect(result.current.status).toBe('unavailable')
+    rerender(request)
+    expect(result.current.status).toBe('loading')
+    expect(result.current).not.toHaveProperty('call')
+    await act(async () => pending.resolve(null))
+    expect(result.current.status).toBe('unavailable')
+  })
+
+  it.each(['api', 'agent', 'conversation'] as const)(
     'hides previous call data immediately when the %s changes',
     async (change) => {
       const previous = await callFixture()
