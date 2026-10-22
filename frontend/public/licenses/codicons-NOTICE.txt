@@ -1,7 +1,8 @@
 Microsoft Codicons by Microsoft Corporation
 
-Source: https://github.com/microsoft/vscode-codicons/tree/6b53088f5c55bce7107fb579765364f59cd4ad5d
+Source: https://github.com/microsoft/vscode-codicons
+Package: @vscode/codicons 0.0.45
 Licence: Creative Commons Attribution 4.0 International (CC BY 4.0).
 The complete licence is in codicons-LICENSE.txt.
 
-Original SVG path geometry is unmodified. Memoria uniformly scales and recolours the icons.
+The original icon font is unmodified. Memoria sets icon size and colour.

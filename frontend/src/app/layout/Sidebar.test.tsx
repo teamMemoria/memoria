@@ -26,7 +26,7 @@ function renderSidebar(
 ) {
   render(
     <MemoryRouter initialEntries={[path]}>
-      <Sidebar viewer={{ displayName: 'Alex Morgan', role }} />
+      <Sidebar viewer={{ id: 'sidebar-user', displayName: 'Alex Morgan', role }} />
       <button>Page action</button>
       <HistoryControls />
     </MemoryRouter>,

@@ -61,11 +61,19 @@
   position: relative;
   display: block;
 }
-.field-input > svg {
+.field-input > .codicon {
   position: absolute;
   top: 20px;
   left: 16px;
   pointer-events: none;
+}
+.field-input > select {
+  appearance: none;
+  padding-right: 44px;
+}
+.field-input > select + .codicon {
+  left: auto;
+  right: 16px;
 }
 .control-input {
   width: 100%;

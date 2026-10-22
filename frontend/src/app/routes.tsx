@@ -1,6 +1,8 @@
 import { Navigate, Outlet, Route, Routes, Link } from 'react-router'
 import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
+import { AgentConversations } from '../features/conversations/AgentConversations'
+import type { ConversationsApi } from '../features/conversations/conversations'
 
 function RouteMessage({ title, home }: { title: string; home: string }) {
   return (
@@ -11,7 +13,13 @@ function RouteMessage({ title, home }: { title: string; home: string }) {
   )
 }
 
-export function AppRoutes({ viewer }: { viewer: Viewer }) {
+export function AppRoutes({
+  viewer,
+  conversationsApi,
+}: {
+  viewer: Viewer
+  conversationsApi: ConversationsApi | null
+}) {
   const home = `/${viewer.role}/conversations`
 
   return (
@@ -32,7 +40,20 @@ export function AppRoutes({ viewer }: { viewer: Viewer }) {
           }
         >
           <Route index element={<Navigate to="conversations" replace />} />
-          <Route path="conversations" element={<h1>My Conversations</h1>} />
+          <Route path="conversations">
+            <Route
+              index
+              element={
+                <AgentConversations viewer={viewer} api={conversationsApi} />
+              }
+            />
+            <Route
+              path=":conversationId"
+              element={
+                <AgentConversations viewer={viewer} api={conversationsApi} />
+              }
+            />
+          </Route>
           <Route path="knowledge" element={<h1>Knowledge Base</h1>} />
         </Route>
         <Route
