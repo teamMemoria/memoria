@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 
 import pytest
 
@@ -103,3 +104,14 @@ def copied_payload():
         return deepcopy(payload)
 
     return copy
+
+
+@pytest.fixture
+def write_json(tmp_path):
+    def write(name: str, payload: object):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    return write
