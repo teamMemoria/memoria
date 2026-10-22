@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import {
   Button,
   Panel,
@@ -56,7 +56,6 @@ export function AgentConversations({
   const [previewStatus, setPreviewStatus] =
     useState<ConversationStatusFilter | null>(null)
   const [params, setParams] = useSearchParams()
-  const { conversationId } = useParams()
   const query = params.get('q') ?? ''
   const status = (filters.find(
     ([value]) => value === params.get('status'),
@@ -122,37 +121,6 @@ export function AgentConversations({
       )}
     </Panel>
   )
-
-  if (conversationId) {
-    const conversation =
-      state.status === 'ready'
-        ? state.records.find((record) => record.id === conversationId)
-        : undefined
-    return (
-      <div className="conversation-handoff">
-        <Link to={`/agent/conversations${search}`}>Back to conversations</Link>
-        <h1>
-          {conversation
-            ? `${conversation.id} · ${conversation.topic}`
-            : 'Conversation'}
-        </h1>
-        {state.status === 'loading' && (
-          <p role="status">Loading conversation…</p>
-        )}
-        {state.status === 'error' && error}
-        {conversation?.automatedResult === 'processing' && (
-          <Panel title="Feedback is processing">
-            <p>Automatic feedback is not ready for this call.</p>
-          </Panel>
-        )}
-        {state.status === 'ready' && !conversation && (
-          <Panel title="Conversation unavailable">
-            <p>This conversation is not available in your workspace.</p>
-          </Panel>
-        )}
-      </div>
-    )
-  }
 
   const records = state.status === 'ready' ? state.records : []
   const visible = filterConversations(records, {

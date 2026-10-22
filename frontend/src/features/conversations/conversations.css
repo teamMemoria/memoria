@@ -147,13 +147,6 @@
   outline: 2px solid var(--color-link);
   outline-offset: -3px;
 }
-.conversation-handoff {
-  display: grid;
-  gap: 24px;
-}
-.conversation-handoff > a {
-  justify-self: start;
-}
 @media (max-width: 1000px) {
   .conversation-filters {
     grid-template-columns: minmax(0, 1fr);

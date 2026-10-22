@@ -1,3 +1,4 @@
+import type { CallApi } from '../types/callReview'
 import { useEffect, useState } from 'react'
 import type { Viewer, ViewerApi } from '../types/viewer'
 import { Button, Panel } from '../components/controls'
@@ -13,9 +14,11 @@ type ViewerState =
 export default function App({
   viewerApi,
   conversationsApi = null,
+  callApi = null,
 }: {
   viewerApi: ViewerApi | null
   conversationsApi?: ConversationsApi | null
+  callApi?: CallApi | null
 }) {
   const [state, setState] = useState<ViewerState>(
     viewerApi ? { status: 'loading' } : { status: 'unavailable' },
@@ -46,7 +49,11 @@ export default function App({
 
   if (state.status === 'ready')
     return (
-      <AppRoutes viewer={state.viewer} conversationsApi={conversationsApi} />
+      <AppRoutes
+        viewer={state.viewer}
+        conversationsApi={conversationsApi}
+        callApi={callApi}
+      />
     )
 
   return (

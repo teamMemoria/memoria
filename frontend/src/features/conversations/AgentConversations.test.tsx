@@ -56,7 +56,7 @@ function mount(
   const router = createMemoryRouter(
     [
       {
-        path: '/agent/conversations/:conversationId?',
+        path: '/agent/conversations',
         element: <AgentConversations viewer={viewer} api={api} />,
       },
     ],
@@ -225,31 +225,6 @@ describe('conversation loading and ownership', () => {
     })
     expect(calls()).toEqual(['CURRENT'])
     expect(screen.queryByRole('alert')).toBeNull()
-  })
-})
-
-describe('conversation navigation', () => {
-  it('opens a selected call and preserves search and filter state on return', async () => {
-    const { router } = await open(
-      '/agent/conversations?q=Refund&status=feedback-ready',
-    )
-    fireEvent.click(
-      screen.getByRole('link', { name: 'Open conversation C3: Refund' }),
-    )
-    await screen.findByRole('heading', { name: /Refund/ })
-    expect(router.state.location.pathname).toBe('/agent/conversations/C3')
-    fireEvent.click(screen.getByRole('link', { name: 'Back to conversations' }))
-    await screen.findByRole('heading', { name: 'My conversations' })
-    expect(router.state.location.search).toBe('?q=Refund&status=feedback-ready')
-    expect(calls()).toEqual(['C3'])
-  })
-
-  it.each(['PRIVATE', 'MISSING'])('does not expose unavailable call %s through a direct link', async (id) => {
-    mount(undefined, `/agent/conversations/${id}`)
-    await screen.findByRole('heading', { name: 'Conversation unavailable' })
-    expect(screen.queryByText(`Call ${id}`)).toBeNull()
-    expect(screen.getByRole('link', { name: 'Back to conversations' }).getAttribute('href'))
-      .toBe('/agent/conversations')
   })
 })
 
