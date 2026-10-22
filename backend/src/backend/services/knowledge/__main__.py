@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from .conflicts import find_conflicts
 from .errors import PipelineError
 from .extraction import ModelExtractor, RuleExtractor, extract_drafts
 from .grouping import group_drafts
@@ -71,6 +72,23 @@ def cmd_group(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_conflicts(args: argparse.Namespace) -> int:
+    entries = _read(args.existing) if args.existing else []
+    groups = _read(args.groups) if args.groups else None
+    try:
+        result = find_conflicts(
+            _drafts_from(args.drafts),
+            args.company,
+            existing_entries=entries,
+            groups=groups,
+        )
+    except PipelineError as error:
+        _write({"status": "error", "errors": [error.to_dict()]}, args.out)
+        return 1
+    _write(result, args.out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m backend.services.knowledge")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -96,6 +114,20 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--existing", help="JSON array of existing knowledge entries")
     group.add_argument("--out")
     group.set_defaults(func=cmd_group)
+
+    conflicts = sub.add_parser(
+        "conflicts", help="find possible knowledge conflicts (#18)"
+    )
+    conflicts.add_argument(
+        "drafts", help="output of `extract`, or a JSON array of drafts"
+    )
+    conflicts.add_argument("--company", required=True)
+    conflicts.add_argument(
+        "--existing", help="JSON array of existing knowledge entries"
+    )
+    conflicts.add_argument("--groups", help="output of `group`, to label each side")
+    conflicts.add_argument("--out")
+    conflicts.set_defaults(func=cmd_conflicts)
     return parser
 
 

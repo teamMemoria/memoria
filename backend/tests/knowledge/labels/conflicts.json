@@ -1,0 +1,118 @@
+{
+  "label_set": "conflicts",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "First-pass labels; a second team member should review before these count as human-labelled.",
+  "fields": {
+    "expect": "conflict (possible_conflict), unresolved, explained (explained_difference), or none: no possible conflict or unresolved finding for the pair",
+    "kind": "value, polarity or eligibility, when expect is conflict / unresolved / explained"
+  },
+  "cases": [
+    {
+      "a": "SYN-G01",
+      "b": "SYN-G09",
+      "expect": "conflict",
+      "kind": "value",
+      "note": "Same question, 7 days vs 30 days."
+    },
+    {
+      "a": "SYN-G01",
+      "b": "SYN-G03",
+      "expect": "none",
+      "note": "Paraphrase: 7 days and one week agree."
+    },
+    {
+      "a": "SYN-G01",
+      "b": "SYN-G04",
+      "expect": "none",
+      "note": "Different claims about promo codes."
+    },
+    {
+      "a": "SYN-G01",
+      "b": "SYN-C05",
+      "expect": "none",
+      "note": "Different claim: an excluded item is not a validity period."
+    },
+    {
+      "a": "SYN-G01",
+      "b": "SYN-C04",
+      "expect": "unresolved",
+      "kind": "value",
+      "note": "Different figure, but hedged ('I think ... usually ... not completely sure')."
+    },
+    {
+      "a": "SYN-G05",
+      "b": "SYN-G06",
+      "expect": "explained",
+      "kind": "polarity",
+      "note": "Members can, guests cannot: different conditions, not a contradiction."
+    },
+    {
+      "a": "SYN-G06",
+      "b": "SYN-G08",
+      "expect": "explained",
+      "kind": "polarity",
+      "note": "Silver can, guests cannot."
+    },
+    {
+      "a": "SYN-0005",
+      "b": "SYN-G06",
+      "expect": "conflict",
+      "kind": "eligibility",
+      "note": "Guests can vs guests cannot."
+    },
+    {
+      "a": "SYN-0005",
+      "b": "SYN-0006",
+      "expect": "conflict",
+      "kind": "eligibility",
+      "note": "A guest given a code vs codes only for gold, silver or bronze."
+    },
+    {
+      "a": "ABCD-0041",
+      "b": "ABCD-0046",
+      "expect": "conflict",
+      "kind": "eligibility",
+      "note": "Real ABCD pair: replacement codes only for members vs a guest given a new code."
+    },
+    {
+      "a": "ABCD-0041",
+      "b": "ABCD-0044",
+      "expect": "none",
+      "note": "A gold member given a code agrees with 'members only'."
+    },
+    {
+      "a": "SYN-0004",
+      "b": "SYN-C01",
+      "expect": "conflict",
+      "kind": "value",
+      "note": "Bronze returns: 90 days vs 60 days."
+    },
+    {
+      "a": "SYN-0004",
+      "b": "SYN-C02",
+      "expect": "none",
+      "note": "Agreement on the guest window. (A guest-vs-bronze figure difference is an explained difference, not a conflict.)"
+    },
+    {
+      "a": "SYN-0004",
+      "b": "SYN-C03",
+      "expect": "explained",
+      "kind": "polarity",
+      "note": "'Cannot return final sale' is the exception SYN-0004 states."
+    },
+    {
+      "a": "ABCD-0055",
+      "b": "ABCD-0060",
+      "expect": "none",
+      "note": "'You will not be charged' does not contradict 'I will cancel the order'."
+    },
+    {
+      "a": "ABCD-0014",
+      "b": "ABCD-0015",
+      "expect": "none",
+      "note": "Both say the subscription is still active."
+    }
+  ]
+}

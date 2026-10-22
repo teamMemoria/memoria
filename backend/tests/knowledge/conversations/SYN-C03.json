@@ -1,0 +1,45 @@
+{
+  "id": "SYN-C03",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-C03",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, how can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "Can a bronze member return a final sale item?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Bronze members cannot return items that were on final sale."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Okay, thank you."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Have a great day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "storewide_query",
+    "subflow": "policy_1",
+    "actions_taken": []
+  },
+  "note": "Consistent with SYN-0004's exception (unless the item was on final sale): not a conflict."
+}

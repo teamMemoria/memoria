@@ -1,0 +1,45 @@
+{
+  "id": "SYN-C01",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-C01",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, how can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "How long do bronze members have to return something?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Bronze members can return items within 60 days of purchase."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Okay, thank you."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Have a great day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "storewide_query",
+    "subflow": "policy_1",
+    "actions_taken": []
+  },
+  "note": "Contradicts SYN-0004 (90 days for bronze)."
+}

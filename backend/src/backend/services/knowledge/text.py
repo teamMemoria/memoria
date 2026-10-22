@@ -131,6 +131,9 @@ SYNONYMS = {
     "cancelled": "cancel",
     "membership": "member",
     "members": "member",
+    "replacement": "new",
+    "replace": "new",
+    "another": "new",
     "site": "website",
     "web": "website",
 }
@@ -230,11 +233,34 @@ def numbers(text: str) -> set[str]:
     return set(re.findall(r"\d+(?:\.\d+)?", lowered.replace(",", "")))
 
 
+_NOT_NEGATION = re.compile(
+    r"\b(no (problem|worries|trouble|doubt)|not a problem|not to worry|no need to worry|why not|no matter)\b"
+)
+
+
 def is_negated(text: str) -> bool:
-    lowered = normalise(text)
+    lowered = _NOT_NEGATION.sub(" ", normalise(text))
     return any(
         re.search(rf"(?<![\w']){re.escape(n)}(?![\w'])", lowered) for n in NEGATIONS
     ) or bool(re.search(r"\bn't\b|\w+n't\b", lowered))
+
+
+def negated_terms(text: str, window: int = 4) -> set[str]:
+    """Content words a negation applies to: "will not be charged" -> {"charg"}."""
+    lowered = _NOT_NEGATION.sub(" ", normalise(text))
+    tokens = words(lowered)
+    out: set[str] = set()
+    for i, token in enumerate(tokens):
+        if token in NEGATIONS or token.endswith("n't"):
+            for following in tokens[i + 1 : i + 1 + window]:
+                term = stem(SYNONYMS.get(following, following))
+                if (
+                    following not in STOPWORDS
+                    and following not in NEGATIONS
+                    and len(following) > 1
+                ):
+                    out.add(term)
+    return out
 
 
 def membership_levels(text: str) -> set[str]:

@@ -17,6 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from backend.services.knowledge.conflicts import find_conflicts
 from backend.services.knowledge.errors import PipelineError
 from backend.services.knowledge.extraction import extract_drafts
 from backend.services.knowledge.grouping import group_drafts
@@ -64,9 +65,22 @@ def run_grouping(payload: dict[str, Any]) -> Any:
         return {"status": "error", "errors": [error.to_dict()]}
 
 
+def run_conflicts(payload: dict[str, Any]) -> Any:
+    drafts = _drafts(payload)
+    entries = payload.get("existing_entries", [])
+    try:
+        groups = group_drafts(drafts, payload["company_id"], existing_entries=entries)
+        return find_conflicts(
+            drafts, payload["company_id"], existing_entries=entries, groups=groups
+        )
+    except PipelineError as error:
+        return {"status": "error", "errors": [error.to_dict()]}
+
+
 RUNNERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "extraction": run_extraction,
     "grouping": run_grouping,
+    "conflicts": run_conflicts,
 }
 
 
