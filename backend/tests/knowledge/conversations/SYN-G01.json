@@ -1,0 +1,45 @@
+{
+  "id": "SYN-G01",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-G01",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, thanks for contacting us. How can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "How long are promo codes valid for?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Promo codes are valid for 7 days after they are issued."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Thanks."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Is there anything else I can help you with?"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": []
+  },
+  "note": "Base answer: promo codes last 7 days."
+}

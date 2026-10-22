@@ -1,0 +1,431 @@
+{
+  "schema": "knowledge-groups/1",
+  "status": "ok",
+  "company_id": "acme",
+  "config": {
+    "group_threshold": 0.25,
+    "duplicate_threshold": 0.8,
+    "existing_match_threshold": 0.45,
+    "scope_level": "subflow",
+    "min_distinct_conversations": 3,
+    "question_weight": 0.4
+  },
+  "draft_count": 8,
+  "duplicate_input_drafts": 0,
+  "groups": [
+    {
+      "group_id": "group_b51f66dc15ab6aa21cff",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "scope_key": "purchase_dispute/promo_code_invalid",
+      "status": "draft",
+      "member_draft_ids": [
+        "draft_954ed71b8367ec8b7941",
+        "draft_b5231ab02ca88c972293",
+        "draft_d55b90b99e81dc741837"
+      ],
+      "representative_draft_id": "draft_954ed71b8367ec8b7941",
+      "representative": {
+        "draft_id": "draft_954ed71b8367ec8b7941",
+        "question": "How long are promo codes valid for?",
+        "answer": "Promo codes are valid for 7 days after they are issued.",
+        "question_passages": [
+          {
+            "conversation_id": "SYN-G01",
+            "source_key": "SYNTHETIC:SYN-G01",
+            "turn_id": "SYN-G01#t2",
+            "speaker": "customer",
+            "span": [
+              0,
+              35
+            ],
+            "quote": "How long are promo codes valid for?",
+            "source_version": "authored"
+          }
+        ],
+        "answer_passages": [
+          {
+            "conversation_id": "SYN-G01",
+            "source_key": "SYNTHETIC:SYN-G01",
+            "turn_id": "SYN-G01#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              55
+            ],
+            "quote": "Promo codes are valid for 7 days after they are issued.",
+            "source_version": "authored"
+          }
+        ],
+        "conditions": [
+          {
+            "text": "Promo codes are valid for 7 days after they are issued.",
+            "basis": "agent_statement",
+            "passage": {
+              "conversation_id": "SYN-G01",
+              "source_key": "SYNTHETIC:SYN-G01",
+              "turn_id": "SYN-G01#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                55
+              ],
+              "quote": "Promo codes are valid for 7 days after they are issued.",
+              "source_version": "authored"
+            }
+          }
+        ],
+        "status": "draft"
+      },
+      "draft_count": 3,
+      "distinct_conversation_count": 3,
+      "source_keys": [
+        "SYNTHETIC:SYN-G01",
+        "SYNTHETIC:SYN-G02",
+        "SYNTHETIC:SYN-G03"
+      ],
+      "meets_source_threshold": true,
+      "membership_levels": [],
+      "duplicates": [
+        {
+          "draft_id": "draft_b5231ab02ca88c972293",
+          "duplicate_of": "draft_954ed71b8367ec8b7941",
+          "similarity": 1.0,
+          "kind": "near",
+          "same_conversation": false
+        }
+      ],
+      "existing_matches": [
+        {
+          "entry_id": "kb-promo-validity",
+          "entry_status": "approved",
+          "entry_version": "2",
+          "similarity": 0.900041,
+          "kind": "equivalent",
+          "condition_difference": null
+        }
+      ]
+    },
+    {
+      "group_id": "group_e4da93136c2e522a77d5",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "scope_key": "purchase_dispute/promo_code_invalid",
+      "status": "draft",
+      "member_draft_ids": [
+        "draft_4e9fc33297a14ee808c6",
+        "draft_593212d1464c49e73aba"
+      ],
+      "representative_draft_id": "draft_4e9fc33297a14ee808c6",
+      "representative": {
+        "draft_id": "draft_4e9fc33297a14ee808c6",
+        "question": "My promo code expired, can I get a replacement promo code?",
+        "answer": "Silver members can get a replacement promo code.",
+        "question_passages": [
+          {
+            "conversation_id": "SYN-G08",
+            "source_key": "SYNTHETIC:SYN-G08",
+            "turn_id": "SYN-G08#t2",
+            "speaker": "customer",
+            "span": [
+              0,
+              58
+            ],
+            "quote": "My promo code expired, can I get a replacement promo code?",
+            "source_version": "authored"
+          }
+        ],
+        "answer_passages": [
+          {
+            "conversation_id": "SYN-G08",
+            "source_key": "SYNTHETIC:SYN-G08",
+            "turn_id": "SYN-G08#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              48
+            ],
+            "quote": "Silver members can get a replacement promo code.",
+            "source_version": "authored"
+          }
+        ],
+        "conditions": [
+          {
+            "text": "Silver members can get a replacement promo code.",
+            "basis": "agent_statement",
+            "passage": {
+              "conversation_id": "SYN-G08",
+              "source_key": "SYNTHETIC:SYN-G08",
+              "turn_id": "SYN-G08#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                48
+              ],
+              "quote": "Silver members can get a replacement promo code.",
+              "source_version": "authored"
+            }
+          }
+        ],
+        "status": "draft"
+      },
+      "draft_count": 2,
+      "distinct_conversation_count": 2,
+      "source_keys": [
+        "SYNTHETIC:SYN-G05",
+        "SYNTHETIC:SYN-G08"
+      ],
+      "meets_source_threshold": false,
+      "membership_levels": [
+        "bronze",
+        "gold",
+        "silver"
+      ],
+      "duplicates": [],
+      "existing_matches": []
+    },
+    {
+      "group_id": "group_0bdfd93cd80c236c5d73",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "scope_key": "purchase_dispute/promo_code_invalid",
+      "status": "draft",
+      "member_draft_ids": [
+        "draft_018e50895861ee105fe5"
+      ],
+      "representative_draft_id": "draft_018e50895861ee105fe5",
+      "representative": {
+        "draft_id": "draft_018e50895861ee105fe5",
+        "question": "How long is a promo code valid?",
+        "answer": "Promo codes are valid for 30 days after they are issued.",
+        "question_passages": [
+          {
+            "conversation_id": "SYN-G09",
+            "source_key": "SYNTHETIC:SYN-G09",
+            "turn_id": "SYN-G09#t2",
+            "speaker": "customer",
+            "span": [
+              0,
+              31
+            ],
+            "quote": "How long is a promo code valid?",
+            "source_version": "authored"
+          }
+        ],
+        "answer_passages": [
+          {
+            "conversation_id": "SYN-G09",
+            "source_key": "SYNTHETIC:SYN-G09",
+            "turn_id": "SYN-G09#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              56
+            ],
+            "quote": "Promo codes are valid for 30 days after they are issued.",
+            "source_version": "authored"
+          }
+        ],
+        "conditions": [
+          {
+            "text": "Promo codes are valid for 30 days after they are issued.",
+            "basis": "agent_statement",
+            "passage": {
+              "conversation_id": "SYN-G09",
+              "source_key": "SYNTHETIC:SYN-G09",
+              "turn_id": "SYN-G09#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                56
+              ],
+              "quote": "Promo codes are valid for 30 days after they are issued.",
+              "source_version": "authored"
+            }
+          }
+        ],
+        "status": "draft"
+      },
+      "draft_count": 1,
+      "distinct_conversation_count": 1,
+      "source_keys": [
+        "SYNTHETIC:SYN-G09"
+      ],
+      "meets_source_threshold": false,
+      "membership_levels": [],
+      "duplicates": [],
+      "existing_matches": [
+        {
+          "entry_id": "kb-promo-validity",
+          "entry_status": "approved",
+          "entry_version": "2",
+          "similarity": 0.731263,
+          "kind": "different_conditions",
+          "condition_difference": "days ['30'] vs ['7']"
+        }
+      ]
+    },
+    {
+      "group_id": "group_be9b455a35c6a8e78b42",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "scope_key": "purchase_dispute/promo_code_invalid",
+      "status": "draft",
+      "member_draft_ids": [
+        "draft_a47e14e3aa5325d4ec4f"
+      ],
+      "representative_draft_id": "draft_a47e14e3aa5325d4ec4f",
+      "representative": {
+        "draft_id": "draft_a47e14e3aa5325d4ec4f",
+        "question": "Can I use two promo codes on one order?",
+        "answer": "Only one promo code can be applied to each order.",
+        "question_passages": [
+          {
+            "conversation_id": "SYN-G04",
+            "source_key": "SYNTHETIC:SYN-G04",
+            "turn_id": "SYN-G04#t2",
+            "speaker": "customer",
+            "span": [
+              0,
+              39
+            ],
+            "quote": "Can I use two promo codes on one order?",
+            "source_version": "authored"
+          }
+        ],
+        "answer_passages": [
+          {
+            "conversation_id": "SYN-G04",
+            "source_key": "SYNTHETIC:SYN-G04",
+            "turn_id": "SYN-G04#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              49
+            ],
+            "quote": "Only one promo code can be applied to each order.",
+            "source_version": "authored"
+          }
+        ],
+        "conditions": [
+          {
+            "text": "Only one promo code can be applied to each order.",
+            "basis": "agent_statement",
+            "passage": {
+              "conversation_id": "SYN-G04",
+              "source_key": "SYNTHETIC:SYN-G04",
+              "turn_id": "SYN-G04#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                49
+              ],
+              "quote": "Only one promo code can be applied to each order.",
+              "source_version": "authored"
+            }
+          }
+        ],
+        "status": "draft"
+      },
+      "draft_count": 1,
+      "distinct_conversation_count": 1,
+      "source_keys": [
+        "SYNTHETIC:SYN-G04"
+      ],
+      "meets_source_threshold": false,
+      "membership_levels": [],
+      "duplicates": [],
+      "existing_matches": []
+    },
+    {
+      "group_id": "group_c44745a43ad0143b3aa3",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "scope_key": "purchase_dispute/promo_code_invalid",
+      "status": "draft",
+      "member_draft_ids": [
+        "draft_f6a83fedf44af9593110"
+      ],
+      "representative_draft_id": "draft_f6a83fedf44af9593110",
+      "representative": {
+        "draft_id": "draft_f6a83fedf44af9593110",
+        "question": "My promo code expired, can I get a replacement promo code?",
+        "answer": "Guests cannot get a replacement promo code.",
+        "question_passages": [
+          {
+            "conversation_id": "SYN-G06",
+            "source_key": "SYNTHETIC:SYN-G06",
+            "turn_id": "SYN-G06#t2",
+            "speaker": "customer",
+            "span": [
+              0,
+              58
+            ],
+            "quote": "My promo code expired, can I get a replacement promo code?",
+            "source_version": "authored"
+          }
+        ],
+        "answer_passages": [
+          {
+            "conversation_id": "SYN-G06",
+            "source_key": "SYNTHETIC:SYN-G06",
+            "turn_id": "SYN-G06#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              43
+            ],
+            "quote": "Guests cannot get a replacement promo code.",
+            "source_version": "authored"
+          }
+        ],
+        "conditions": [
+          {
+            "text": "Guests cannot get a replacement promo code.",
+            "basis": "agent_statement",
+            "passage": {
+              "conversation_id": "SYN-G06",
+              "source_key": "SYNTHETIC:SYN-G06",
+              "turn_id": "SYN-G06#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                43
+              ],
+              "quote": "Guests cannot get a replacement promo code.",
+              "source_version": "authored"
+            }
+          }
+        ],
+        "status": "draft"
+      },
+      "draft_count": 1,
+      "distinct_conversation_count": 1,
+      "source_keys": [
+        "SYNTHETIC:SYN-G06"
+      ],
+      "meets_source_threshold": false,
+      "membership_levels": [
+        "guest"
+      ],
+      "duplicates": [],
+      "existing_matches": []
+    }
+  ],
+  "note": "Groups, counts and matches are review aids. None of them verifies or approves an answer."
+}

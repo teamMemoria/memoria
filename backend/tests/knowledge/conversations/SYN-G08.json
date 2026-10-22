@@ -1,0 +1,45 @@
+{
+  "id": "SYN-G08",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-G08",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, thanks for contacting us. How can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "My promo code expired, can I get a replacement promo code?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Silver members can get a replacement promo code."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Thanks."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Is there anything else I can help you with?"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": []
+  },
+  "note": "Compatible with G05 (silver is one of its levels)."
+}

@@ -1,0 +1,45 @@
+{
+  "id": "SYN-G04",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-G04",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, thanks for contacting us. How can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "Can I use two promo codes on one order?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Only one promo code can be applied to each order."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Thanks."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Is there anything else I can help you with?"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": []
+  },
+  "note": "Similar wording, different question: not grouped with G01."
+}

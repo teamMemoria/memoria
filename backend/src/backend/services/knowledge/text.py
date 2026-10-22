@@ -101,10 +101,46 @@ def stem(word: str) -> str:
     return word
 
 
+# A few domain synonyms, so "promotional code" and "coupon" meet "promo code".
+SYNONYMS = {
+    "promotional": "promo",
+    "coupon": "promo",
+    "voucher": "promo",
+    "discount": "promo",
+    "expire": "valid",
+    "expires": "valid",
+    "expired": "valid",
+    "expiry": "valid",
+    "expiration": "valid",
+    "last": "valid",
+    "lasts": "valid",
+    "reimburse": "refund",
+    "reimbursement": "refund",
+    "money": "refund",
+    "purchase": "order",
+    "purchases": "order",
+    "bought": "order",
+    "buy": "order",
+    "deliver": "ship",
+    "delivery": "ship",
+    "delivered": "ship",
+    "shipping": "ship",
+    "shipped": "ship",
+    "cancellation": "cancel",
+    "canceled": "cancel",
+    "cancelled": "cancel",
+    "membership": "member",
+    "members": "member",
+    "site": "website",
+    "web": "website",
+}
+
+
 def content_terms(text: str) -> list[str]:
     """Stemmed content words, keeping negations and membership levels."""
     out = []
     for word in words(text):
+        word = SYNONYMS.get(word, word)
         if word.startswith("["):
             continue
         if word in NEGATIONS:
