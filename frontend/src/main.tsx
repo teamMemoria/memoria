@@ -7,12 +7,16 @@ import './styles/tokens.css'
 import './styles/global.css'
 import './styles/controls.css'
 
-const { viewerApi, conversationsApi } = createDependencies()
+const { viewerApi, conversationsApi, callApi } = createDependencies()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <App viewerApi={viewerApi} conversationsApi={conversationsApi} />
+      <App
+        viewerApi={viewerApi}
+        conversationsApi={conversationsApi}
+        callApi={callApi}
+      />
     </BrowserRouter>
   </StrictMode>,
 )

@@ -1,3 +1,5 @@
+import type { CallApi } from '../types/callReview'
+import { CallOverview } from '../features/call-overview/CallOverview'
 import { Navigate, Outlet, Route, Routes, Link } from 'react-router'
 import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
@@ -16,9 +18,11 @@ function RouteMessage({ title, home }: { title: string; home: string }) {
 export function AppRoutes({
   viewer,
   conversationsApi,
+  callApi = null,
 }: {
   viewer: Viewer
   conversationsApi: ConversationsApi | null
+  callApi?: CallApi | null
 }) {
   const home = `/${viewer.role}/conversations`
 
@@ -49,9 +53,7 @@ export function AppRoutes({
             />
             <Route
               path=":conversationId"
-              element={
-                <AgentConversations viewer={viewer} api={conversationsApi} />
-              }
+              element={<CallOverview viewer={viewer} api={callApi} />}
             />
           </Route>
           <Route path="knowledge" element={<h1>Knowledge Base</h1>} />

@@ -8,6 +8,12 @@ const icons = {
   search: 'search',
   arrowRight: 'arrow-right',
   chevronDown: 'chevron-down',
+  arrowLeft: 'arrow-left',
+  document: 'file-text',
+  people: 'organization',
+  phone: 'device-mobile',
+  info: 'info',
+  check: 'check',
 }
 
 export function Icon({

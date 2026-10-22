@@ -56,6 +56,26 @@ a {
   color: var(--color-link);
   text-underline-offset: 4px;
 }
+.codicon::before {
+  display: inline-block;
+}
+.metadata-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  color: var(--color-muted);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+.metadata-note {
+  display: block;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
 :focus-visible {
   outline: 2px solid var(--color-link);
   outline-offset: 3px;

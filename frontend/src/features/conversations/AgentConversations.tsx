@@ -131,11 +131,8 @@ export function AgentConversations({
     return (
       <div className="conversation-handoff">
         <Link to={`/agent/conversations${search}`}>Back to conversations</Link>
-        <h1>
-          {conversation
-            ? `${conversation.id} · ${conversation.topic}`
-            : 'Conversation'}
-        </h1>
+        <h1>{conversation?.topic ?? 'Conversation'}</h1>
+        {conversation && <p className="metadata-line">Call {conversation.id}</p>}
         {state.status === 'loading' && (
           <p role="status">Loading conversation…</p>
         )}
