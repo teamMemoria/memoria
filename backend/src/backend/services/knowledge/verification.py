@@ -125,6 +125,14 @@ def _ineligible(
     return None
 
 
+def _framing(reference: Mapping[str, Any]) -> str | None:
+    """Guideline instruction lines frame a flow ("Customers want to know ...", a list of FAQ
+    topics); they do not state policy, so they neither support nor contradict a claim."""
+    if (reference.get("guideline") or {}).get("type") == "instruction":
+        return "instruction line: frames the flow, does not state policy"
+    return None
+
+
 def _check_reference(reference: Any, index: int) -> Mapping[str, Any]:
     where = f"references[{index}]"
     if not isinstance(reference, Mapping):
@@ -407,7 +415,9 @@ def check_drafts(
         in_scope = [r for r in checked if _applies(r, owner.scope)]
         usable, ignored = [], []
         for reference in in_scope:
-            reason = _ineligible(reference, company_id, as_of_date)
+            reason = _ineligible(reference, company_id, as_of_date) or _framing(
+                reference
+            )
             if reason:
                 ignored.append(
                     {

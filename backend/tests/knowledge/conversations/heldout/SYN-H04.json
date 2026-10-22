@@ -1,0 +1,46 @@
+{
+  "id": "SYN-H04",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H04",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello! What can I do for you?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "When will I get my money back from the refund?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "You should see the refund on your card in five business days."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Okay."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Have a great day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "product_defect",
+    "subflow": "refund_status",
+    "actions_taken": []
+  },
+  "split": "heldout",
+  "note": "Held-out. Paraphrase of H03."
+}

@@ -1,0 +1,71 @@
+{
+  "id": "SYN-H02",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H02",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, how can I help?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "I moved and need my address changed. I'm Siobhan O'Neill, SIOBHAN.ONEILL@EXAMPLE.COM, 614-555-0147."
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Thanks Siobhan, what is the new address?"
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "77 O'Brien Street, Apt 4B, Dublin, OH 43016"
+    },
+    {
+      "n": 5,
+      "speaker": "system_action",
+      "text": "Account has been updated with 77 O'Brien Street, Apt 4B, Dublin, OH 43016."
+    },
+    {
+      "n": 6,
+      "speaker": "agent",
+      "text": "Your address is now 77 O'Brien Street, Apt 4B, Dublin, OH 43016."
+    },
+    {
+      "n": 7,
+      "speaker": "customer",
+      "text": "Perfect, thanks!"
+    }
+  ],
+  "source_fields": {
+    "flow": "manage_account",
+    "subflow": "manage_change_address",
+    "actions_taken": [
+      "update-account"
+    ]
+  },
+  "split": "heldout",
+  "note": "Held-out. Only this customer's own address change; personal data in unusual forms (apostrophes, upper-case email, a new address not in the record).",
+  "customer_record": {
+    "customer_name": "siobhan o'neill",
+    "email": "siobhan.oneill@example.com",
+    "phone": "(614) 555-0147",
+    "member_level": "silver",
+    "address": {
+      "street": "12 river rd",
+      "city": "columbus",
+      "state": "oh",
+      "zip_code": "43215",
+      "full_address": "12 river rd  columbus, oh 43215"
+    }
+  }
+}

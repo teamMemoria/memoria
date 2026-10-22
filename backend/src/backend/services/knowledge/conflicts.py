@@ -51,6 +51,11 @@ _EXCEPTION = re.compile(
     r"\b(unless|except(?: for| when| if)?|other than|apart from)\b(?P<rest>[^.;!?]*)",
     re.IGNORECASE,
 )
+_ONLY_LEVEL = re.compile(
+    r"\bonly\b(?:\s+(?:to|for|our|existing|the|a|an))*\s+(?:gold|silver|bronze|guest)s?\b"
+    r"|\b(?:gold|silver|bronze|guest)s?(?:\s+members?)?\s+only\b",
+    re.IGNORECASE,
+)
 _ONLY_MEMBERS = re.compile(
     r"\bonly\b.*\bmembers?\b|\bmembers? only\b|\bexisting members?\b", re.IGNORECASE
 )
@@ -197,7 +202,9 @@ def _claim(
     negated = tx.is_negated(text)
     exclusive = (
         bool(_ONLY_MEMBERS.search(text))
-        or bool(re.search(r"\bonly\b", text, re.IGNORECASE) and levels)
+        # "only" has to be about the level ("only gold members", "members only"),
+        # not about something else in the sentence ("if they are only 1 day late").
+        or bool(_ONLY_LEVEL.search(text))
         or bool(_IF_LEVEL.search(text))
     )
     if not levels and _ONLY_MEMBERS.search(text):

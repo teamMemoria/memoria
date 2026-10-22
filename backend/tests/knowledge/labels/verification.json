@@ -1,5 +1,6 @@
 {
   "label_set": "verification",
+  "split": "dev",
   "version": 1,
   "labelled_by": "ritvikagg",
   "human_reviewed": false,
@@ -63,5 +64,6 @@
       "expect": "unverifiable",
       "note": "Membership benefits FAQ: not in the guidelines."
     }
-  ]
+  ],
+  "split_note": "Dev cases use ABCD train/dev-split conversations and SYN cases only; ABCD test-split conversations are kept for the held-out set."
 }

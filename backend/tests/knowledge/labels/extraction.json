@@ -1,5 +1,6 @@
 {
   "label_set": "extraction",
+  "split": "dev",
   "version": 1,
   "labelled_by": "ritvikagg",
   "human_reviewed": false,
@@ -71,20 +72,15 @@
       ]
     },
     {
-      "conversation": "data/abcd/conversations/ABCD-0029.json",
+      "conversation": "data/abcd/conversations/ABCD-0040.json",
       "expect": "draft",
       "answer_must_include": [
-        "process your refund as a return after your receive the item"
+        "Valid options are by mail, in store, or at a drop off center"
       ],
       "conditions_must_include": [
-        "after your receive the item"
+        "less than 6 months"
       ],
-      "must_not_include": [
-        "X7IFTF8QUQ",
-        "7393719521",
-        "Joseph",
-        "Banter"
-      ]
+      "must_not_include": []
     },
     {
       "conversation": "data/abcd/conversations/ABCD-0033.json",
@@ -345,5 +341,6 @@
         "gold, silver or bronze"
       ]
     }
-  ]
+  ],
+  "split_note": "Dev cases use ABCD train/dev-split conversations and SYN cases only; ABCD test-split conversations are kept for the held-out set."
 }

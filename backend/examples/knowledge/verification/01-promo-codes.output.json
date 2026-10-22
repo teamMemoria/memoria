@@ -391,12 +391,22 @@
         ],
         "note": "Conversations that repeat the answer. Repetition is not verification."
       },
-      "references_considered": 19,
+      "references_considered": 17,
       "ignored_references": [
         {
           "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
           "version": "abcd-guidelines@6b8700ce67c6",
           "reason": "not eligible (stale: example: replaced by a newer version)"
+        },
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#i1",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "instruction line: frames the flow, does not state policy"
+        },
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#i2",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "instruction line: frames the flow, does not state policy"
         }
       ],
       "requirements_remaining": [
@@ -579,12 +589,22 @@
         ],
         "note": "Conversations that repeat the answer. Repetition is not verification."
       },
-      "references_considered": 19,
+      "references_considered": 17,
       "ignored_references": [
         {
           "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
           "version": "abcd-guidelines@6b8700ce67c6",
           "reason": "not eligible (stale: example: replaced by a newer version)"
+        },
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#i1",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "instruction line: frames the flow, does not state policy"
+        },
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#i2",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "instruction line: frames the flow, does not state policy"
         }
       ],
       "requirements_remaining": [
@@ -773,12 +793,22 @@
         ],
         "note": "Conversations that repeat the answer. Repetition is not verification."
       },
-      "references_considered": 19,
+      "references_considered": 17,
       "ignored_references": [
         {
           "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
           "version": "abcd-guidelines@6b8700ce67c6",
           "reason": "not eligible (stale: example: replaced by a newer version)"
+        },
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#i1",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "instruction line: frames the flow, does not state policy"
+        },
+        {
+          "reference_id": "abcd:purchase_dispute/promo_code_invalid#i2",
+          "version": "abcd-guidelines@6b8700ce67c6",
+          "reason": "instruction line: frames the flow, does not state policy"
         }
       ],
       "requirements_remaining": [

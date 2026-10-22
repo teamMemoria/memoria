@@ -1,0 +1,46 @@
+{
+  "id": "SYN-H08",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H08",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, what can I do for you?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "Do gold members get extensions on the subscription payment?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Gold members can always get an extension on their subscription."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Good to know."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Anything else I can help with?"
+    }
+  ],
+  "source_fields": {
+    "flow": "subscription_inquiry",
+    "subflow": "manage_extension",
+    "actions_taken": []
+  },
+  "split": "heldout",
+  "note": "Held-out. Matches the guideline."
+}

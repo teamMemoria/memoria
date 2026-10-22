@@ -1,0 +1,467 @@
+{
+  "schema": "knowledge-evaluation/1",
+  "split": "heldout",
+  "extractor": {
+    "name": "rule-extractor",
+    "version": "1"
+  },
+  "human_judgements": {
+    "extraction": {
+      "cases": 16,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    },
+    "grouping": {
+      "cases": 4,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    },
+    "conflicts": {
+      "cases": 6,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    },
+    "verification": {
+      "cases": 10,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    }
+  },
+  "extraction": {
+    "cases": 16,
+    "draft_decision_accuracy": 1.0,
+    "answer_phrase_recall": 0.75,
+    "condition_phrase_recall": 1.0,
+    "faithfulness_exact_citation_rate": 1.0,
+    "privacy_errors": 0,
+    "technical_failures": 0,
+    "details": [
+      {
+        "conversation": "data/abcd/conversations/ABCD-0003.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0006.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0013.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [
+          "three of your zip code"
+        ],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": false
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0054.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0061.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0062.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [
+          "back-order"
+        ],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": false
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0067.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0088.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0094.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [
+          "logging out of your account"
+        ],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": false
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0096.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [
+          "Prada Handbag"
+        ],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": false
+      },
+      {
+        "conversation": "tests/knowledge/conversations/heldout/SYN-H01.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/heldout/SYN-H02.json",
+        "expected": "no_draft",
+        "got": "no_draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/heldout/SYN-H03.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/heldout/SYN-H06.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/heldout/SYN-H07.json",
+        "expected": "no_draft",
+        "got": "no_draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/heldout/SYN-H09.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      }
+    ]
+  },
+  "grouping": {
+    "cases": 4,
+    "same_group_recall": 0.6667,
+    "different_group_accuracy": 1.0,
+    "duplicate_recall": null,
+    "paraphrase_not_duplicate_accuracy": 1.0,
+    "labelled_pairs": 7,
+    "details": [
+      {
+        "name": "held-out refund timing",
+        "passed": true,
+        "problems": []
+      },
+      {
+        "name": "held-out extensions by level",
+        "passed": true,
+        "problems": []
+      },
+      {
+        "name": "held-out ABCD search troubleshooting",
+        "passed": false,
+        "problems": [
+          "same_group: ABCD-0094 / ABCD-0096"
+        ]
+      },
+      {
+        "name": "held-out ABCD password reset",
+        "passed": true,
+        "problems": []
+      }
+    ]
+  },
+  "conflicts": {
+    "cases": 6,
+    "accuracy": 1.0,
+    "missed_conflicts": 0,
+    "false_alarms": 0,
+    "details": [
+      {
+        "a": "SYN-H03",
+        "b": "SYN-H05",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "SYN-H03",
+        "b": "SYN-H04",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "SYN-H06",
+        "b": "SYN-H09",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "SYN-H06",
+        "b": "SYN-H08",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "ABCD-0094",
+        "b": "ABCD-0096",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "ABCD-0003",
+        "b": "ABCD-0006",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      }
+    ]
+  },
+  "verification": {
+    "cases": 10,
+    "status_accuracy": 0.6,
+    "unsupported_verified": 0,
+    "confusion": [
+      {
+        "expected": "contradicted",
+        "got": "contradicted",
+        "count": 1
+      },
+      {
+        "expected": "partially_supported",
+        "got": "partially_supported",
+        "count": 1
+      },
+      {
+        "expected": "supported",
+        "got": "contradicted",
+        "count": 1
+      },
+      {
+        "expected": "supported",
+        "got": "partially_supported",
+        "count": 3
+      },
+      {
+        "expected": "supported",
+        "got": "supported",
+        "count": 2
+      },
+      {
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "count": 2
+      }
+    ],
+    "details": [
+      {
+        "conversation": "ABCD-0003",
+        "expected": "supported",
+        "got": "partially_supported",
+        "passed": false
+      },
+      {
+        "conversation": "ABCD-0006",
+        "expected": "partially_supported",
+        "got": "partially_supported",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0094",
+        "expected": "supported",
+        "got": "supported",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0096",
+        "expected": "supported",
+        "got": "partially_supported",
+        "passed": false
+      },
+      {
+        "conversation": "ABCD-0061",
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-H01",
+        "expected": "supported",
+        "got": "supported",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-H03",
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-H06",
+        "expected": "contradicted",
+        "got": "contradicted",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-H08",
+        "expected": "supported",
+        "got": "contradicted",
+        "passed": false
+      },
+      {
+        "conversation": "SYN-H09",
+        "expected": "supported",
+        "got": "partially_supported",
+        "passed": false
+      }
+    ]
+  },
+  "pipeline_run": {
+    "conversations": 28,
+    "counts": {
+      "conversations": 28,
+      "technical_failures": 0,
+      "no_draft": 2,
+      "drafts": 17,
+      "groups": 14,
+      "possible_conflicts": 3,
+      "unresolved_conflicts": 0,
+      "verification": {
+        "contradicted": 2,
+        "partially_supported": 6,
+        "supported": 3,
+        "unverifiable": 6
+      }
+    },
+    "technical_failures": [],
+    "missing_verification": 6,
+    "timings_ms": {
+      "extraction_ms": 47.54,
+      "grouping_ms": 7.09,
+      "conflicts_ms": 9.5,
+      "verification_ms": 98.4,
+      "total_ms": 162.63
+    },
+    "ms_per_conversation": 5.81,
+    "model_usage": {
+      "model": null,
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0
+    }
+  },
+  "release_checks": {
+    "release_allowed": true,
+    "checks": [
+      {
+        "check": "no_fabricated_citations",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_unsupported_verified_claims",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_personal_data_leaks",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "ml_approves_nothing",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "repeat_processing",
+        "passed": true,
+        "problems": [],
+        "blocks_release": true
+      }
+    ]
+  },
+  "evaluation_seconds": 1.41,
+  "notes": [
+    "Verification is measured against an in-memory copy of the ABCD guideline snapshot marked approved for evaluation only; the committed snapshot is unreviewed and verifies nothing.",
+    "Labels are first-pass and have not had a second person's review (human_reviewed: false).",
+    "Technical failures (invalid input, model errors) are counted separately from drafts that are merely unverifiable for lack of a reference.",
+    "Held-out cases: report only, never tune on them. The rule extractor's wording rules were developed while reading output over all 100 curated ABCD records, so ABCD held-out scores are optimistic; the SYN-H conversations were written after the rules were fixed.",
+    "Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support). These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1."
+  ]
+}

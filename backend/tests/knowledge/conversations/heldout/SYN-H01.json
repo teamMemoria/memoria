@@ -1,0 +1,51 @@
+{
+  "id": "SYN-H01",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H01",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, what can I help you with?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "My package says delivered but I don't have it. I ordered it 4 days ago."
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "If you have been waiting for less than a week, the package is sometimes marked as delivered by mistake and can still take a couple of days to arrive."
+    },
+    {
+      "n": 4,
+      "speaker": "agent",
+      "text": "If it still hasn't arrived after 7 days, we will ship you a new order."
+    },
+    {
+      "n": 5,
+      "speaker": "customer",
+      "text": "Okay, I'll wait a few more days."
+    },
+    {
+      "n": 6,
+      "speaker": "agent",
+      "text": "Sounds good. Have a nice day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "shipping_issue",
+    "subflow": "missing",
+    "actions_taken": []
+  },
+  "split": "heldout",
+  "note": "Held-out. Missing-item answer matching the guideline, with its 7-day condition."
+}

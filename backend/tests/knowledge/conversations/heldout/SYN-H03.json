@@ -1,0 +1,46 @@
+{
+  "id": "SYN-H03",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H03",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi there, how can I help?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "How long does it take for a refund to show up?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Refunds show up on your card within 5 business days."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Great, thanks."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "You're welcome!"
+    }
+  ],
+  "source_fields": {
+    "flow": "product_defect",
+    "subflow": "refund_status",
+    "actions_taken": []
+  },
+  "split": "heldout",
+  "note": "Held-out. Refund timing, 5 business days."
+}

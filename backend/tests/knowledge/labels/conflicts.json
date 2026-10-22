@@ -1,5 +1,6 @@
 {
   "label_set": "conflicts",
+  "split": "dev",
   "version": 1,
   "labelled_by": "ritvikagg",
   "human_reviewed": false,
@@ -109,10 +110,11 @@
       "note": "'You will not be charged' does not contradict 'I will cancel the order'."
     },
     {
-      "a": "ABCD-0014",
-      "b": "ABCD-0015",
+      "a": "ABCD-0079",
+      "b": "ABCD-0080",
       "expect": "none",
-      "note": "Both say the subscription is still active."
+      "note": "Both: cancel at any time, benefits until the end of the month."
     }
-  ]
+  ],
+  "split_note": "Dev cases use ABCD train/dev-split conversations and SYN cases only; ABCD test-split conversations are kept for the held-out set."
 }

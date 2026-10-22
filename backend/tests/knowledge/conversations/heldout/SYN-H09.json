@@ -1,0 +1,46 @@
+{
+  "id": "SYN-H09",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H09",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, how can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "Can I get an extension on my subscription bill? I'm bronze."
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "I'm sorry, bronze members cannot get an extension on their subscription."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Oh well."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Is there anything else I can do for you?"
+    }
+  ],
+  "source_fields": {
+    "flow": "subscription_inquiry",
+    "subflow": "manage_extension",
+    "actions_taken": []
+  },
+  "split": "heldout",
+  "note": "Held-out. Matches the guideline; contradicts H06."
+}

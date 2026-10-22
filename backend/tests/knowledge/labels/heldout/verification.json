@@ -1,0 +1,54 @@
+{
+  "label_set": "verification",
+  "split": "heldout",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "Held-out: labels were written from the conversations and the ABCD guidelines before the pipeline was run on these cases. Do not tune thresholds or rules on them; report results only. A second team member should review before these count as human-labelled.",
+  "contamination_note": "The rule extractor's wording rules were developed while reading extractor output over all 100 curated ABCD records, including these test-split ones, so ABCD held-out scores are optimistic. The SYN-H conversations were written after all rules were fixed.",
+  "cases": [
+    {
+      "conversation": "ABCD-0003",
+      "expect": "supported"
+    },
+    {
+      "conversation": "ABCD-0006",
+      "expect": "partially_supported",
+      "note": "'Please use this one going forward...' is not in the guideline."
+    },
+    {
+      "conversation": "ABCD-0094",
+      "expect": "supported"
+    },
+    {
+      "conversation": "ABCD-0096",
+      "expect": "supported"
+    },
+    {
+      "conversation": "ABCD-0061",
+      "expect": "unverifiable",
+      "note": "Product FAQ answers are not in the guidelines."
+    },
+    {
+      "conversation": "SYN-H01",
+      "expect": "supported"
+    },
+    {
+      "conversation": "SYN-H03",
+      "expect": "unverifiable",
+      "note": "The refund-status guideline says nothing about timing."
+    },
+    {
+      "conversation": "SYN-H06",
+      "expect": "contradicted"
+    },
+    {
+      "conversation": "SYN-H08",
+      "expect": "supported"
+    },
+    {
+      "conversation": "SYN-H09",
+      "expect": "supported"
+    }
+  ]
+}

@@ -207,3 +207,14 @@ def test_bad_input():
         check_drafts([], COMPANY, [], as_of="yesterday")
     with pytest.raises(PipelineError):
         VerificationConfig(support_threshold=0.2, partial_threshold=0.5)
+
+
+def test_instruction_lines_never_support_a_claim(references):
+    # Regression: found by the first held-out run (a list of FAQ topics "supported" a claim).
+    result = packet(draft_for("ABCD-0073"), references)
+    reasons = {i["reference_id"]: i["reason"] for i in result["ignored_references"]}
+    instruction_ids = [r for r in reasons if "#i" in r]
+    assert instruction_ids
+    assert all(reasons[r].startswith("instruction line") for r in instruction_ids)
+    for claim in result["claims"]:
+        assert all("#i" not in c["reference_id"] for c in claim["citations"])
