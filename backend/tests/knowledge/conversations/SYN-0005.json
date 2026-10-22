@@ -1,0 +1,90 @@
+{
+  "id": "SYN-0005",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-0005",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi there, what can I do for you?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "My promo code is not working and I only got it 3 days ago."
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Could I have your full name please?"
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Tomas Reyes"
+    },
+    {
+      "n": 5,
+      "speaker": "system_action",
+      "text": "Account has been pulled up for Tomas Reyes."
+    },
+    {
+      "n": 6,
+      "speaker": "agent",
+      "text": "What is your membership level?"
+    },
+    {
+      "n": 7,
+      "speaker": "customer",
+      "text": "I'm a guest"
+    },
+    {
+      "n": 8,
+      "speaker": "system_action",
+      "text": "Membership level of guest has been noted."
+    },
+    {
+      "n": 9,
+      "speaker": "agent",
+      "text": "No problem, guests can always get a replacement code."
+    },
+    {
+      "n": 10,
+      "speaker": "system_action",
+      "text": "A promo code has been created."
+    },
+    {
+      "n": 11,
+      "speaker": "agent",
+      "text": "Here you are: QX7TR"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": [
+      "pull-up-account",
+      "membership",
+      "promo-code"
+    ]
+  },
+  "customer_record": {
+    "customer_name": "tomas reyes",
+    "member_level": "guest",
+    "address": {
+      "street": "5 bay rd",
+      "city": "dover",
+      "state": "de",
+      "zip_code": "19901",
+      "full_address": "5 bay rd  dover, de 19901"
+    }
+  },
+  "note": "The agent's answer contradicts the ABCD guideline (guests cannot get a replacement code). Used for repeated-wrong-answer and conflict tests."
+}

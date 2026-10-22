@@ -1,0 +1,40 @@
+{
+  "id": "SYN-0001",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-0001",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, thank you for contacting Acme. How can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "hi"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Are you still there?"
+    },
+    {
+      "n": 4,
+      "speaker": "agent",
+      "text": "It seems we have been disconnected. Have a great day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "storewide_query",
+    "subflow": "policy_1",
+    "actions_taken": []
+  },
+  "note": "Greeting only; the customer leaves. Nothing reusable."
+}

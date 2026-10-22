@@ -1,0 +1,164 @@
+{
+  "conversation_id": "SYN-0004",
+  "source_key": "SYNTHETIC:SYN-0004",
+  "status": "ok",
+  "drafts": [
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_e7354d11cbfbea2a4470",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "acme",
+      "scope": {
+        "company_id": "acme",
+        "flow": "storewide_query",
+        "subflow": "policy_1"
+      },
+      "topic": "storewide_query/policy_1",
+      "question": "What is your return policy for gold members?",
+      "answer": "Gold members can return items at any time. Bronze members can return items within 90 days of purchase, unless the item was on final sale. Guests can return items within 30 days with a receipt.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t2",
+          "speaker": "customer",
+          "span": [
+            0,
+            44
+          ],
+          "quote": "What is your return policy for gold members?",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            42
+          ],
+          "quote": "Gold members can return items at any time.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t4",
+          "speaker": "agent",
+          "span": [
+            0,
+            94
+          ],
+          "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t6",
+          "speaker": "agent",
+          "span": [
+            0,
+            54
+          ],
+          "quote": "Guests can return items within 30 days with a receipt.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [
+        {
+          "text": "Gold members can return items at any time.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "turn_id": "SYN-0004#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              42
+            ],
+            "quote": "Gold members can return items at any time.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "turn_id": "SYN-0004#t4",
+            "speaker": "agent",
+            "span": [
+              0,
+              94
+            ],
+            "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "Guests can return items within 30 days with a receipt.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "turn_id": "SYN-0004#t6",
+            "speaker": "agent",
+            "span": [
+              0,
+              54
+            ],
+            "quote": "Guests can return items within 30 days with a receipt.",
+            "source_version": "authored"
+          }
+        }
+      ],
+      "procedure": [],
+      "source": {
+        "conversation_id": "SYN-0004",
+        "source_key": "SYNTHETIC:SYN-0004",
+        "dataset": "SYNTHETIC",
+        "original_id": "SYN-0004",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "MIT (this repository)"
+      },
+      "evidence_coverage": {
+        "source_turns": 7,
+        "turns_kept": 7,
+        "speakers": {
+          "agent": 4,
+          "customer": 3
+        },
+        "actions_recorded": 0,
+        "actions_aligned_to_turns": 0,
+        "turns_cited": 4,
+        "cited_share": 0.5714
+      },
+      "privacy": {
+        "redactions": {}
+      },
+      "extractor": {
+        "name": "rule-extractor",
+        "version": "1"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    }
+  ],
+  "no_draft_reason": null,
+  "rejected_drafts": [],
+  "errors": []
+}

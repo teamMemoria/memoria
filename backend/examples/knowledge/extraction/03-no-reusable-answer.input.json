@@ -1,0 +1,84 @@
+{
+  "company_id": "acme",
+  "conversation": {
+    "id": "SYN-0002",
+    "source": {
+      "dataset": "SYNTHETIC",
+      "original_id": "SYN-0002",
+      "licence": "MIT (this repository)",
+      "url": "",
+      "citation": "Made-up conversation written for tests. Not real call data."
+    },
+    "modifications": [],
+    "channel": "chat",
+    "turns": [
+      {
+        "n": 1,
+        "speaker": "agent",
+        "text": "Hi, how may I help you?"
+      },
+      {
+        "n": 2,
+        "speaker": "customer",
+        "text": "Where is my order? It was supposed to arrive yesterday."
+      },
+      {
+        "n": 3,
+        "speaker": "agent",
+        "text": "May I have your full name or account ID?"
+      },
+      {
+        "n": 4,
+        "speaker": "customer",
+        "text": "Priya Natarajan"
+      },
+      {
+        "n": 5,
+        "speaker": "system_action",
+        "text": "Account has been pulled up for Priya Natarajan."
+      },
+      {
+        "n": 6,
+        "speaker": "agent",
+        "text": "Let me check on that for you, one moment."
+      },
+      {
+        "n": 7,
+        "speaker": "agent",
+        "text": "Your order 4821937710 is out for delivery and should arrive on 3/14/2021."
+      },
+      {
+        "n": 8,
+        "speaker": "customer",
+        "text": "ok thanks"
+      },
+      {
+        "n": 9,
+        "speaker": "agent",
+        "text": "Have a nice day!"
+      }
+    ],
+    "source_fields": {
+      "flow": "shipping_issue",
+      "subflow": "status",
+      "actions_taken": [
+        "pull-up-account"
+      ]
+    },
+    "customer_record": {
+      "customer_name": "priya natarajan",
+      "member_level": "silver",
+      "address": {
+        "street": "12 elm st",
+        "city": "oakton",
+        "state": "va",
+        "zip_code": "22124",
+        "full_address": "12 elm st  oakton, va 22124"
+      },
+      "order": {
+        "order_id": "4821937710"
+      }
+    },
+    "note": "Only this customer's order status and date. Nothing reusable for other customers."
+  }
+}
