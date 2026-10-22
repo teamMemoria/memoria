@@ -21,7 +21,7 @@ function renderApp(viewerApi: ViewerApi | null, path = '/') {
 
 describe('application layout', () => {
   it.each([
-    ['agent', '/agent/conversations', 'My Conversations'],
+    ['agent', '/agent/conversations', 'My conversations'],
     ['agent', '/agent/knowledge', 'Knowledge Base'],
     ['manager', '/manager/conversations', 'Team conversations'],
     ['manager', '/manager/knowledge', 'Knowledge drafts'],
@@ -43,7 +43,7 @@ describe('application layout', () => {
 
   it('opens the Agent home and updates selected navigation with the URL', async () => {
     renderApp(createDevViewerApi('agent'))
-    await screen.findByRole('heading', { name: 'My Conversations' })
+    await screen.findByRole('heading', { name: 'My conversations' })
     expect(
       screen
         .getByRole('link', { name: 'Conversations' })
@@ -101,9 +101,9 @@ describe('application layout', () => {
   })
 
   it.each([
-    ['agent', '/', 'My Conversations'],
-    ['agent', '/agent', 'My Conversations'],
-    ['agent', '/agent/', 'My Conversations'],
+    ['agent', '/', 'My conversations'],
+    ['agent', '/agent', 'My conversations'],
+    ['agent', '/agent/', 'My conversations'],
     ['manager', '/', 'Team conversations'],
     ['manager', '/manager', 'Team conversations'],
     ['manager', '/manager/', 'Team conversations'],
@@ -131,7 +131,7 @@ describe('application layout', () => {
       screen.getByRole('link', { name: 'Back to your conversations' }),
     )
     await screen.findByRole('heading', {
-      name: role === 'agent' ? 'My Conversations' : 'Team conversations',
+      name: role === 'agent' ? 'My conversations' : 'Team conversations',
     })
   })
 
@@ -139,12 +139,16 @@ describe('application layout', () => {
     const getViewer = vi
       .fn<ViewerApi['getViewer']>()
       .mockRejectedValueOnce(new Error('Internal connection details'))
-      .mockResolvedValueOnce({ displayName: 'Alex Morgan', role: 'agent' })
+      .mockResolvedValueOnce({
+        id: 'agent-alex-morgan',
+        displayName: 'Alex Morgan',
+        role: 'agent',
+      })
     renderApp({ getViewer })
     await screen.findByRole('alert')
     expect(screen.queryByText('Internal connection details')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('heading', { name: 'My Conversations' })
+    await screen.findByRole('heading', { name: 'My conversations' })
     expect(getViewer).toHaveBeenCalledTimes(2)
   })
 
@@ -181,6 +185,7 @@ describe('dependency selection', () => {
     vi.stubEnv('DEV', true)
     vi.stubEnv('VITE_DEV_ROLE', 'manager')
     expect(await createDependencies().viewerApi?.getViewer()).toEqual({
+      id: 'manager-maya-chen',
       displayName: 'Maya Chen',
       role: 'manager',
     })
