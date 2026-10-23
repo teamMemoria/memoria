@@ -1,0 +1,34 @@
+.approved-reference-content {
+  display: grid;
+  gap: 20px;
+  overflow-wrap: anywhere;
+}
+.approved-reference-content dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+.approved-reference-content dt {
+  color: var(--color-muted);
+  font-size: 16px;
+}
+.approved-reference-content dd {
+  margin: 0;
+}
+.approved-reference-content ol {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding-left: 28px;
+}
+.approved-reference-selected-step {
+  background: var(--color-evidence);
+  outline: 1px solid var(--color-accent);
+  outline-offset: 4px;
+}
+@media (max-width: 700px) {
+  .approved-reference-content dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
