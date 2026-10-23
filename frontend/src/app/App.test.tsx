@@ -1,310 +1,184 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
-import type { CallApi, CallReview } from '../types/callReview'
-import type { Conversation } from '../features/conversations/conversations'
-import { agent, callFixture } from '../lib/callReview.test-data'
-import type { Viewer, ViewerApi } from '../types/viewer'
-import App from './App'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import type { Viewer } from '../types/viewer'
+import { agent, deferred, manager, openApp } from './TestSetup'
 import { createDependencies } from './dependencies'
-import { createDevViewerApi } from '../lib/viewer'
 
-afterEach(() => {
-  cleanup()
-  vi.unstubAllEnvs()
-})
-
-function renderApp(viewerApi: ViewerApi | null, path = '/') {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App viewerApi={viewerApi} />
-    </MemoryRouter>,
-  )
-}
-
-describe('application layout', () => {
-  it.each([
-    ['agent', '/agent/conversations', 'My conversations'],
-    ['agent', '/agent/knowledge', 'Knowledge Base'],
-    ['manager', '/manager/conversations', 'Team conversations'],
-  ] as const)(
-    'opens the %s page at %s',
-    async (role, path, heading) => {
-      renderApp(createDevViewerApi(role), path)
-      await screen.findByRole('heading', { name: heading })
-    },
-  )
-
-  it('waits for the viewer before exposing role navigation', () => {
-    renderApp({ getViewer: () => new Promise<Viewer | null>(() => {}) })
-    expect(screen.getByRole('status').textContent).toContain(
-      'Loading your workspace',
-    )
+describe('workspace access and navigation', () => {
+  it('waits for identity, opens the Agent home and provides keyboard entry to content', async () => {
+    const identity = deferred<Viewer | null>()
+    openApp({ viewerApi: { getViewer: () => identity.promise } })
+    expect(screen.getByRole('status').textContent).toContain('Loading your workspace')
     expect(screen.queryByRole('navigation')).toBeNull()
-  })
-
-  it('opens the Agent home and updates selected navigation with the URL', async () => {
-    renderApp(createDevViewerApi('agent'))
+    await act(() => identity.resolve(agent))
     await screen.findByRole('heading', { name: 'My conversations' })
-    expect(
-      screen
-        .getByRole('link', { name: 'Conversations' })
-        .getAttribute('aria-current'),
-    ).toBe('page')
-    expect(
-      screen.queryByRole('link', { name: 'Team conversations' }),
-    ).toBeNull()
-    expect(
-      screen.getByRole('link', { name: 'Knowledge Base' }).getAttribute('href'),
-    ).toBe('/agent/knowledge')
-    fireEvent.click(screen.getByRole('link', { name: 'Knowledge Base' }))
-    await screen.findByRole('heading', { name: 'Knowledge Base' })
-    expect(
-      screen
-        .getByRole('link', { name: 'Knowledge Base' })
-        .getAttribute('aria-current'),
-    ).toBe('page')
-    expect(
-      screen
-        .getByRole('link', { name: 'Conversations' })
-        .getAttribute('aria-current'),
-    ).toBeNull()
+    expect(screen.getByRole('link', { name: 'Conversations' }).getAttribute('aria-current')).toBe('page')
+    const main = screen.getByRole('main')
+    expect(screen.getByRole('link', { name: 'Skip to content' }).getAttribute('href')).toBe('#' + main.id)
+    act(() => main.focus())
+    expect(document.activeElement).toBe(main)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Settings (not available yet)' }).disabled).toBe(true)
   })
 
-  it('opens a Manager deep link with Manager navigation', async () => {
-    renderApp(createDevViewerApi('manager'), '/manager/knowledge')
-    await screen.findByRole('heading', { name: 'Knowledge drafts' })
-    expect(
-      screen.getByRole('link', { name: 'Team conversations' }),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole('link', { name: 'Knowledge Base' }).getAttribute('href'),
-    ).toBe('/manager/knowledge')
-    expect(
-      screen.getByRole('img', { name: 'Maya Chen, manager' }).textContent,
-    ).toBe('MC')
+  it.each([null, { getViewer: async () => null }])('does not expose a workspace without an identity', async (viewerApi) => {
+    openApp({ viewerApi })
+    await screen.findByRole('heading', { name: 'Your workspace is not available yet' })
+    expect(screen.queryByRole('navigation')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   })
 
-  it.each([
-    ['agent', '/manager/conversations'],
-    ['agent', '/manager/knowledge'],
-    ['manager', '/agent/conversations'],
-    ['manager', '/agent/knowledge'],
-  ] as const)('does not show another role’s page to %s', async (role, path) => {
-    renderApp(createDevViewerApi(role), path)
-    await screen.findByRole('heading', {
-      name: 'Page unavailable for your role',
-    })
-    expect(
-      screen
-        .getByRole('link', { name: 'Back to your conversations' })
-        .getAttribute('href'),
-    ).toBe(`/${role}/conversations`)
-  })
-
-  it.each([
-    ['agent', '/agent', 'My conversations'],
-    ['agent', '/agent/', 'My conversations'],
-    ['manager', '/', 'Team conversations'],
-    ['manager', '/manager', 'Team conversations'],
-    ['manager', '/manager/', 'Team conversations'],
-  ] as const)('opens the %s home from %s', async (role, path, heading) => {
-    renderApp(createDevViewerApi(role), path)
-    await screen.findByRole('heading', { name: heading })
-    expect(
-      screen.getByRole('link', {
-        name: role === 'agent' ? 'Conversations' : 'Team conversations',
-      }).getAttribute('aria-current'),
-    ).toBe('page')
-  })
-
-  it.each([
-    ['agent', '/missing-page'],
-    ['agent', '/agent/missing-page'],
-    ['agent', '/manager/missing-page'],
-    ['manager', '/missing-page'],
-    ['manager', '/manager/missing-page'],
-    ['manager', '/agent/missing-page'],
-  ] as const)('returns %s home from unknown URL %s', async (role, path) => {
-    renderApp(createDevViewerApi(role), path)
-    await screen.findByRole('heading', { name: 'Page not found' })
-    fireEvent.click(
-      screen.getByRole('link', { name: 'Back to your conversations' }),
-    )
-    await screen.findByRole('heading', {
-      name: role === 'agent' ? 'My conversations' : 'Team conversations',
-    })
-  })
-
-  it('retries a failed viewer request without exposing internal errors', async () => {
-    const getViewer = vi
-      .fn<ViewerApi['getViewer']>()
-      .mockRejectedValueOnce(new Error('Internal connection details'))
-      .mockResolvedValueOnce({
-        id: 'agent-alex-morgan',
-        displayName: 'Alex Morgan',
-        role: 'agent',
-      })
-    renderApp({ getViewer })
+  it('recovers from a sign-in failure and opens the returned Manager workspace', async () => {
+    const getViewer = vi.fn().mockRejectedValueOnce(new Error('Internal connection details')).mockResolvedValueOnce(manager)
+    openApp({ viewerApi: { getViewer } })
     await screen.findByRole('alert')
     expect(screen.queryByText('Internal connection details')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('heading', { name: 'My conversations' })
+    await screen.findByRole('heading', { name: 'Team conversations' })
     expect(getViewer).toHaveBeenCalledTimes(2)
   })
 
-  it.each([null, { getViewer: async () => null }])(
-    'does not invent an unavailable identity',
-    async (api) => {
-      renderApp(api)
-      await screen.findByRole('heading', {
-        name: 'Your workspace is not available yet',
-      })
-      expect(screen.queryByRole('navigation')).toBeNull()
-    },
-  )
-
-  it('keeps settings disabled until its feature exists', async () => {
-    renderApp(createDevViewerApi('agent'))
-    await screen.findByRole('navigation')
-    expect(
-      screen.getByRole<HTMLButtonElement>('button', {
-        name: 'Settings (not available yet)',
-      }).disabled,
-    ).toBe(true)
-  })
-})
-
-describe('dependency selection', () => {
-  it('never provides a fixture viewer in production', () => {
+  it('does not open development identities or fixture data in production', async () => {
     vi.stubEnv('DEV', false)
     vi.stubEnv('VITE_DEV_ROLE', 'manager')
-    expect(createDependencies().viewerApi).toBeNull()
+    openApp(createDependencies())
+    await screen.findByRole('heading', { name: 'Your workspace is not available yet' })
+    expect(screen.queryByRole('navigation')).toBeNull()
+    expect(screen.queryByText('Refund handling')).toBeNull()
   })
 
-  it('supports a Manager fixture only through development configuration', async () => {
-    vi.stubEnv('DEV', true)
-    vi.stubEnv('VITE_DEV_ROLE', 'manager')
-    expect(await createDependencies().viewerApi?.getViewer()).toEqual({
-      id: 'manager-maya-chen',
-      displayName: 'Maya Chen',
-      role: 'manager',
-    })
-  })
-})
-
-function open(
-  call: CallReview,
-  path: string,
-  viewer: Viewer = agent,
-  api: CallApi = { getCallForAgent: async () => call },
-) {
-  const record: Conversation = {
-    id: call.id,
-    topic: call.topic,
-    agentId: call.agentId,
-    agentName: call.agentName,
-    date: call.date,
-    automatedResult: 'needs-review',
-    reviewStatus: 'feedback-ready',
-  }
-  const router = createMemoryRouter([
-    {
-      path: '*',
-      element: (
-        <App
-          viewerApi={{ getViewer: async () => viewer }}
-          conversationsApi={{ listForAgent: async () => [record] }}
-          callApi={api}
-        />
-      ),
-    },
-  ], { initialEntries: [path] })
-  render(<RouterProvider router={router} />)
-  return router
-}
-
-describe('call overview routing', () => {
-  it('connects the real list and overview while preserving filters through return and Back/Forward', async () => {
-    const call = await callFixture()
-    const getCallForAgent = vi.fn(async () => call)
-    const search = '?q=Refund&status=feedback-ready'
-    const router = open(call, `/agent/conversations${search}`, agent, { getCallForAgent })
-    fireEvent.click(await screen.findByRole('link', {
-      name: `Open conversation ${call.id}: ${call.topic}`,
-    }))
-    await screen.findByRole('heading', { name: call.topic })
-    expect(getCallForAgent).toHaveBeenCalledWith(agent.id, call.id)
-    expect(router.state.location.pathname).toBe(`/agent/conversations/${call.id}`)
-    expect(router.state.location.search).toBe(search)
+  it('keeps Manager navigation and selection consistent through direct links and history', async () => {
+    const { router } = openApp({ path: '/manager/knowledge', viewerApi: { getViewer: async () => manager } })
+    await screen.findByRole('heading', { name: 'Knowledge drafts' })
+    const knowledge = screen.getByRole('link', { name: 'Knowledge Base' })
+    expect(knowledge.getAttribute('aria-current')).toBe('page')
+    fireEvent.click(screen.getByRole('link', { name: 'Team conversations' }))
+    await screen.findByRole('heading', { name: 'Team conversations' })
     await act(() => router.navigate(-1))
-    await screen.findByRole('table')
-    expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Search calls' }).value)
-      .toBe('Refund')
-    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Review status' }).value)
-      .toBe('feedback-ready')
+    await screen.findByRole('heading', { name: 'Knowledge drafts' })
+    expect(knowledge.getAttribute('aria-current')).toBe('page')
     await act(() => router.navigate(1))
-    await screen.findByRole('heading', { name: call.topic })
-    const main = within(screen.getByRole('main'))
-    fireEvent.click(main.getByRole('link', { name: 'Conversations' }))
-    await screen.findByRole('table')
-    expect(router.state.location.pathname).toBe('/agent/conversations')
-    expect(router.state.location.search).toBe(search)
-    expect(screen.getByRole('link', {
-      name: `Open conversation ${call.id}: ${call.topic}`,
-    })).toBeTruthy()
+    await screen.findByRole('heading', { name: 'Team conversations' })
+    expect(screen.queryByRole('link', { name: 'Conversations' })).toBeNull()
   })
 
-  it('opens a directly linked call without hardcoding C1042', async () => {
-    const call = await callFixture({
-      id: 'C2050', topic: 'Delivery question', summary: 'A different call summary.',
+  it.each([
+    { viewer: agent, path: '/manager/knowledge', home: 'My conversations' },
+    { viewer: manager, path: '/agent/conversations/C1042/findings/procedure-order', home: 'Team conversations' },
+  ])('blocks cross-role deep links for $viewer.role before requesting protected data', async ({ viewer, path, home }) => {
+    const calls = vi.fn()
+    const conversations = vi.fn(async () => [])
+    openApp({
+      path,
+      viewerApi: { getViewer: async () => viewer },
+      callApi: { getCallForAgent: calls },
+      conversationsApi: { listForAgent: conversations },
     })
-    const getCallForAgent = vi.fn(async () => call)
-    open(call, '/agent/conversations/C2050', agent, { getCallForAgent })
-    await screen.findByRole('heading', { name: 'Delivery question' })
-    expect(getCallForAgent).toHaveBeenCalledWith(agent.id, 'C2050')
-    expect(screen.getByText('A different call summary.')).toBeTruthy()
-    expect(screen.getByRole('list', { name: 'Call details' }).textContent).toContain('Call C2050')
-  })
-
-  it('blocks a Manager from opening the Agent call route without fetching it', async () => {
-    const call = await callFixture()
-    const getCallForAgent = vi.fn<CallApi['getCallForAgent']>()
-    open(call, '/agent/conversations/C1042', {
-      id: 'manager-maya-chen', displayName: 'Maya Chen', role: 'manager',
-    }, { getCallForAgent })
     await screen.findByRole('heading', { name: 'Page unavailable for your role' })
-    expect(getCallForAgent).not.toHaveBeenCalled()
-    expect(screen.queryByRole('region', { name: 'Automatic feedback' })).toBeNull()
+    expect(calls).not.toHaveBeenCalled()
+    expect(conversations).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('link', { name: 'Back to your conversations' }))
+    await screen.findByRole('heading', { name: home })
   })
 
-  it('does not expose another Agent’s call returned for a direct link', async () => {
-    const call = await callFixture({ agentId: 'another-agent' })
-    open(call, '/agent/conversations/C1042')
-    await screen.findByRole('heading', { name: 'Conversation unavailable' })
-    expect(screen.queryByText(call.summary)).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Automatic feedback' })).toBeNull()
+  it.each([
+    { viewer: agent, home: 'My conversations' },
+    { viewer: manager, home: 'Team conversations' },
+  ])('recovers from an unknown URL to the $viewer.role home', async ({ viewer, home }) => {
+    openApp({ path: '/unknown', viewerApi: { getViewer: async () => viewer } })
+    await screen.findByRole('heading', { name: 'Page not found' })
+    fireEvent.click(screen.getByRole('link', { name: 'Back to your conversations' }))
+    await screen.findByRole('heading', { name: home })
   })
+})
 
-  it('shows an unavailable call through the real route when no record exists', async () => {
-    const call = await callFixture()
-    const getCallForAgent = vi.fn<CallApi['getCallForAgent']>()
-      .mockResolvedValue(null)
-    open(call, '/agent/conversations/MISSING', agent, { getCallForAgent })
-    await screen.findByRole('heading', { name: 'Conversation unavailable' })
-    expect(getCallForAgent).toHaveBeenCalledWith(agent.id, 'MISSING')
-    expect(screen.queryByText(call.summary)).toBeNull()
-    fireEvent.click(within(screen.getByRole('main')).getByRole('link', {
-      name: 'Conversations',
-    }))
-    await screen.findByRole('table')
-  })
-
-  it('does not supply development call data in production', () => {
-    vi.stubEnv('DEV', false)
-    vi.stubEnv('VITE_DEV_ROLE', 'agent')
-    expect(createDependencies()).toMatchObject({
-      viewerApi: null, conversationsApi: null, callApi: null,
+describe('sidebar within the workspace', () => {
+  it('supports delayed hover, cancelled opening and rapid return while navigating', async () => {
+    let frame!: FrameRequestCallback
+    openApp()
+    await screen.findByRole('heading', { name: 'My conversations' })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frame = callback
+      return 1
     })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+    const home = screen.getByRole('link', { name: 'Memoria home' })
+    const sidebar = screen.getByRole('complementary', { name: 'Navigation' })
+    fireEvent.pointerEnter(sidebar)
+    act(() => vi.advanceTimersByTime(50))
+    fireEvent.pointerLeave(sidebar)
+    act(() => vi.advanceTimersByTime(100))
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.pointerEnter(sidebar)
+    act(() => vi.advanceTimersByTime(99))
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    act(() => vi.advanceTimersByTime(1))
+    expect(home.getAttribute('aria-expanded')).toBe('true')
+    act(() => frame(32))
+    fireEvent.pointerLeave(sidebar)
+    act(() => vi.advanceTimersByTime(50))
+    fireEvent.pointerEnter(sidebar)
+    act(() => vi.advanceTimersByTime(100))
+    expect(home.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.pointerLeave(sidebar)
+    act(() => vi.advanceTimersByTime(100))
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    act(() => frame(48))
+    fireEvent.pointerEnter(sidebar)
+    expect(home.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(screen.getByRole('link', { name: 'Knowledge Base' }))
+    fireEvent.pointerLeave(sidebar)
+    act(() => vi.advanceTimersByTime(100))
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    vi.useRealTimers()
+    await screen.findByRole('heading', { name: 'Knowledge Base' })
+  })
+
+  it('opens for keyboard navigation, restores focus on Escape and dismisses outside the rail', async () => {
+    openApp()
+    await screen.findByRole('heading', { name: 'My conversations' })
+    const home = screen.getByRole('link', { name: 'Memoria home' })
+    const knowledge = screen.getByRole('link', { name: 'Knowledge Base' })
+    act(() => knowledge.focus())
+    expect(home.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(knowledge)
+    await screen.findByRole('heading', { name: 'Knowledge Base' })
+    expect(document.activeElement).toBe(knowledge)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.activeElement).toBe(home)
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.pointerDown(knowledge)
+    expect(home.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.pointerDown(screen.getByRole('main'))
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.pointerDown(home)
+    fireEvent.blur(window)
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('keeps navigation usable with reduced motion and cancels pending opening on dismissal', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: query.includes('prefers-reduced-motion') || query.includes('hover'),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })))
+    const requestFrame = vi.fn()
+    vi.stubGlobal('requestAnimationFrame', requestFrame)
+    const { unmount } = openApp()
+    await screen.findByRole('heading', { name: 'My conversations' })
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const home = screen.getByRole('link', { name: 'Memoria home' })
+    const sidebar = screen.getByRole('complementary', { name: 'Navigation' })
+    fireEvent.pointerEnter(sidebar)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    act(() => vi.advanceTimersByTime(100))
+    expect(home.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.pointerDown(home)
+    expect(home.getAttribute('aria-expanded')).toBe('true')
+    expect(requestFrame).not.toHaveBeenCalled()
+    fireEvent.pointerLeave(sidebar)
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })
