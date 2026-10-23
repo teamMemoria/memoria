@@ -178,15 +178,4 @@ describe('call overview', () => {
     expect(screen.getByRole('link', { name: 'Transcript' }).getAttribute('href'))
       .toBe('/agent/conversations/C1042/transcript?q=Refund&status=feedback-ready')
   })
-
-  it.skip('shows the Cannot assess explanation (pending the overview explanation UI)', async () => {
-    const call = await callFixture()
-    call.criteria[1] = {
-      ...call.criteria[1],
-      result: 'cannot-assess',
-      explanation: 'No applicable approved reference was supplied.',
-    }
-    await show(call)
-    expect(screen.getByText(call.criteria[1].explanation)).toBeTruthy()
-  })
 })

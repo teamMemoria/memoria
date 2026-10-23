@@ -87,20 +87,6 @@ describe('call loading', () => {
     expect(result.current).toMatchObject({ status: 'ready', call })
     expect(getCallForAgent).toHaveBeenCalledTimes(2)
   })
-
-  it('removes visible call data when its API becomes unavailable', async () => {
-    const call = await callFixture()
-    const request: Request = {
-      api: { getCallForAgent: async () => call },
-      agentId: agent.id,
-      conversationId: call.id,
-    }
-    const { result, rerender } = open(request)
-    await waitFor(() => expect(result.current.status).toBe('ready'))
-    rerender({ ...request, api: null })
-    expect(result.current.status).toBe('unavailable')
-    expect(result.current).not.toHaveProperty('call')
-  })
 })
 
 describe('request changes and stale responses', () => {
@@ -155,6 +141,7 @@ describe('request changes and stale responses', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'))
     rerender({ ...request, api: null })
     expect(result.current.status).toBe('unavailable')
+    expect(result.current).not.toHaveProperty('call')
     rerender(request)
     expect(result.current.status).toBe('loading')
     expect(result.current).not.toHaveProperty('call')
