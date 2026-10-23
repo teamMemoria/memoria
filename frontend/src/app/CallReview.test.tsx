@@ -190,7 +190,7 @@ describe('Agent call review', () => {
     openApp({ conversationsApi: { listForAgent } })
     await screen.findByText('Loading your conversations…')
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge Base' }))
-    await screen.findByRole('heading', { name: 'Approved knowledge' })
+    await screen.findByRole('list', { name: 'Approved entries' })
     fireEvent.click(screen.getByRole('link', { name: 'Conversations' }))
     const table = await screen.findByRole('table')
     await act(() => previous.resolve([{ ...conversation, id: 'OLD-RESPONSE' }]))

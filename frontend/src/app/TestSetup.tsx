@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
 import { agent, callFixture, deferred } from '../lib/callReview.test-data'
+import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
 import { createDevCallApi } from '../lib/devCallApi'
 import type { Viewer } from '../types/viewer'
 import App from './App'
@@ -53,6 +54,7 @@ export function openApp({
           viewerApi={{ getViewer: async () => agent }}
           conversationsApi={createDevConversationsApi()}
           callApi={createDevCallApi()}
+          knowledgeApi={createDevApprovedKnowledgeApi()}
           {...overrides}
         />
       ),

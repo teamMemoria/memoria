@@ -66,15 +66,20 @@ describe('workspace access and navigation', () => {
     { viewer: manager, path: '/agent/conversations/C1042/findings/procedure-order', home: 'Team conversations' },
   ])('blocks cross-role deep links for $viewer.role before requesting protected data', async ({ viewer, path, home }) => {
     const calls = vi.fn()
+    const list = vi.fn()
+    const detail = vi.fn()
     const conversations = vi.fn(async () => [])
     openApp({
       path,
       viewerApi: { getViewer: async () => viewer },
       callApi: { getCallForAgent: calls },
       conversationsApi: { listForAgent: conversations },
+      knowledgeApi: { listForAgent: list, getForAgent: detail },
     })
     await screen.findByRole('heading', { name: 'Page unavailable for your role' })
     expect(calls).not.toHaveBeenCalled()
+    expect(list).not.toHaveBeenCalled()
+    expect(detail).not.toHaveBeenCalled()
     expect(conversations).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('link', { name: 'Back to your conversations' }))
     await screen.findByRole('heading', { name: home })
@@ -143,7 +148,7 @@ describe('sidebar within the workspace', () => {
     act(() => knowledge.focus())
     expect(home.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(knowledge)
-    await screen.findByRole('heading', { name: 'Approved knowledge' })
+    await screen.findByRole('list', { name: 'Approved entries' })
     expect(document.activeElement).toBe(knowledge)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(document.activeElement).toBe(home)
