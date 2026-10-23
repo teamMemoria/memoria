@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { ApprovedReference } from '../../components/ApprovedReference'
 import { Icon } from '../../components/Icon'
 import { Button, Panel, TextField } from '../../components/controls'
 import {
@@ -10,6 +9,7 @@ import {
 } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
 import { filterApprovedKnowledge, formatKnowledgeDate } from './knowledge'
+import { KnowledgeArticleContent } from './KnowledgeArticleContent'
 import './approved-knowledge.css'
 
 type Props = { viewer: Viewer; api: ApprovedKnowledgeApi | null }
@@ -93,16 +93,28 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
       : []
   const visible = filterApprovedKnowledge(available, viewer.id, query)
   const entry = available.find((item) => item.id === entryId)
+  const articleEntry =
+    viewer.role === 'agent' && api && entry && canReadKnowledge(entry, viewer.id)
+      ? entry
+      : undefined
 
   return (
-    <div className="approved-knowledge">
+    <div className={`approved-knowledge${articleEntry ? ' approved-knowledge--article' : ''}`}>
       {entryId && (
-        <Link className="approved-knowledge-back" to={`/agent/knowledge${search}`}>
-          <Icon name="arrowLeft" />
-          Approved knowledge
-        </Link>
+        <nav className="approved-knowledge-breadcrumb" aria-label="Breadcrumb">
+          <Link className="approved-knowledge-back" to={`/agent/knowledge${search}`}>
+            <Icon name="arrowLeft" />
+            Approved knowledge
+          </Link>
+          {articleEntry && (
+            <>
+              <span aria-hidden="true">›</span>
+              <span aria-current="page">{articleEntry.title}</span>
+            </>
+          )}
+        </nav>
       )}
-      <h1>Approved knowledge</h1>
+      {!articleEntry && <h1>Approved knowledge</h1>}
       {viewer.role !== 'agent' ? (
         <Panel title="Page unavailable for your role">
           <p>This is the Agent knowledge workspace.</p>
@@ -122,11 +134,8 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
           <Button onClick={retry}>Try again</Button>
         </Panel>
       ) : entryId ? (
-        entry && canReadKnowledge(entry, viewer.id) ? (
-          <Panel title={entry.title} className="approved-knowledge-article">
-            <p className="approved-knowledge-note">Read-only approved guidance.</p>
-            <ApprovedReference entry={entry} />
-          </Panel>
+        articleEntry ? (
+          <KnowledgeArticleContent entry={articleEntry} />
         ) : (
           <Panel title="Entry unavailable">
             <p>This entry is not available as approved guidance in your workspace.</p>

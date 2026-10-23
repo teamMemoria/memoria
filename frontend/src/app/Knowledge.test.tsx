@@ -24,7 +24,7 @@ describe('Agent approved knowledge', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Open Refund handling, RP-01 version 1' }))
     const article = await screen.findByRole('region', { name: 'Refund handling' })
     expect(within(article).getByText('Read-only approved guidance.')).toBeTruthy()
-    expect(within(article).getByText(/Verify the order, customer match and refund eligibility before offering a refund/)).toBeTruthy()
+    expect(within(article).getByText(/Verify the order, customer match and refund eligibility/).textContent).toBe('Verify the order, customer match and refund eligibility before offering a refund.')
     expect(within(article).queryByRole('button')).toBeNull()
     expect(screen.getByRole('link', { name: 'Knowledge Base' }).getAttribute('aria-current')).toBe('page')
     await act(() => router.navigate(-1))
@@ -34,6 +34,52 @@ describe('Agent approved knowledge', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Approved knowledge' }))
     expect((await screen.findByRole<HTMLInputElement>('searchbox')).value).toBe('refund')
     expect(router.state.location.search).toBe('?q=refund')
+  })
+
+  it('presents the approved procedure with its original wording and separate reference details', async () => {
+    const entry = (await callFixture()).references[0]
+    openApp({ path: '/agent/knowledge/RP-01', knowledgeApi: apiFor([entry]) })
+    const article = await screen.findByRole('region', { name: 'Refund handling' })
+    expect(within(article).getByRole('heading', { name: entry.title, level: 1 })).toBeTruthy()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(within(breadcrumb).getByText(entry.title).getAttribute('aria-current')).toBe('page')
+    const steps = within(article).getByRole('list', { name: 'Procedure steps' })
+    const items = within(steps).getAllByRole('listitem')
+    expect(items).toHaveLength(entry.steps.length)
+    for (const [index, step] of entry.steps.entries()) {
+      expect(items[index].textContent).toContain(step.text)
+    }
+    expect(within(steps).getByRole('heading', { name: 'Verify the purchase.' })).toBeTruthy()
+    expect(within(items[1]).getByText('before offering a refund.').tagName).toBe('STRONG')
+    const details = within(article).getByRole('complementary', { name: 'Reference details' })
+    expect(within(details).getByText(entry.owner!)).toBeTruthy()
+    expect(within(details).getByText(entry.source!.title)).toBeTruthy()
+    expect(within(details).getAllByText('Not supplied')).toHaveLength(2)
+    expect(within(article).queryByRole('button')).toBeNull()
+  })
+
+  it.each([
+    { id: 'RP-02', version: 'v1', kind: 'procedure' as const },
+    { id: 'RP-01', version: 'v2', kind: 'procedure' as const },
+    { id: 'RP-01', version: 'v1', kind: 'knowledge' as const },
+  ])('retains another entry’s content without applying refund-specific headings: %j', async (record) => {
+    const reference = (await callFixture()).references[0]
+    const entry = { ...reference, ...record, steps: [{ number: 2, text: 'Use the approved delivery instructions.' }] }
+    openApp({ path: `/agent/knowledge/${entry.id}`, knowledgeApi: apiFor([entry]) })
+    const steps = await screen.findByRole('list', { name: 'Procedure steps' })
+    expect(within(steps).getByText(entry.steps[0].text)).toBeTruthy()
+    expect(within(steps).queryByRole('heading')).toBeNull()
+  })
+
+  it('keeps a text-only entry and its available source link readable', async () => {
+    const reference = (await callFixture()).references[0]
+    const entry = { ...reference, steps: [], source: { title: 'Approved reference', url: 'https://example.test/reference' } }
+    openApp({ path: '/agent/knowledge/RP-01', knowledgeApi: apiFor([entry]) })
+    const article = await screen.findByRole('region', { name: 'Refund handling' })
+    expect(within(article).getByRole('link', { name: entry.source.title }).getAttribute('href')).toBe(entry.source.url)
+    expect(within(article).getByText(entry.paragraphs[0])).toBeTruthy()
+    expect(within(article).queryByRole('list', { name: 'Procedure steps' })).toBeNull()
   })
 
   it('excludes drafts and other agents’ guidance even when the API returns them', async () => {
