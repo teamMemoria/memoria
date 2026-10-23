@@ -1,0 +1,103 @@
+.approved-knowledge {
+  display: grid;
+  gap: 36px;
+  min-width: 0;
+}
+.approved-knowledge-intro {
+  display: grid;
+  gap: 16px;
+}
+.approved-knowledge-note {
+  color: var(--color-muted);
+  font-size: 18px;
+  line-height: 24px;
+}
+.approved-knowledge-search {
+  max-width: 996px;
+}
+.approved-knowledge-search > .field {
+  gap: 0;
+}
+.approved-knowledge-list {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.approved-knowledge-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 400fr) minmax(0, 256fr) minmax(0, 256fr)
+    minmax(0, 248fr) minmax(100px, 176fr);
+  align-items: center;
+  gap: 0;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.approved-knowledge-row:hover {
+  background: #f2f5fb;
+}
+.approved-knowledge-row:active {
+  background: #e5ebf8;
+}
+.approved-knowledge-row-title,
+.approved-knowledge-open {
+  color: var(--color-link);
+}
+.approved-knowledge-date {
+  color: var(--color-muted);
+}
+.approved-knowledge-open {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.approved-knowledge-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: start;
+}
+.approved-knowledge-article {
+  max-width: 1100px;
+}
+.approved-knowledge-empty {
+  justify-items: start;
+}
+.approved-knowledge-sr-only,
+.approved-knowledge-search > .field > span:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .approved-knowledge-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 24px;
+  }
+  .approved-knowledge-row-title {
+    grid-column: 1;
+    font-weight: 600;
+  }
+  .approved-knowledge-open {
+    grid-column: 2;
+    grid-row: 1 / 5;
+  }
+}
+@media (max-width: 700px) {
+  .approved-knowledge {
+    gap: 24px;
+  }
+  .approved-knowledge-row {
+    padding-inline: 8px;
+  }
+}

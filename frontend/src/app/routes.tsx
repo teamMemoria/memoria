@@ -1,6 +1,11 @@
 import type { CallApi } from '../types/callReview'
 import { CallOverview } from '../features/call-overview/CallOverview'
 import { Procedure } from '../features/procedure/Procedure'
+import type { ApprovedKnowledgeApi } from '../types/knowledge'
+import {
+  ApprovedKnowledge,
+  KnowledgeArticle,
+} from '../features/approved-knowledge/ApprovedKnowledge'
 import { Navigate, Outlet, Route, Routes, Link } from 'react-router'
 import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
@@ -20,10 +25,12 @@ export function AppRoutes({
   viewer,
   conversationsApi,
   callApi = null,
+  knowledgeApi = null,
 }: {
   viewer: Viewer
   conversationsApi: ConversationsApi | null
   callApi?: CallApi | null
+  knowledgeApi?: ApprovedKnowledgeApi | null
 }) {
   const home = `/${viewer.role}/conversations`
 
@@ -65,7 +72,16 @@ export function AppRoutes({
               element={<Procedure viewer={viewer} api={callApi} />}
             />
           </Route>
-          <Route path="knowledge" element={<h1>Knowledge Base</h1>} />
+          <Route path="knowledge">
+            <Route
+              index
+              element={<ApprovedKnowledge viewer={viewer} api={knowledgeApi} />}
+            />
+            <Route
+              path=":entryId"
+              element={<KnowledgeArticle viewer={viewer} api={knowledgeApi} />}
+            />
+          </Route>
         </Route>
         <Route
           path="manager"

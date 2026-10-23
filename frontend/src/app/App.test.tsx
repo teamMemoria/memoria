@@ -132,7 +132,7 @@ describe('sidebar within the workspace', () => {
     act(() => vi.advanceTimersByTime(100))
     expect(home.getAttribute('aria-expanded')).toBe('false')
     vi.useRealTimers()
-    await screen.findByRole('heading', { name: 'Knowledge Base' })
+    await screen.findByRole('heading', { name: 'Approved knowledge' })
   })
 
   it('opens for keyboard navigation, restores focus on Escape and dismisses outside the rail', async () => {
@@ -143,7 +143,7 @@ describe('sidebar within the workspace', () => {
     act(() => knowledge.focus())
     expect(home.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(knowledge)
-    await screen.findByRole('heading', { name: 'Knowledge Base' })
+    await screen.findByRole('heading', { name: 'Approved knowledge' })
     expect(document.activeElement).toBe(knowledge)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(document.activeElement).toBe(home)

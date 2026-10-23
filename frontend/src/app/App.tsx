@@ -1,4 +1,5 @@
 import type { CallApi } from '../types/callReview'
+import type { ApprovedKnowledgeApi } from '../types/knowledge'
 import { useEffect, useState } from 'react'
 import type { Viewer, ViewerApi } from '../types/viewer'
 import { Button, Panel } from '../components/controls'
@@ -15,10 +16,12 @@ export default function App({
   viewerApi,
   conversationsApi = null,
   callApi = null,
+  knowledgeApi = null,
 }: {
   viewerApi: ViewerApi | null
   conversationsApi?: ConversationsApi | null
   callApi?: CallApi | null
+  knowledgeApi?: ApprovedKnowledgeApi | null
 }) {
   const [state, setState] = useState<ViewerState>(
     viewerApi ? { status: 'loading' } : { status: 'unavailable' },
@@ -53,6 +56,7 @@ export default function App({
         viewer={state.viewer}
         conversationsApi={conversationsApi}
         callApi={callApi}
+        knowledgeApi={knowledgeApi}
       />
     )
 
