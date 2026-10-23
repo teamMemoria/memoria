@@ -1,5 +1,6 @@
 import type { CallApi } from '../types/callReview'
 import { CallOverview } from '../features/call-overview/CallOverview'
+import { Procedure } from '../features/procedure/Procedure'
 import { Navigate, Outlet, Route, Routes, Link } from 'react-router'
 import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
@@ -54,6 +55,14 @@ export function AppRoutes({
             <Route
               path=":conversationId"
               element={<CallOverview viewer={viewer} api={callApi} />}
+            />
+            <Route
+              path=":conversationId/transcript"
+              element={<Procedure viewer={viewer} api={callApi} />}
+            />
+            <Route
+              path=":conversationId/findings/:findingId"
+              element={<Procedure viewer={viewer} api={callApi} />}
             />
           </Route>
           <Route path="knowledge" element={<h1>Knowledge Base</h1>} />
