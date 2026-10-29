@@ -4,6 +4,7 @@ import unittest
 from copy import deepcopy
 
 from ml.abcd import prepare_conversation
+from ml.audit import quotation_context
 from ml.citations import validate_citations
 from ml.procedure_support import RULE_VERSION, check_procedure_support
 from ml.references import eligible_references, reference_version
@@ -393,6 +394,7 @@ class ProcedureSupportTests(unittest.TestCase):
                     [
                         ["agent", "The customer said:"],
                         ["agent", statement],
+                        ["agent", "Those were the customer's words."],
                         ["agent", "Thanks."],
                         ["agent", statement],
                     ]
@@ -406,7 +408,7 @@ class ProcedureSupportTests(unittest.TestCase):
                     for citation in result["findings"][0]["citations"]
                     if citation["kind"] == "conversation"
                 ]
-                self.assertEqual(evidence, [4])
+                self.assertEqual(evidence, [5])
 
     def test_reported_correction_cannot_erase_an_independent_contradiction(self):
         statement = "Purchase validation requires only an email address."
@@ -490,6 +492,7 @@ class ProcedureSupportTests(unittest.TestCase):
             [
                 ["agent", "The customer said:"],
                 ["agent", "Can I help with anything else?"],
+                ["agent", "Those were the customer's words."],
             ],
             [
                 ["agent", "Can I help with anything else?"],
@@ -528,6 +531,297 @@ class ProcedureSupportTests(unittest.TestCase):
                 self.assertEqual(
                     evidence[0]["quote"], "Do you need any further assistance?"
                 )
+
+    def test_reporting_scope_covers_middle_statements_and_ends_explicitly(self):
+        for opening, closing in (
+            ("The customer said:", "Those were the customer's words."),
+            ("The caller wrote:", "I was quoting the caller."),
+            ("I quote:", "That is what the customer said."),
+        ):
+            with self.subTest(opening=opening):
+                source = conversation(
+                    [
+                        ["agent", opening],
+                        ["agent", "I skipped account lookup."],
+                        ["action", "Purchase validation in progress ..."],
+                        ["agent", "I skipped purchase validation."],
+                        [
+                            "agent",
+                            "Purchase validation requires only an email address.",
+                        ],
+                        ["agent", closing],
+                    ]
+                )
+                results = check_procedure_support(source, catalog(), **CONTEXT)
+                self.assertTrue(
+                    all(result["result"] == "cannot-assess" for result in results)
+                )
+                self.assertFalse(any(result["findings"] for result in results))
+                self.assertEqual(
+                    [cue["turn_id"] for cue in quotation_context(source["events"], 3)],
+                    [1, 6],
+                )
+                source = conversation(
+                    [[event["speaker"], event["text"]] for event in source["events"]]
+                    + [["agent", "I skipped purchase validation."]]
+                )
+                procedure = check_procedure_support(source, catalog(), **CONTEXT)[0]
+                self.assertEqual(procedure["result"], "needs-review")
+                self.assertEqual(
+                    [
+                        citation["turn_id"]
+                        for citation in procedure["findings"][0]["citations"]
+                        if citation["kind"] == "conversation"
+                    ],
+                    [7],
+                )
+
+    def test_reported_correction_inside_a_block_cannot_clear_a_real_claim(self):
+        source = conversation(
+            [
+                ["agent", "Purchase validation requires only an email address."],
+                ["agent", "The customer said:"],
+                ["agent", "Hello."],
+                [
+                    "agent",
+                    "Correction: Purchase validation requires a username, email address and order ID.",
+                ],
+                ["agent", "Thank you."],
+                ["agent", "Those were the customer's words."],
+            ]
+        )
+        answers = check_procedure_support(source, catalog(), **CONTEXT)[1]
+        self.assertEqual(answers["result"], "needs-review")
+        self.assertEqual(len(answers["findings"]), 1)
+        self.assertEqual(
+            [
+                citation["turn_id"]
+                for citation in answers["findings"][0]["citations"]
+                if citation["kind"] == "conversation"
+            ],
+            [1],
+        )
+        self.assertTrue(answers["limitations"])
+
+    def test_nested_reports_keep_outer_scope_after_inner_attribution(self):
+        markers = (
+            ("The customer said:", "Those were the customer's words."),
+            ("The agent said:", "I was quoting the agent."),
+            ("The caller wrote:", "That is what the caller said."),
+        )
+        for depth in (2, 3):
+            with self.subTest(depth=depth):
+                selected = markers[:depth]
+                events = [["agent", opening] for opening, _ in selected]
+                events.append(["agent", "I skipped account lookup."])
+                middle_positions = []
+                for _, closing in reversed(selected[1:]):
+                    events.append(["agent", closing])
+                    middle_positions.append(len(events))
+                    events.append(["agent", "I skipped purchase validation."])
+                    events.append(["agent", "Hello."])
+                events.append(["agent", selected[0][1]])
+                source = conversation(events)
+                procedure = check_procedure_support(source, catalog(), **CONTEXT)[0]
+                self.assertEqual(procedure["result"], "cannot-assess")
+                self.assertFalse(procedure["findings"])
+                for position in middle_positions:
+                    self.assertIn(
+                        1,
+                        [
+                            cue["turn_id"]
+                            for cue in quotation_context(source["events"], position)
+                        ],
+                    )
+                source = conversation(
+                    events + [["agent", "I skipped purchase validation."]]
+                )
+                self.assertEqual(quotation_context(source["events"], len(events)), [])
+                procedure = check_procedure_support(source, catalog(), **CONTEXT)[0]
+                self.assertEqual(procedure["result"], "needs-review")
+                self.assertEqual(
+                    [
+                        citation["turn_id"]
+                        for citation in procedure["findings"][0]["citations"]
+                        if citation["kind"] == "conversation"
+                    ],
+                    [len(events) + 1],
+                )
+
+    def test_unclosed_outer_report_survives_a_closed_inner_report(self):
+        source = conversation(
+            [
+                ["agent", "The customer said:"],
+                ["agent", "The agent said:"],
+                ["agent", "I skipped account lookup."],
+                ["agent", "I was quoting the agent."],
+                ["agent", "I skipped purchase validation."],
+                ["agent", "Hello."],
+            ]
+        )
+        self.assertEqual(
+            [cue["turn_id"] for cue in quotation_context(source["events"], 4)],
+            [1],
+        )
+        self.assertFalse(
+            check_procedure_support(source, catalog(), **CONTEXT)[0]["findings"]
+        )
+
+    def test_mismatched_attribution_does_not_release_report_scope(self):
+        for opening, wrong_end, right_end in (
+            (
+                "The customer said:",
+                "I was quoting the agent.",
+                "I was quoting the caller.",
+            ),
+            (
+                "The agent said:",
+                "Those were the customer's words.",
+                "Those were the representative's words.",
+            ),
+        ):
+            with self.subTest(opening=opening):
+                events = [
+                    ["agent", opening],
+                    ["agent", "Hello."],
+                    ["agent", wrong_end],
+                    ["agent", "I skipped purchase validation."],
+                    ["agent", "Hello."],
+                ]
+                source = conversation(events)
+                self.assertEqual(
+                    check_procedure_support(source, catalog(), **CONTEXT)[0]["result"],
+                    "cannot-assess",
+                )
+                source = conversation(
+                    events
+                    + [
+                        ["agent", right_end],
+                        ["agent", "I skipped purchase validation."],
+                    ]
+                )
+                self.assertEqual(
+                    [cue["turn_id"] for cue in quotation_context(source["events"], 3)],
+                    [1, 6],
+                )
+                procedure = check_procedure_support(source, catalog(), **CONTEXT)[0]
+                self.assertEqual(procedure["result"], "needs-review")
+                self.assertEqual(
+                    [
+                        citation["turn_id"]
+                        for citation in procedure["findings"][0]["citations"]
+                        if citation["kind"] == "conversation"
+                    ],
+                    [7],
+                )
+
+    def test_generic_report_marker_can_end_with_either_known_party(self):
+        for ending in (
+            "Those were the customer's words.",
+            "I was quoting the representative.",
+        ):
+            with self.subTest(ending=ending):
+                source = conversation(
+                    [
+                        ["agent", "I quote:"],
+                        ["agent", "Hello."],
+                        ["agent", ending],
+                        ["agent", "I skipped purchase validation."],
+                    ]
+                )
+                self.assertEqual(quotation_context(source["events"], 3), [])
+                self.assertEqual(
+                    check_procedure_support(source, catalog(), **CONTEXT)[0]["result"],
+                    "needs-review",
+                )
+
+    def test_unclosed_report_is_uncertain_until_another_speaker_takes_over(self):
+        source = conversation(
+            [
+                ["agent", "The customer said:"],
+                ["agent", "I skipped account lookup."],
+                ["agent", "Thanks."],
+                ["action", "Purchase validation in progress ..."],
+                ["agent", "I skipped purchase validation."],
+            ]
+        )
+        procedure = check_procedure_support(source, catalog(), **CONTEXT)[0]
+        self.assertEqual(procedure["result"], "cannot-assess")
+        self.assertFalse(procedure["findings"])
+        self.assertEqual(
+            [cue["turn_id"] for cue in quotation_context(source["events"], 4)], [1]
+        )
+        source = conversation(
+            [[event["speaker"], event["text"]] for event in source["events"]]
+            + [["customer", "Thank you."], ["agent", "I skipped purchase validation."]]
+        )
+        self.assertEqual(quotation_context(source["events"], 6), [])
+        self.assertEqual(
+            check_procedure_support(source, catalog(), **CONTEXT)[0]["result"],
+            "needs-review",
+        )
+
+    def test_repetition_requests_work_in_both_directions_without_sticky_scope(self):
+        phrase = "I want a refund."
+        for asking, repeating in (("agent", "customer"), ("customer", "agent")):
+            for prompt in (
+                "Please repeat the phrase I want a refund.",
+                "Can you quote the words: I want a refund.",
+                "Please say this sentence: “I want a refund.”",
+            ):
+                with self.subTest(asking=asking, prompt=prompt):
+                    source = conversation(
+                        [
+                            [asking, prompt],
+                            [repeating, phrase],
+                            [asking, "Thank you."],
+                            [repeating, phrase],
+                        ]
+                    )
+                    self.assertEqual(
+                        [
+                            cue["turn_id"]
+                            for cue in quotation_context(source["events"], 1)
+                        ],
+                        [1],
+                    )
+                    self.assertEqual(quotation_context(source["events"], 3), [])
+
+    def test_closing_must_follow_work_and_substantive_customer_input(self):
+        for phrase in (
+            "Can I help with anything else?",
+            "Do you need any further assistance?",
+            "Is there anything else I can help you with today?",
+        ):
+            with self.subTest(phrase=phrase):
+                procedure = self.evaluate([["agent", phrase]] + supported_steps()[:-1])[
+                    0
+                ]
+                self.assertEqual(procedure["result"], "cannot-assess")
+                self.assertFalse(procedure["findings"])
+                self.assertIn(
+                    "wrap-up", procedure["details"]["steps"][-1]["explanation"]
+                )
+                events = supported_steps() + [
+                    ["customer", "Please explain the next step."]
+                ]
+                self.assertEqual(self.evaluate(events)[0]["result"], "cannot-assess")
+                events += [["agent", phrase]]
+                self.assertEqual(self.evaluate(events)[0]["result"], "meets-criteria")
+
+    def test_closing_allows_known_courtesy_replies_but_not_later_work(self):
+        for reply in ("Thanks!", "No, thank you.", "That’s all.", "Goodbye."):
+            with self.subTest(reply=reply):
+                self.assertEqual(
+                    self.evaluate(supported_steps() + [["customer", reply]])[0][
+                        "result"
+                    ],
+                    "meets-criteria",
+                )
+        events = supported_steps() + [["action", "Purchase validation in progress ..."]]
+        self.assertEqual(self.evaluate(events)[0]["result"], "cannot-assess")
+        events += [["agent", "Can I help with anything else?"]]
+        self.assertEqual(self.evaluate(events)[0]["result"], "meets-criteria")
 
     def test_corrections_must_match_the_method_condition(self):
         cases = (

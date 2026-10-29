@@ -188,7 +188,303 @@ class CompletenessTests(unittest.TestCase):
         self.assertEqual(completeness["result"], "cannot-assess")
         self.assertEqual(
             [request["state"] for request in completeness["details"]["requests"]],
-            ["active", "active"],
+            ["uncertain", "uncertain"],
+        )
+
+    def test_unsupported_changes_block_both_positive_and_negative_attachment(self):
+        changes = (
+            "Actually, please do not issue the refund.",
+            "Actually, forget the refund.",
+            "I mean do not refund it.",
+            "Actually, the request needs a different outcome.",
+        )
+        for change in changes:
+            for response in (
+                "I will not address your refund request.",
+                "I will process your refund.",
+                "Your refund is in progress.",
+            ):
+                with self.subTest(change=change, response=response):
+                    completeness, _ = evaluate(
+                        conversation(
+                            ("customer", "I want a refund."),
+                            ("customer", change),
+                            ("agent", response),
+                        )
+                    )
+                    self.assertEqual(completeness["result"], "cannot-assess")
+                    self.assertFalse(completeness["findings"])
+                    request = completeness["details"]["requests"][0]
+                    self.assertEqual(request["state"], "uncertain")
+                    self.assertEqual(request["response_citations"], [])
+                    self.assertEqual(request["change_citations"][0]["turn_id"], 2)
+                    self.assertIn("unresolved", completeness["limitations"][0])
+
+    def test_ambiguous_change_cannot_guess_among_multiple_active_requests(self):
+        completeness, _ = evaluate(
+            conversation(
+                ("customer", "I want a refund and I want to return an item."),
+                ("customer", "Actually, that needs a different outcome."),
+                ("agent", "I will not address your refund request."),
+                ("agent", "I will process your return."),
+            )
+        )
+        self.assertEqual(completeness["result"], "cannot-assess")
+        self.assertFalse(completeness["findings"])
+        for request in completeness["details"]["requests"]:
+            self.assertEqual(request["state"], "uncertain")
+            self.assertFalse(request["response_citations"])
+
+    def test_truncated_change_cues_are_uncertain_across_clause_boundaries(self):
+        for cue in ("Actually.", "Actually,", "I mean...", "I mean"):
+            for combined in (False, True):
+                with self.subTest(cue=cue, combined=combined):
+                    events = (
+                        [("customer", "I want a refund; " + cue)]
+                        if combined
+                        else [("customer", "I want a refund."), ("customer", cue)]
+                    )
+                    completeness, _ = evaluate(
+                        conversation(
+                            *events,
+                            ("agent", "I will not address your refund request."),
+                        )
+                    )
+                    self.assertEqual(completeness["result"], "cannot-assess")
+                    self.assertFalse(completeness["findings"])
+                    request = completeness["details"]["requests"][0]
+                    self.assertEqual(request["state"], "uncertain")
+                    self.assertFalse(request["response_citations"])
+                    self.assertEqual(
+                        request["change_citations"][0]["turn_id"], 1 if combined else 2
+                    )
+
+    def test_change_cues_require_a_complete_word_boundary(self):
+        for wording in (
+            "Actuallyship the refund.",
+            "I meaner a different answer.",
+            "This actually matters.",
+        ):
+            with self.subTest(wording=wording):
+                completeness, _ = evaluate(
+                    conversation(
+                        ("customer", "I want a refund."),
+                        ("customer", wording),
+                        ("agent", "I will not address your refund request."),
+                    )
+                )
+                self.assertEqual(completeness["result"], "needs-review")
+                self.assertEqual(
+                    completeness["details"]["requests"][0]["state"], "active"
+                )
+
+    def test_customer_clause_boundaries_do_not_change_request_semantics(self):
+        cases = (
+            (
+                ["I want a refund.", "Actually, please do not issue the refund."],
+                "I will not address your refund request.",
+                "cannot-assess",
+            ),
+            (
+                ["I want a refund.", "I mean please hold off for now."],
+                "I will process your refund.",
+                "cannot-assess",
+            ),
+            (
+                ["I want a refund.", "Actually, I want to return an item instead."],
+                "I will not address your return request.",
+                "needs-review",
+            ),
+            (
+                ["I want a refund.", "Cancel the refund request."],
+                "I will not address your refund request.",
+                "meets-criteria",
+            ),
+            (
+                ["I want a refund.", "I want to return an item.", "Never mind."],
+                "I will not address your refund request.",
+                "cannot-assess",
+            ),
+            (
+                ["I want a refund.", "Please email me the receipt."],
+                "I will not address your refund request.",
+                "needs-review",
+            ),
+        )
+
+        def outcomes(result):
+            return (
+                result["result"],
+                len(result["findings"]),
+                [
+                    (
+                        request["topic"],
+                        request["state"],
+                        request["response_kind"],
+                        request["recorded_completion_observed"],
+                    )
+                    for request in result["details"]["requests"]
+                ],
+            )
+
+        for clauses, response, expected in cases:
+            separate = conversation(
+                *[("customer", clause) for clause in clauses], ("agent", response)
+            )
+            baseline, _ = evaluate(separate)
+            self.assertEqual(baseline["result"], expected)
+            for delimiter in ("; ", ";", ";  "):
+                with self.subTest(clauses=clauses, delimiter=delimiter):
+                    source = conversation(
+                        ("customer", delimiter.join(clauses)), ("agent", response)
+                    )
+                    combined, _ = evaluate(source)
+                    self.assertEqual(outcomes(combined), outcomes(baseline))
+                    citations = [
+                        citation
+                        for check in combined["details"]["checks"]
+                        for citation in check["citations"]
+                    ]
+                    self.assertEqual(validate_citations(citations, [source], []), [])
+                    for request in combined["details"]["requests"]:
+                        self.assertEqual(request["request_citations"][0]["turn_id"], 1)
+                        for citation in request["change_citations"]:
+                            self.assertEqual(citation["turn_id"], 1)
+                            self.assertEqual(
+                                citation["quote"], source["events"][0]["text"]
+                            )
+
+    def test_quote_guard_precedes_customer_clause_processing(self):
+        phrase = "I want a refund; cancel the refund request."
+        source = conversation(
+            ("customer", "I want a refund."),
+            ("agent", "I will not address your refund request."),
+            ("agent", "Please repeat the phrase " + phrase),
+            ("customer", phrase),
+        )
+        completeness, _ = evaluate(source)
+        self.assertEqual(completeness["result"], "needs-review")
+        self.assertEqual(len(completeness["details"]["requests"]), 1)
+        request = completeness["details"]["requests"][0]
+        self.assertEqual(request["state"], "active")
+        self.assertFalse(request["change_citations"])
+        self.assertEqual(
+            [cite["turn_id"] for cite in completeness["findings"][0]["citations"]],
+            [1, 2],
+        )
+
+    def test_uncertainty_does_not_erase_an_already_supported_refusal(self):
+        completeness, _ = evaluate(
+            conversation(
+                ("customer", "I want a refund."),
+                ("agent", "I will not address your refund request."),
+                ("customer", "Actually, this needs a different outcome."),
+                ("agent", "I will process your refund."),
+            )
+        )
+        self.assertEqual(completeness["result"], "needs-review")
+        request = completeness["details"]["requests"][0]
+        self.assertEqual(request["state"], "uncertain")
+        self.assertEqual(request["response_kind"], "refusal")
+        self.assertEqual(
+            [cite["turn_id"] for cite in request["response_citations"]], [2]
+        )
+
+    def test_supported_clarification_resolves_uncertain_request_attachment(self):
+        completeness, _ = evaluate(
+            conversation(
+                ("customer", "I want to return an item."),
+                ("customer", "Actually, this needs a different outcome."),
+                ("customer", "Actually, I want a refund instead."),
+                ("agent", "I will process your refund."),
+            )
+        )
+        old, current = completeness["details"]["requests"]
+        self.assertEqual((old["state"], current["state"]), ("superseded", "active"))
+        self.assertEqual([cite["turn_id"] for cite in old["change_citations"]], [2, 3])
+        self.assertEqual(current["response_kind"], "promise")
+        self.assertEqual(current["response_citations"][0]["turn_id"], 4)
+        self.assertFalse(completeness["findings"])
+
+    def test_separate_later_request_remains_assessable_after_uncertainty(self):
+        completeness, _ = evaluate(
+            conversation(
+                ("customer", "I want a refund."),
+                ("customer", "Actually, this needs a different outcome."),
+                ("customer", "I want to return an item."),
+                ("agent", "I will not address your return request."),
+            )
+        )
+        self.assertEqual(completeness["result"], "needs-review")
+        old, current = completeness["details"]["requests"]
+        self.assertEqual(old["state"], "uncertain")
+        self.assertFalse(old["response_citations"])
+        self.assertEqual(current["response_kind"], "refusal")
+        self.assertEqual(
+            [cite["turn_id"] for cite in completeness["findings"][0]["citations"]],
+            [3, 4],
+        )
+
+    def test_customer_repetition_cannot_create_withdraw_or_replace_requests(self):
+        for phrase in (
+            "I want a refund.",
+            "Cancel the refund request.",
+            "Actually, I want to return an item instead.",
+        ):
+            for prompt in (
+                "Please repeat the phrase ",
+                "Can you quote the words: ",
+                "Please say this phrase: ",
+            ):
+                with self.subTest(phrase=phrase, prompt=prompt):
+                    completeness, _ = evaluate(
+                        conversation(
+                            ("customer", "I want a refund."),
+                            ("agent", "I will not address your refund request."),
+                            ("agent", prompt + phrase),
+                            ("customer", phrase),
+                        )
+                    )
+                    self.assertEqual(completeness["result"], "needs-review")
+                    requests = completeness["details"]["requests"]
+                    self.assertEqual(len(requests), 1)
+                    self.assertEqual(requests[0]["state"], "active")
+                    self.assertFalse(requests[0]["change_citations"])
+                    self.assertEqual(
+                        [
+                            cite["turn_id"]
+                            for cite in completeness["findings"][0]["citations"]
+                        ],
+                        [1, 2],
+                    )
+
+    def test_repeated_customer_request_does_not_establish_actual_intent(self):
+        completeness, _ = evaluate(
+            conversation(
+                ("agent", "Please repeat the phrase I want a refund."),
+                ("customer", "I want a refund."),
+                ("agent", "I will not address your refund request."),
+            )
+        )
+        self.assertEqual(completeness["result"], "cannot-assess")
+        self.assertEqual(completeness["details"]["requests"], [])
+        self.assertFalse(completeness["findings"])
+
+    def test_genuine_request_after_customer_repetition_keeps_its_own_evidence(self):
+        completeness, _ = evaluate(
+            conversation(
+                ("agent", "Please repeat the phrase I want a refund."),
+                ("customer", "I want a refund."),
+                ("agent", "Thank you."),
+                ("customer", "I want to return an item."),
+                ("agent", "I will not address your return request."),
+            )
+        )
+        self.assertEqual(completeness["result"], "needs-review")
+        self.assertEqual(len(completeness["details"]["requests"]), 1)
+        self.assertEqual(
+            [cite["turn_id"] for cite in completeness["findings"][0]["citations"]],
+            [4, 5],
         )
 
     def test_explicit_replacement_preserves_both_request_sources(self):
@@ -347,7 +643,7 @@ class CompletenessTests(unittest.TestCase):
             ("agent", "I will not address your refund request."),
             ("agent", "The customer said:"),
             ("agent", "I will process your refund."),
-            ("agent", "Thank you."),
+            ("agent", "I was quoting the customer."),
             ("agent", "I will process your refund."),
         )
         completeness, _ = evaluate(source)
@@ -361,6 +657,27 @@ class CompletenessTests(unittest.TestCase):
         )
         self.assertFalse(completeness["findings"])
         self.assertEqual(completeness["result"], "cannot-assess")
+
+    def test_customer_quote_block_does_not_mutate_request_inventory(self):
+        source = conversation(
+            ("customer", "I want a refund."),
+            ("agent", "I will not address your refund request."),
+            ("customer", "The agent said:"),
+            ("customer", "I want to return an item."),
+            ("customer", "Cancel the refund request."),
+            ("customer", "Actually, I want a refund instead."),
+            ("customer", "Those were the agent's words."),
+        )
+        completeness, _ = evaluate(source)
+        self.assertEqual(completeness["result"], "needs-review")
+        requests = completeness["details"]["requests"]
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0]["state"], "active")
+        self.assertFalse(requests[0]["change_citations"])
+        self.assertEqual(
+            [cite["turn_id"] for cite in completeness["findings"][0]["citations"]],
+            [1, 2],
+        )
 
     def test_later_explicit_response_can_address_the_same_previously_refused_request(
         self,

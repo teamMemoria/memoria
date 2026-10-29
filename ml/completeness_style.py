@@ -16,7 +16,11 @@ An adjacent repeat/quote request or reporting introduction/attribution makes a
 matching negative phrase or request response uncertain. Reported answers and
 promises cannot address a request or clear a refusal; an apology alone cannot
 erase an insult. Capability wording such as "I can process" is not a promise;
-commitments require "I will" or "I'll".
+commitments require "I will" or "I'll". Quoted customer wording cannot create or
+change requests. An unsupported explicit change leaves candidate requests
+uncertain until a supported clarification resolves them; no new intent is guessed.
+The same request grammar applies to separate turns and explicit clauses; citations
+always identify the original source turn rather than invented clause positions.
 """
 
 import re
@@ -26,11 +30,11 @@ from .audit import (
     category_result,
     criteria_issues,
     eligible_criteria,
-    quotation_context,
 )
 from .references import eligible_references, reference_passages
+from .wording import quotation_context
 
-RULE_VERSION = "refund-initiation-completeness-style-v3"
+RULE_VERSION = "refund-initiation-completeness-style-v4"
 CRITERION_VERSIONS = {
     "clarity": "sha256:0a3402a0f339e93d82e5a2bc79504b592659a1913c835ee55feb100c10734e39",
     "respect": "sha256:0a8f546f87b4f980619ed49012e4935be9f788e9b3b96f532013d79ff1ec1ce1",
@@ -138,81 +142,109 @@ def _applies(request, form, value):
 
 def _request_links(conversation, citations):
     requests, unknown, agent_forms = [], [], []
+
+    def uncertain(candidates, citation):
+        for request in candidates:
+            request["state"] = "uncertain"
+            request["change_citations"].append(citation)
+
+    def customer_clause(text, citation, turn):
+        active = [
+            request
+            for request in requests
+            if request["state"] in ("active", "uncertain")
+        ]
+        if text in (
+            "actually, the item is not shipped yet",
+            "the item has not shipped yet",
+        ):
+            if len(active) == 1:
+                active[0]["change_citations"].append(citation)
+            else:
+                uncertain(active, citation)
+                unknown.append(citation)
+            return
+        replacement = re.fullmatch(
+            r"(?:actually|i mean)\b(?:,\s*|\s+)?(.*?)(?: instead)?", text
+        )
+        if replacement and (request := _request(replacement[1])):
+            related = [
+                item
+                for item in active
+                if item["topic"] == request[0]
+                or {item["topic"], request[0]} <= {"refund", "return"}
+            ]
+            if len(related) != 1:
+                uncertain(related or active, citation)
+                unknown.append(citation)
+                return
+            related[0]["state"] = "superseded"
+            related[0]["change_citations"].append(citation)
+            text = replacement[1]
+        elif replacement:
+            uncertain(active, citation)
+            unknown.append(citation)
+            return
+        else:
+            withdrawal = re.fullmatch(
+                r"(?:cancel (?:the |my )?(refund|return) request|never mind|cancel that request|i don't need that anymore)",
+                text,
+            )
+            if withdrawal:
+                targets = [
+                    item
+                    for item in active
+                    if not withdrawal[1] or item["topic"] == withdrawal[1]
+                ]
+                if len(targets) == 1:
+                    targets[0]["state"] = "withdrawn"
+                    targets[0]["change_citations"].append(citation)
+                else:
+                    uncertain(targets, citation)
+                    unknown.append(citation)
+                return
+            if re.fullmatch(COURTESY, text) or re.fullmatch(
+                r"(?:my (?:name|username|email|order id|account id) is )?\[[a-z_]+_\d+\](?:[,; ]+\[[a-z_]+_\d+\])*",
+                text,
+            ):
+                return
+        parsed = _request(text)
+        if parsed is None:
+            unknown.append(citation)
+            return
+        topic, method = parsed
+        requests.append(
+            {
+                "id": f"{conversation['id']}:request:{turn}:{len(requests) + 1}",
+                "topic": topic,
+                "method": method,
+                "state": "active",
+                "request_citations": [citation],
+                "change_citations": [],
+                "response_citations": [],
+                "response_kind": None,
+                "recorded_completion_observed": False,
+            }
+        )
+
     for position, event in enumerate(conversation["events"]):
         text, turn = _normal(event["text"]), event["turn_id"]
         citation = citations[turn]
-        active = [request for request in requests if request["state"] == "active"]
         if event["speaker"] == "customer":
-            replacement = re.fullmatch(
-                r"(?:actually,? |i mean )(.+?)(?: instead)?", text
-            )
-            if replacement and (request := _request(replacement[1])):
-                related = [
-                    item
-                    for item in active
-                    if item["topic"] == request[0]
-                    or {item["topic"], request[0]} <= {"refund", "return"}
-                ]
-                if len(related) != 1:
-                    unknown.append(citation)
-                    continue
-                related[0]["state"] = "superseded"
-                related[0]["change_citations"].append(citation)
-                parts = [replacement[1]]
+            context = quotation_context(conversation["events"], position)
+            if context:
+                unknown.extend(
+                    [citation, *[citations[cue["turn_id"]] for cue in context]]
+                )
             else:
-                withdrawal = re.fullmatch(
-                    r"(?:cancel (?:the |my )?(refund|return) request|never mind|cancel that request|i don't need that anymore)",
-                    text,
-                )
-                if withdrawal:
-                    targets = [
-                        item
-                        for item in active
-                        if not withdrawal[1] or item["topic"] == withdrawal[1]
-                    ]
-                    if len(targets) == 1:
-                        targets[0]["state"] = "withdrawn"
-                        targets[0]["change_citations"].append(citation)
-                    else:
-                        unknown.append(citation)
-                    continue
-                if text in (
-                    "actually, the item is not shipped yet",
-                    "the item has not shipped yet",
-                ):
-                    if len(active) == 1:
-                        active[0]["change_citations"].append(citation)
-                    else:
-                        unknown.append(citation)
-                    continue
-                if re.fullmatch(COURTESY, text) or re.fullmatch(
-                    r"(?:my (?:name|username|email|order id|account id) is )?\[[a-z_]+_\d+\](?:[,; ]+\[[a-z_]+_\d+\])*",
+                for clause in re.split(
+                    r";\s*| and (?=(?:please|can you|i (?:want|need|would like))\b)",
                     text,
                 ):
-                    continue
-                parts = re.split(
-                    r"; | and (?=(?:please|can you|i (?:want|need|would like))\b)", text
-                )
-            for part in parts:
-                parsed = _request(part)
-                if parsed is None:
-                    unknown.append(citation)
-                    continue
-                topic, method = parsed
-                requests.append(
-                    {
-                        "id": f"{conversation['id']}:request:{turn}:{len(requests) + 1}",
-                        "topic": topic,
-                        "method": method,
-                        "state": "active",
-                        "request_citations": [citation],
-                        "change_citations": [],
-                        "response_citations": [],
-                        "response_kind": None,
-                        "recorded_completion_observed": False,
-                    }
-                )
+                    if clause:
+                        customer_clause(_normal(clause), citation, turn)
             continue
+        active = [request for request in requests if request["state"] == "active"]
         if event["speaker"] == "action":
             if re.fullmatch(
                 r"a refund has been made for the amount of \$\d+(?:\.\d{2})?", text
@@ -233,15 +265,7 @@ def _request_links(conversation, citations):
                 continue
         else:
             form, value = _agent_form(text)
-            if form in (
-                "insult",
-                "contradiction",
-                "refusal",
-                "promise",
-                "method-promise",
-                "answer",
-                "method-answer",
-            ):
+            if form != "unknown":
                 context = quotation_context(conversation["events"], position)
                 if context:
                     form = "unknown"
@@ -273,42 +297,7 @@ def _request_links(conversation, citations):
     return requests, unknown, agent_forms
 
 
-def check_completeness_style(conversation, references, criteria, *, as_of, scope):
-    """Check only recognised wording; callers supply validated masked evidence."""
-    try:
-        current_version = transcript_version(conversation)
-        if conversation["transcript_version"] != current_version:
-            raise ValueError("Transcript version does not match its evidence.")
-    except (KeyError, TypeError):
-        raise ValueError("Invalid conversation evidence.") from None
-    guidelines = eligible_references(references, as_of=as_of, scope=scope)
-    if scope != "refund-initiation":
-        checks = [
-            _check(
-                "unsupported-scope",
-                "cannot-assess",
-                "These request and wording patterns cover refund initiation only.",
-                [],
-                "Use reviewed rules appropriate to the conversation's scope.",
-            )
-        ]
-        return [
-            category_result(conversation, category, checks)
-            for category in ("completeness", "communication-style")
-        ]
-    limits = [
-        {
-            "id": ref["id"],
-            "version": ref["version"],
-            "interpretation_limits": list(ref.get("interpretation_limits", [])),
-        }
-        for ref in guidelines
-    ]
-    passages = conversation_passages([conversation])
-    citations = {
-        passage["citation"]["turn_id"]: passage["citation"] for passage in passages
-    }
-    requests, unknown, forms = _request_links(conversation, citations)
+def _completeness_result(conversation, requests, unknown, limits):
     checks = []
     for request in requests:
         evidence = (
@@ -316,7 +305,7 @@ def check_completeness_style(conversation, references, criteria, *, as_of, scope
             + request["change_citations"]
             + request["response_citations"]
         )
-        if request["state"] != "active":
+        if request["state"] in ("withdrawn", "superseded"):
             result, reason = (
                 "meets-criteria",
                 "The request was explicitly withdrawn or superseded; it is not an unanswered active request.",
@@ -325,6 +314,11 @@ def check_completeness_style(conversation, references, criteria, *, as_of, scope
             result, reason = (
                 "needs-review",
                 "The agent explicitly stated that this request would not be addressed.",
+            )
+        elif request["state"] == "uncertain":
+            result, reason = (
+                "cannot-assess",
+                "An explicit change is unresolved; later wording cannot be confidently linked to this request.",
             )
         elif request["response_kind"]:
             result, reason = (
@@ -359,7 +353,7 @@ def check_completeness_style(conversation, references, criteria, *, as_of, scope
                 "Review the surrounding transcript and clarify any additional or changed requests.",
             )
         )
-    completeness = category_result(
+    return category_result(
         conversation,
         "completeness",
         checks,
@@ -371,6 +365,10 @@ def check_completeness_style(conversation, references, criteria, *, as_of, scope
         },
     )
 
+
+def _style_result(
+    conversation, criteria, requests, unknown, forms, citations, *, as_of, scope
+):
     approved = {
         ref["section_id"]: ref
         for ref in eligible_criteria(criteria, as_of=as_of, scope=scope)
@@ -481,7 +479,7 @@ def check_completeness_style(conversation, references, criteria, *, as_of, scope
                 "Use a clear, relevant response without personal insults; unfamiliar phrasing requires human review, not automatic fault.",
             )
         )
-    style = category_result(
+    return category_result(
         conversation,
         "communication-style",
         checks,
@@ -490,4 +488,54 @@ def check_completeness_style(conversation, references, criteria, *, as_of, scope
             "recognition_boundary": "Wording only; no emotion, intent, personality, satisfaction or vocal-tone inference.",
         },
     )
-    return [completeness, style]
+
+
+def check_completeness_style(conversation, references, criteria, *, as_of, scope):
+    """Check only recognised wording; callers supply validated masked evidence."""
+    try:
+        current_version = transcript_version(conversation)
+        if conversation["transcript_version"] != current_version:
+            raise ValueError("Transcript version does not match its evidence.")
+    except (KeyError, TypeError):
+        raise ValueError("Invalid conversation evidence.") from None
+    guidelines = eligible_references(references, as_of=as_of, scope=scope)
+    if scope != "refund-initiation":
+        checks = [
+            _check(
+                "unsupported-scope",
+                "cannot-assess",
+                "These request and wording patterns cover refund initiation only.",
+                [],
+                "Use reviewed rules appropriate to the conversation's scope.",
+            )
+        ]
+        return [
+            category_result(conversation, category, checks)
+            for category in ("completeness", "communication-style")
+        ]
+    limits = [
+        {
+            "id": ref["id"],
+            "version": ref["version"],
+            "interpretation_limits": list(ref.get("interpretation_limits", [])),
+        }
+        for ref in guidelines
+    ]
+    passages = conversation_passages([conversation])
+    citations = {
+        passage["citation"]["turn_id"]: passage["citation"] for passage in passages
+    }
+    requests, unknown, forms = _request_links(conversation, citations)
+    return [
+        _completeness_result(conversation, requests, unknown, limits),
+        _style_result(
+            conversation,
+            criteria,
+            requests,
+            unknown,
+            forms,
+            citations,
+            as_of=as_of,
+            scope=scope,
+        ),
+    ]

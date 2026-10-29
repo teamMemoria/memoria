@@ -3,18 +3,20 @@
 Recognised action forms are ABCD account lookup, validation-in-progress, entered
 details and refund records, plus explicit validation-completion forms used in
 constructed tests. Recognised speech is the finite policy/skip/correction forms
-below and tested equivalents. Adjacent explicit quotation/repetition cues leave
-the affected statement unattributed. Unmatched speech is never interpreted as fault.
+below and tested equivalents. Explicit quotation/repetition context leaves the
+affected statement unattributed. A closing must follow the last recorded action
+or non-courtesy customer message. Unmatched speech is never interpreted as fault.
 """
 
 import re
 
 from .abcd import conversation_passages, transcript_version
-from .audit import category_result, quotation_context
+from .audit import category_result
 from .citations import validate_citations
 from .references import eligible_references, reference_issues, reference_passages
+from .wording import quotation_context
 
-RULE_VERSION = "refund-initiation-procedure-support-v3"
+RULE_VERSION = "refund-initiation-procedure-support-v4"
 SUPPORTED = {
     "account-lookup": "sha256:246f40ce9e1d2b814b533a4b06178296f9a23aeeb746cd9de6eed262106bea46",
     "purchase-validation": "sha256:93169ef390df0df481e67f916fec58c8bd21c17179ef42a2e90d345e6b86383a",
@@ -77,6 +79,7 @@ CLOSINGS = {
     "can i help with anything else?",
     "do you need any further assistance?",
 }
+CLOSING_REPLY = r"(?:no(?:,? (?:thanks|thank you|that's all|that is all))?|thanks(?: for your help)?|thank you(?: for your help)?|that's all|that is all|bye|goodbye|have a great day)"
 CONTROL_SPEECH = CLOSINGS | {
     "hi!",
     "hello.",
@@ -124,7 +127,7 @@ def _reported_check(rule, event, context, citations):
     return _check(
         rule,
         "cannot-assess",
-        "Adjacent quotation or repetition context does not establish the agent's own admission or factual claim.",
+        "Explicit quotation or repetition context does not establish the agent's own admission or factual claim.",
         [citations[item["turn_id"]] for item in [event, *context]],
         "Review the cited context before attributing this statement to the agent.",
     )
@@ -234,6 +237,142 @@ def _prior_satisfaction(section, events, skip, method):
     return _detail_evidence(prior, method) if section == "refund-details" else []
 
 
+def _validation_evidence(events):
+    observed = [
+        event
+        for event in events
+        if event["kind"] == "action" and _text(event) in VALIDATION_ACTIVITY
+    ]
+    complete = [event for event in observed if _text(event) in VALIDATION_SUCCESS]
+    result = "cannot-assess"
+    explanation = (
+        "No recognised evidence establishes this step; absence is not a skipped step."
+    )
+    if complete:
+        preceding_customers = [
+            event
+            for event in events
+            if event["speaker"] == "customer"
+            and event["turn_id"] < complete[0]["turn_id"]
+        ]
+        before = " ".join(event["text"] for event in preceding_customers)
+        if all(
+            re.search(r"\[" + field + r"_\d+\]", before)
+            for field in ("USERNAME", "EMAIL", "ORDER_ID")
+        ):
+            result, explanation = (
+                "meets-criteria",
+                "Standard purchase fields precede an explicit recorded validation completion.",
+            )
+            observed = preceding_customers + complete
+        else:
+            explanation = "Validation completion is recorded, but the standard input checks cannot be established."
+    elif observed:
+        explanation = (
+            "Validation is recorded as in progress; this is not evidence of successful validation."
+            if any(
+                _text(event) == "purchase validation in progress ..."
+                for event in observed
+            )
+            else "Validation activity is complete, but no successful outcome is stated."
+        )
+    return result, explanation, observed
+
+
+def _closing_evidence(events, reported):
+    closings = [
+        event
+        for event in events
+        if event["speaker"] == "agent" and _text(event) in CLOSINGS
+    ]
+    work = [
+        event
+        for event in events
+        if event["kind"] == "action"
+        or (
+            event["speaker"] == "customer"
+            and not re.fullmatch(
+                CLOSING_REPLY, _text(event).replace("’", "'").rstrip(".!?")
+            )
+        )
+    ]
+    last_work = work[-1] if work else None
+    direct = [event for event in closings if event["turn_id"] not in reported]
+    observed = [
+        event
+        for event in direct
+        if last_work is None or event["turn_id"] > last_work["turn_id"]
+    ]
+    result = "cannot-assess"
+    explanation = (
+        "No recognised evidence establishes this step; absence is not a skipped step."
+    )
+    if observed:
+        result, explanation = (
+            "meets-criteria",
+            "A recognised offer follows the last recorded action or substantive customer message; no vocal tone is inferred.",
+        )
+    elif direct:
+        explanation = "The offer precedes later recorded work or customer input, so a wrap-up offer is not established."
+        observed = [*direct, last_work]
+    elif closings:
+        explanation = "Only reported or repeated closing wording is present; the agent's own offer of further assistance is not established."
+        observed = [
+            evidence
+            for event in closings
+            for evidence in [event, *reported[event["turn_id"]]]
+        ]
+    return result, explanation, observed
+
+
+def _observed_step(section, events, method, method_event, reported):
+    if section == "purchase-validation":
+        return _validation_evidence(events)
+    if section == "closing":
+        return _closing_evidence(events, reported)
+    observed = []
+    result = "cannot-assess"
+    explanation = (
+        "No recognised evidence establishes this step; absence is not a skipped step."
+    )
+    if section == "refund-reason":
+        observed = [
+            event
+            for event in events
+            if event["speaker"] == "customer" and _text(event) in REASONS
+        ]
+        if observed:
+            result, explanation = (
+                "meets-criteria",
+                "The customer supplied a recognised refund reason; no repeated question is required.",
+            )
+    elif section == "account-lookup":
+        observed = [
+            event
+            for event in events
+            if event["kind"] == "action"
+            and re.fullmatch(
+                r"account has been pulled up for \[person_\d+\]\.", _text(event)
+            )
+        ]
+        if observed:
+            result, explanation = (
+                "meets-criteria",
+                "Account lookup is recorded. This does not establish identity or refund authority.",
+            )
+    elif section == "refund-details":
+        observed = _detail_evidence(events, method)
+        if observed:
+            observed = [method_event, *observed]
+            result, explanation = (
+                "meets-criteria",
+                "Recorded details match the recognised selected-method branch, not refund authority.",
+            )
+        else:
+            explanation = "The selected method is recognised, but its required detail entry is not established."
+    return result, explanation, observed
+
+
 def _procedure(events, reference_for, citations, reported):
     checks, steps = [], []
     method, method_event = _method(events)
@@ -321,108 +460,9 @@ def _procedure(events, reference_for, citations, reported):
                     "Follow the cited requirement; do not treat a later action as erasing this admission.",
                 )
             else:
-                observed = []
-                result = "cannot-assess"
-                explanation = "No recognised evidence establishes this step; absence is not a skipped step."
-                if section == "refund-reason":
-                    observed = [
-                        event
-                        for event in events
-                        if event["speaker"] == "customer" and _text(event) in REASONS
-                    ]
-                    if observed:
-                        result, explanation = (
-                            "meets-criteria",
-                            "The customer supplied a recognised refund reason; no repeated question is required.",
-                        )
-                elif section == "account-lookup":
-                    observed = [
-                        event
-                        for event in events
-                        if event["kind"] == "action"
-                        and re.fullmatch(
-                            r"account has been pulled up for \[person_\d+\]\.",
-                            _text(event),
-                        )
-                    ]
-                    if observed:
-                        result, explanation = (
-                            "meets-criteria",
-                            "Account lookup is recorded. This does not establish identity or refund authority.",
-                        )
-                elif section == "purchase-validation":
-                    observed = [
-                        event
-                        for event in events
-                        if event["kind"] == "action"
-                        and _text(event) in VALIDATION_ACTIVITY
-                    ]
-                    complete = [
-                        event
-                        for event in observed
-                        if _text(event) in VALIDATION_SUCCESS
-                    ]
-                    if complete:
-                        preceding_customers = [
-                            event
-                            for event in events
-                            if event["speaker"] == "customer"
-                            and event["turn_id"] < complete[0]["turn_id"]
-                        ]
-                        before = " ".join(
-                            event["text"] for event in preceding_customers
-                        )
-                        if all(
-                            re.search(r"\[" + field + r"_\d+\]", before)
-                            for field in ("USERNAME", "EMAIL", "ORDER_ID")
-                        ):
-                            result, explanation = (
-                                "meets-criteria",
-                                "Standard purchase fields precede an explicit recorded validation completion.",
-                            )
-                            observed = preceding_customers + complete
-                        else:
-                            explanation = "Validation completion is recorded, but the standard input checks cannot be established."
-                    elif observed:
-                        explanation = (
-                            "Validation is recorded as in progress; this is not evidence of successful validation."
-                            if any(
-                                _text(event) == "purchase validation in progress ..."
-                                for event in observed
-                            )
-                            else "Validation activity is complete, but no successful outcome is stated."
-                        )
-                elif section == "refund-details":
-                    observed = _detail_evidence(events, method)
-                    if observed:
-                        observed = [method_event, *observed]
-                        result, explanation = (
-                            "meets-criteria",
-                            "Recorded details match the recognised selected-method branch, not refund authority.",
-                        )
-                    else:
-                        explanation = "The selected method is recognised, but its required detail entry is not established."
-                elif section == "closing":
-                    closings = [
-                        event
-                        for event in events
-                        if event["speaker"] == "agent" and _text(event) in CLOSINGS
-                    ]
-                    observed = [
-                        event for event in closings if event["turn_id"] not in reported
-                    ]
-                    if observed:
-                        result, explanation = (
-                            "meets-criteria",
-                            "A recognised equivalent offer of further assistance is present; no vocal tone is inferred.",
-                        )
-                    elif closings:
-                        explanation = "Only reported or repeated closing wording is present; the agent's own offer of further assistance is not established."
-                        observed = [
-                            evidence
-                            for event in closings
-                            for evidence in [event, *reported[event["turn_id"]]]
-                        ]
+                result, explanation, observed = _observed_step(
+                    section, events, method, method_event, reported
+                )
                 check = _check(
                     section,
                     result,
@@ -437,6 +477,14 @@ def _procedure(events, reference_for, citations, reported):
                 "explanation": check["explanation"],
             }
         )
+    checks.extend(
+        _ordering_checks(events, recovery, reference_for, citations, reported, steps)
+    )
+    return checks, steps
+
+
+def _ordering_checks(events, recovery, reference_for, citations, reported, steps):
+    checks = []
     ordering = [
         event
         for event in events
@@ -503,7 +551,7 @@ def _procedure(events, reference_for, citations, reported):
                     ],
                 )
             )
-    return checks, steps
+    return checks
 
 
 def _answers(events, reference_for, citations, reported):

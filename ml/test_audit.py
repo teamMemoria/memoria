@@ -1,20 +1,18 @@
 """Contract/trust tests; constructed expectations are not human audit judgements."""
 
 import json
-import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
-from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from ml.abcd import main, prepare_conversation
+from ml.abcd import prepare_conversation
 from ml.audit import (
     build_assessment,
     category_result,
     criteria_issues,
     eligible_criteria,
+    validate_rubric,
 )
 from ml.citations import validate_citations
 from ml.references import (
@@ -84,6 +82,7 @@ def assessment(conversation, records, sources=None):
 class RubricTests(unittest.TestCase):
     def test_draft_sections_have_real_local_provenance_and_unset_approvals(self):
         document = json.loads((ML_ROOT / "rubric.json").read_text())
+        validate_rubric(document)
         for section in document["references"]:
             self.assertEqual(section["version"], reference_version(section))
             self.assertEqual(section["status"], "unapproved")
@@ -160,6 +159,18 @@ class RubricTests(unittest.TestCase):
             self.assertTrue(criteria_issues(criterion, as_of=AS_OF, scope=SCOPE))
         with self.assertRaises(ValueError):
             eligible_criteria([test_approved_criterion()] * 2, as_of=AS_OF, scope=SCOPE)
+
+    def test_rubric_rejects_malformed_or_mislocated_sections(self):
+        malformed = [None, {"schema_version": 1, "references": [None]}]
+        misplaced = criteria()
+        misplaced.reverse()
+        malformed.append({"schema_version": 1, "references": misplaced})
+        changed = criteria()
+        changed[0]["version"] = "changed"
+        malformed.append({"schema_version": 1, "references": changed})
+        for document in malformed:
+            with self.subTest(document=document), self.assertRaises(ValueError):
+                validate_rubric(document)
 
 
 class ResultContractTests(unittest.TestCase):
@@ -396,7 +407,7 @@ class AuditIntegrationTests(unittest.TestCase):
                         ["customer", "I want a refund."],
                         ["agent", "The customer said:"],
                         ["agent", statement],
-                        ["agent", "Thank you."],
+                        ["agent", "I was quoting the customer."],
                         ["agent", statement],
                     ]
                 )
@@ -457,7 +468,11 @@ class AuditIntegrationTests(unittest.TestCase):
                 self.assertFalse(result["findings"])
                 self.assertTrue(result["limitations"])
 
-                events += [["agent", "Thank you."], ["agent", statement]]
+                events += [
+                    ["agent", "I was quoting the customer."],
+                    ["agent", "Thank you."],
+                    ["agent", statement],
+                ]
                 result = self.assess_events(events)["results"][0]
                 self.assertEqual(result["result"], "meets-criteria")
                 closing = next(
@@ -512,7 +527,11 @@ class AuditIntegrationTests(unittest.TestCase):
                         [1, 2],
                     )
 
-                    events += [["agent", "Thank you."], ["agent", statement]]
+                    events += [
+                        ["agent", "I was quoting the customer."],
+                        ["agent", "Thank you."],
+                        ["agent", statement],
+                    ]
                     result = self.assess_events(events)["results"][2]
                     self.assertFalse(result["findings"])
                     self.assertEqual(
@@ -525,42 +544,223 @@ class AuditIntegrationTests(unittest.TestCase):
                         [2, len(events)],
                     )
 
-    def test_cli_rejects_malformed_or_mislocated_rubric_without_export(self):
-        output_root = ML_ROOT / "output"
-        output_root.mkdir(exist_ok=True)
-        malformed = [None, {"schema_version": 1, "references": [None]}]
-        misplaced = criteria()
-        misplaced.reverse()
-        malformed.append({"schema_version": 1, "references": misplaced})
-        with tempfile.TemporaryDirectory(dir=output_root) as directory:
-            root = Path(directory)
-            evidence, rubric, output = (
-                root / "evidence.json",
-                root / "rubric.json",
-                root / "audit.json",
-            )
-            evidence.write_text(json.dumps(prepared()))
-            for document in malformed:
-                rubric.write_text(json.dumps(document))
-                stdout, stderr = StringIO(), StringIO()
-                with redirect_stdout(stdout), redirect_stderr(stderr):
-                    code = main(
-                        [
-                            "audit",
-                            "--evidence",
-                            str(evidence),
-                            "--criteria",
-                            str(rubric),
-                            "--as-of",
-                            AS_OF,
-                            "--output",
-                            str(output),
+    def test_quotation_scope_keeps_middle_passages_neutral_in_export(self):
+        for category, statement in (
+            ("procedure", "I skipped purchase validation."),
+            (
+                "answer-support",
+                "Purchase validation requires only an email address.",
+            ),
+            ("completeness", "I will not address your refund request."),
+        ):
+            for opener, closer in (
+                ("The customer said:", "Those were the customer's words."),
+                ("The caller wrote:", "That is what the customer said."),
+                ("I quote:", "I was quoting the customer."),
+            ):
+                for closed in (False, True):
+                    with self.subTest(category=category, opener=opener, closed=closed):
+                        events = [
+                            ["customer", "I want a refund."],
+                            ["agent", opener],
+                            ["agent", "Hello."],
+                            ["agent", statement],
+                            ["agent", "Thank you."],
                         ]
+                        if closed:
+                            events.append(["agent", closer])
+                        result = next(
+                            item
+                            for item in self.assess_events(events)["results"]
+                            if item["category"] == category
+                        )
+                        self.assertEqual(result["result"], "cannot-assess")
+                        self.assertFalse(result["findings"])
+                        self.assertTrue(result["limitations"])
+
+                        if not closed:
+                            events.append(["agent", closer])
+                        events.append(["agent", statement])
+                        result = next(
+                            item
+                            for item in self.assess_events(events)["results"]
+                            if item["category"] == category
+                        )
+                        self.assertEqual(result["result"], "needs-review")
+                        turns = [
+                            citation["turn_id"]
+                            for finding in result["findings"]
+                            for citation in finding["citations"]
+                            if citation["kind"] == "conversation"
+                        ]
+                        self.assertIn(len(events), turns)
+                        self.assertNotIn(4, turns)
+
+    def test_closing_requires_wrap_up_context_in_export(self):
+        from ml.test_procedure_support import supported_steps
+
+        work = supported_steps()[:-1]
+        for position in (0, 3, len(work) - 1):
+            with self.subTest(position=position):
+                events = [list(event) for event in work]
+                events.insert(position, ["agent", "Can I help with anything else?"])
+                result = self.assess_events(events)["results"][0]
+                self.assertEqual(result["result"], "cannot-assess")
+                self.assertFalse(result["findings"])
+                events += [
+                    ["agent", "Do you need any further assistance?"],
+                    ["customer", "Thank you."],
+                ]
+                result = self.assess_events(events)["results"][0]
+                self.assertEqual(result["result"], "meets-criteria")
+
+    def test_nested_reports_keep_outer_attribution_until_its_end(self):
+        for category, statement in (
+            ("procedure", "I skipped purchase validation."),
+            (
+                "answer-support",
+                "Purchase validation requires only an email address.",
+            ),
+            ("completeness", "I will not address your refund request."),
+        ):
+            for depth in (2, 3):
+                with self.subTest(category=category, depth=depth):
+                    events = [["customer", "I want a refund."]]
+                    events += [["agent", "The customer said:"]] * depth
+                    events += [
+                        ["agent", "Hello."],
+                        ["agent", "I was quoting the customer."],
+                        ["agent", statement],
+                        ["agent", "Thank you."],
+                    ]
+                    result = next(
+                        item
+                        for item in self.assess_events(events)["results"]
+                        if item["category"] == category
                     )
-                self.assertEqual(code, 1)
-                self.assertIn("error", json.loads(stderr.getvalue()))
-                self.assertNotIn("Traceback", stderr.getvalue())
-                self.assertFalse(output.exists())
+                    self.assertEqual(result["result"], "cannot-assess")
+                    self.assertFalse(result["findings"])
+                    events += [["agent", "I was quoting the customer."]] * (depth - 1)
+                    events.append(["agent", statement])
+                    result = next(
+                        item
+                        for item in self.assess_events(events)["results"]
+                        if item["category"] == category
+                    )
+                    self.assertEqual(result["result"], "needs-review")
+                    turns = [
+                        citation["turn_id"]
+                        for finding in result["findings"]
+                        for citation in finding["citations"]
+                        if citation["kind"] == "conversation"
+                    ]
+                    self.assertIn(len(events), turns)
+                    self.assertNotIn(depth + 4, turns)
+
+    def test_unclear_changes_prevent_new_faults_and_passes_in_export(self):
+        for change in (
+            "Actually, please do not issue the refund.",
+            "I mean please hold off for now.",
+            "Actually, could we deal with a different thing instead?",
+        ):
+            for response in (
+                "I will not address your refund request.",
+                "I will process your refund.",
+            ):
+                with self.subTest(change=change, response=response):
+                    result = self.assess_events(
+                        [
+                            ["customer", "I want a refund."],
+                            ["customer", change],
+                            ["agent", response],
+                        ]
+                    )["results"][2]
+                    self.assertEqual(result["result"], "cannot-assess")
+                    self.assertFalse(result["findings"])
+                    self.assertTrue(result["limitations"])
+                    request = result["details"]["requests"][0]
+                    self.assertEqual(request["state"], "uncertain")
+                    self.assertEqual(request["response_citations"], [])
+
+    def test_request_clauses_have_the_same_meaning_across_turn_boundaries(self):
+        for clauses, response in (
+            (
+                ["I want a refund", "actually, please do not issue the refund"],
+                "I will not address your refund request.",
+            ),
+            (
+                ["I want a refund", "I mean please hold off for now"],
+                "I will process your refund.",
+            ),
+            (
+                ["I want a refund", "actually, I want to return an item instead"],
+                "I will not address your return request.",
+            ),
+            (
+                ["I want a refund", "cancel the refund request"],
+                "I will not address your refund request.",
+            ),
+            (
+                ["I want a refund", "I want to return an item", "never mind"],
+                "I will not address your refund request.",
+            ),
+        ):
+            with self.subTest(clauses=clauses, response=response):
+                separate_events = [["customer", part + "."] for part in clauses]
+                separate = self.assess_events([*separate_events, ["agent", response]])[
+                    "results"
+                ][2]
+                combined = self.assess_events(
+                    [["customer", "; ".join(clauses) + "."], ["agent", response]]
+                )["results"][2]
+                self.assertEqual(combined["result"], separate["result"])
+                self.assertEqual(len(combined["findings"]), len(separate["findings"]))
+                self.assertEqual(
+                    [
+                        (request["topic"], request["state"], request["response_kind"])
+                        for request in combined["details"]["requests"]
+                    ],
+                    [
+                        (request["topic"], request["state"], request["response_kind"])
+                        for request in separate["details"]["requests"]
+                    ],
+                )
+
+    def test_customer_repetition_cannot_change_exported_requests(self):
+        for phrase in (
+            "I want a refund.",
+            "Cancel the refund request.",
+            "Actually, I want to return an item instead.",
+        ):
+            with self.subTest(phrase=phrase):
+                result = self.assess_events(
+                    [
+                        ["customer", "I want a refund."],
+                        ["agent", "I will not address your refund request."],
+                        ["agent", "Please repeat the phrase " + phrase],
+                        ["customer", phrase],
+                    ]
+                )["results"][2]
+                self.assertEqual(result["result"], "needs-review")
+                self.assertEqual(len(result["details"]["requests"]), 1)
+                self.assertEqual(result["details"]["requests"][0]["state"], "active")
+                self.assertEqual(
+                    [
+                        citation["turn_id"]
+                        for citation in result["findings"][0]["citations"]
+                    ],
+                    [1, 2],
+                )
+        result = self.assess_events(
+            [
+                ["agent", "Please repeat the phrase I want a refund."],
+                ["customer", "I want a refund."],
+                ["agent", "I will not address your refund request."],
+            ]
+        )["results"][2]
+        self.assertEqual(result["result"], "cannot-assess")
+        self.assertEqual(result["details"]["requests"], [])
+        self.assertFalse(result["findings"])
 
     def test_both_rule_modules_are_pure_and_use_the_same_contract(self):
         from ml.completeness_style import check_completeness_style
@@ -590,45 +790,15 @@ class AuditIntegrationTests(unittest.TestCase):
             eligible_references(references, as_of=AS_OF, scope=SCOPE),
         )
         self.assertEqual(len(saved["results"]), 4)
+        self.assertEqual(saved["assessment_type"], "automated")
+        self.assertEqual(saved["conversation_id"], conversation["id"])
+        self.assertEqual(
+            saved["transcript_version"], conversation["transcript_version"]
+        )
+        self.assertNotIn("decision", saved)
+        self.assertNotIn("LABEL_CANARY", json.dumps(saved))
         self.assertEqual((evidence, references, rubric), before)
         self.assertEqual(saved["results"][-1]["result"], "cannot-assess")
-
-    def test_cli_audit_is_local_versioned_and_does_not_publish_human_metrics(self):
-        output_root = ML_ROOT / "output"
-        output_root.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=output_root) as directory:
-            root = Path(directory)
-            source, output = root / "evidence.json", root / "audit.json"
-            source.write_text(json.dumps(prepared()))
-            stdout, stderr = StringIO(), StringIO()
-            with redirect_stdout(stdout), redirect_stderr(stderr):
-                code = main(
-                    [
-                        "audit",
-                        "--evidence",
-                        str(source),
-                        "--as-of",
-                        AS_OF,
-                        "--output",
-                        str(output),
-                    ]
-                )
-            self.assertEqual((code, stderr.getvalue()), (0, ""))
-            saved = json.loads(output.read_text())
-            self.assertEqual(saved["assessment_type"], "automated")
-            self.assertEqual(
-                saved["human_evaluation"],
-                {
-                    "status": "not-evaluated",
-                    "label_agreement": None,
-                    "citation_support": None,
-                    "unsupported_fault_rate": None,
-                },
-            )
-            self.assertTrue(saved["criteria_exclusions"])
-            self.assertEqual(len(saved["assessments"][0]["results"]), 4)
-            self.assertNotIn("LABEL_CANARY", json.dumps(saved))
-            self.assertEqual(saved["licence"], prepared()["licence"])
 
 
 if __name__ == "__main__":

@@ -456,7 +456,7 @@ def main(argv=None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     prepare = commands.add_parser("prepare", help="Mask the two pinned source records.")
     prepare.add_argument("--source", required=True)
-    for name in ("search", "validate", "audit"):
+    for name in ("search", "validate"):
         command = commands.add_parser(name)
         command.add_argument("--evidence", required=True)
         command.add_argument("--references", default="ml/references.json")
@@ -465,10 +465,8 @@ def main(argv=None) -> int:
         if name == "search":
             command.add_argument("--query", required=True)
             command.add_argument("--review-only", action="store_true")
-        elif name == "validate":
-            command.add_argument("--citations", required=True)
         else:
-            command.add_argument("--criteria", default="ml/rubric.json")
+            command.add_argument("--citations", required=True)
     for command in commands.choices.values():
         command.add_argument(
             "--output", required=True, help="JSON path within ml/output/."
@@ -485,7 +483,7 @@ def main(argv=None) -> int:
             raise ValueError("Output must be a file inside ml/output/.")
         if any(
             output == Path(value).resolve()
-            for field in ("source", "evidence", "references", "citations", "criteria")
+            for field in ("source", "evidence", "references", "citations")
             if (value := getattr(args, field, None)) is not None
         ):
             raise ValueError("Output must not overwrite an input file.")
@@ -525,105 +523,19 @@ def main(argv=None) -> int:
             ):
                 raise ValueError("Reference catalog contains an invalid record.")
             reference_passages(references)
-            exclusions = []
-            for ref in references:
-                reasons = reference_issues(ref, as_of=args.as_of, scope=args.scope)
-                if reasons:
-                    exclusions.append({"id": ref["id"], "reasons": reasons})
             if args.command == "validate":
                 errors = validate_citations(
                     read_json(args.citations), evidence["conversations"], eligible
                 )
                 result = {"valid": not errors, "errors": errors}
                 exit_code = int(bool(errors))
-            elif args.command == "audit":
-                from .audit import build_assessment, criteria_issues, eligible_criteria
-                from .completeness_style import RULE_VERSION as wording_version
-                from .completeness_style import check_completeness_style
-                from .procedure_support import RULE_VERSION as procedure_version
-                from .procedure_support import check_procedure_support
-
-                rubric = read_json(args.criteria)
-                if (
-                    not isinstance(rubric, dict)
-                    or rubric.keys() != {"schema_version", "references"}
-                    or type(rubric["schema_version"]) is not int
-                    or rubric["schema_version"] != 1
-                    or not isinstance(rubric["references"], list)
-                    or any(
-                        not isinstance(ref, dict)
-                        or ref.keys() - OPTIONAL_CONTENT_FIELDS != RECORD_FIELDS
-                        for ref in rubric["references"]
-                    )
-                ):
-                    raise ValueError("Unsupported review rubric schema.")
-                criteria = rubric["references"]
-                for index, criterion in enumerate(criteria):
-                    source = criterion.get("source")
-                    if (
-                        not isinstance(source, dict)
-                        or source.get("pointer") != f"/references/{index}/text"
-                    ):
-                        raise ValueError(
-                            "Rubric provenance does not match its local section position."
-                        )
-                reference_passages(criteria)
-                approved_criteria = eligible_criteria(
-                    criteria, as_of=args.as_of, scope=args.scope
-                )
-                assessments = []
-                for conversation in evidence["conversations"]:
-                    results = check_procedure_support(
-                        conversation, references, as_of=args.as_of, scope=args.scope
-                    )
-                    results += check_completeness_style(
-                        conversation,
-                        references,
-                        criteria,
-                        as_of=args.as_of,
-                        scope=args.scope,
-                    )
-                    assessments.append(
-                        build_assessment(
-                            conversation,
-                            results,
-                            eligible + approved_criteria,
-                            as_of=args.as_of,
-                            scope=args.scope,
-                            rule_versions={
-                                "procedure-support": procedure_version,
-                                "completeness-style": wording_version,
-                            },
-                        )
-                    )
-                result = {
-                    "schema_version": 1,
-                    "assessment_type": "automated",
-                    "source": evidence["source"],
-                    "masking_version": evidence["masking_version"],
-                    "as_of": args.as_of,
-                    "scope": args.scope,
-                    "assessments": assessments,
-                    "reference_exclusions": exclusions,
-                    "criteria_exclusions": [
-                        {"id": criterion["id"], "reasons": reasons}
-                        for criterion in criteria
-                        if (
-                            reasons := criteria_issues(
-                                criterion, as_of=args.as_of, scope=args.scope
-                            )
-                        )
-                    ],
-                    "human_evaluation": {
-                        "status": "not-evaluated",
-                        "label_agreement": None,
-                        "citation_support": None,
-                        "unsupported_fault_rate": None,
-                    },
-                    "licence": evidence["licence"],
-                }
             else:
                 candidates = references if args.review_only else eligible
+                exclusions = []
+                for ref in references:
+                    reasons = reference_issues(ref, as_of=args.as_of, scope=args.scope)
+                    if reasons:
+                        exclusions.append({"id": ref["id"], "reasons": reasons})
                 result = {
                     "purpose": "reference-review"
                     if args.review_only
