@@ -1,10 +1,15 @@
 """Contract/trust tests; constructed expectations are not human audit judgements."""
 
 import json
+import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
+from ml.abcd import main, prepare_conversation
 from ml.audit import (
     build_assessment,
     category_result,
@@ -18,7 +23,7 @@ from ml.references import (
     reference_passages,
     reference_version,
 )
-from ml.test_evidence import catalog, prepared
+from ml.test_evidence import catalog, prepared, source_record
 
 AS_OF = "2026-10-29"
 SCOPE = "refund-initiation"
@@ -299,6 +304,331 @@ class ResultContractTests(unittest.TestCase):
         self.assertEqual(
             len(eligible_references(references, as_of=AS_OF, scope=SCOPE)), 5
         )
+
+
+class AuditIntegrationTests(unittest.TestCase):
+    def assess_events(self, events):
+        from ml.completeness_style import RULE_VERSION as wording_version
+        from ml.completeness_style import check_completeness_style
+        from ml.procedure_support import RULE_VERSION as procedure_version
+        from ml.procedure_support import check_procedure_support
+
+        record = source_record()
+        record["original"] = events
+        record.pop("delexed")
+        conversation = prepare_conversation(record, split="train", index=0)
+        references, rubric = catalog(), criteria()
+        records = check_procedure_support(
+            conversation, references, as_of=AS_OF, scope=SCOPE
+        ) + check_completeness_style(
+            conversation, references, rubric, as_of=AS_OF, scope=SCOPE
+        )
+        return build_assessment(
+            conversation,
+            records,
+            eligible_references(references, as_of=AS_OF, scope=SCOPE),
+            as_of=AS_OF,
+            scope=SCOPE,
+            rule_versions={
+                "procedure-support": procedure_version,
+                "completeness-style": wording_version,
+            },
+        )
+
+    def test_reported_and_repeated_faults_remain_neutral_in_export(self):
+        candidates = (
+            ("procedure", "I skipped purchase validation."),
+            (
+                "procedure",
+                "I validated the purchase before the first account lookup.",
+            ),
+            (
+                "answer-support",
+                "Purchase validation requires only an email address.",
+            ),
+            ("completeness", "I will not address your refund request."),
+        )
+        for category, statement in candidates:
+            contexts = (
+                [["agent", "The customer said:"], ["agent", statement]],
+                [["agent", statement], ["agent", "I was quoting the customer."]],
+                [
+                    ["customer", "Please repeat the phrase " + statement],
+                    ["agent", statement],
+                ],
+                [
+                    ["customer", f'Can you quote the words: "{statement}"'],
+                    ["agent", statement],
+                ],
+            )
+            for context in contexts:
+                with self.subTest(category=category, context=context):
+                    saved = self.assess_events(
+                        [["customer", "I want a refund."], *context]
+                    )
+                    result = next(
+                        item
+                        for item in saved["results"]
+                        if item["category"] == category
+                    )
+                    self.assertEqual(result["result"], "cannot-assess")
+                    self.assertFalse(result["findings"])
+                    self.assertTrue(result["limitations"])
+                    self.assertTrue(
+                        any(
+                            "quot" in limitation or "reported/repeated" in limitation
+                            for limitation in result["limitations"]
+                        )
+                    )
+
+    def test_later_independent_faults_keep_their_own_citations_in_export(self):
+        for category, statement in (
+            ("procedure", "I skipped purchase validation."),
+            (
+                "answer-support",
+                "Purchase validation requires only an email address.",
+            ),
+            ("completeness", "I will not address your refund request."),
+        ):
+            with self.subTest(category=category):
+                saved = self.assess_events(
+                    [
+                        ["customer", "I want a refund."],
+                        ["agent", "The customer said:"],
+                        ["agent", statement],
+                        ["agent", "Thank you."],
+                        ["agent", statement],
+                    ]
+                )
+                result = next(
+                    item for item in saved["results"] if item["category"] == category
+                )
+                self.assertEqual(result["result"], "needs-review")
+                evidence = [
+                    citation
+                    for finding in result["findings"]
+                    for citation in finding["citations"]
+                    if citation["kind"] == "conversation"
+                ]
+                self.assertIn(5, [citation["turn_id"] for citation in evidence])
+                self.assertNotIn(3, [citation["turn_id"] for citation in evidence])
+                self.assertTrue(result["limitations"])
+
+    def test_reported_correction_cannot_clear_a_supported_exported_finding(self):
+        saved = self.assess_events(
+            [
+                ["agent", "Purchase validation requires only an email address."],
+                ["agent", "The customer said:"],
+                [
+                    "agent",
+                    "Correction: Purchase validation requires a username, email address and order ID.",
+                ],
+            ]
+        )
+        result = saved["results"][1]
+        self.assertEqual(result["result"], "needs-review")
+        self.assertEqual(
+            [
+                citation["turn_id"]
+                for citation in result["findings"][0]["citations"]
+                if citation["kind"] == "conversation"
+            ],
+            [1],
+        )
+        self.assertTrue(result["limitations"])
+
+    def test_only_a_genuine_closing_satisfies_the_exported_procedure(self):
+        from ml.test_procedure_support import supported_steps
+
+        statement = "Can I help with anything else?"
+        contexts = (
+            [["agent", "The customer said:"], ["agent", statement]],
+            [["agent", statement], ["agent", "I was quoting the customer."]],
+            [
+                ["customer", "Please repeat the phrase " + statement],
+                ["agent", statement],
+            ],
+        )
+        for context in contexts:
+            with self.subTest(context=context):
+                events = supported_steps()[:-1] + context
+                result = self.assess_events(events)["results"][0]
+                self.assertEqual(result["result"], "cannot-assess")
+                self.assertFalse(result["findings"])
+                self.assertTrue(result["limitations"])
+
+                events += [["agent", "Thank you."], ["agent", statement]]
+                result = self.assess_events(events)["results"][0]
+                self.assertEqual(result["result"], "meets-criteria")
+                closing = next(
+                    check
+                    for check in result["details"]["checks"]
+                    if check["rule_id"].endswith(":closing")
+                )
+                self.assertEqual(
+                    [
+                        citation["turn_id"]
+                        for citation in closing["citations"]
+                        if citation["kind"] == "conversation"
+                    ],
+                    [len(events)],
+                )
+
+    def test_only_genuine_responses_can_resolve_an_exported_refusal(self):
+        for statement in (
+            "I will process your refund.",
+            "I will refund it to your credit card.",
+            "Your refund is in progress.",
+            "I have credited your card for $79.",
+        ):
+            contexts = (
+                [["agent", "The customer said:"], ["agent", statement]],
+                [["agent", statement], ["agent", "I was quoting the customer."]],
+                [
+                    ["customer", "Please repeat the phrase " + statement],
+                    ["agent", statement],
+                ],
+            )
+            for context in contexts:
+                with self.subTest(statement=statement, context=context):
+                    events = [
+                        ["customer", "I want a refund."],
+                        ["agent", "I will not address your refund request."],
+                        *context,
+                    ]
+                    result = self.assess_events(events)["results"][2]
+                    self.assertEqual(result["result"], "needs-review")
+                    request = result["details"]["requests"][0]
+                    self.assertEqual(request["response_kind"], "refusal")
+                    self.assertEqual(
+                        [cite["turn_id"] for cite in request["response_citations"]],
+                        [2],
+                    )
+                    self.assertEqual(
+                        [
+                            cite["turn_id"]
+                            for cite in result["findings"][0]["citations"]
+                        ],
+                        [1, 2],
+                    )
+
+                    events += [["agent", "Thank you."], ["agent", statement]]
+                    result = self.assess_events(events)["results"][2]
+                    self.assertFalse(result["findings"])
+                    self.assertEqual(
+                        [
+                            cite["turn_id"]
+                            for cite in result["details"]["requests"][0][
+                                "response_citations"
+                            ]
+                        ],
+                        [2, len(events)],
+                    )
+
+    def test_cli_rejects_malformed_or_mislocated_rubric_without_export(self):
+        output_root = ML_ROOT / "output"
+        output_root.mkdir(exist_ok=True)
+        malformed = [None, {"schema_version": 1, "references": [None]}]
+        misplaced = criteria()
+        misplaced.reverse()
+        malformed.append({"schema_version": 1, "references": misplaced})
+        with tempfile.TemporaryDirectory(dir=output_root) as directory:
+            root = Path(directory)
+            evidence, rubric, output = (
+                root / "evidence.json",
+                root / "rubric.json",
+                root / "audit.json",
+            )
+            evidence.write_text(json.dumps(prepared()))
+            for document in malformed:
+                rubric.write_text(json.dumps(document))
+                stdout, stderr = StringIO(), StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    code = main(
+                        [
+                            "audit",
+                            "--evidence",
+                            str(evidence),
+                            "--criteria",
+                            str(rubric),
+                            "--as-of",
+                            AS_OF,
+                            "--output",
+                            str(output),
+                        ]
+                    )
+                self.assertEqual(code, 1)
+                self.assertIn("error", json.loads(stderr.getvalue()))
+                self.assertNotIn("Traceback", stderr.getvalue())
+                self.assertFalse(output.exists())
+
+    def test_both_rule_modules_are_pure_and_use_the_same_contract(self):
+        from ml.completeness_style import check_completeness_style
+        from ml.procedure_support import check_procedure_support
+
+        evidence, references, rubric = prepared(), catalog(), criteria()
+        before = deepcopy((evidence, references, rubric))
+        conversation = evidence["conversations"][0]
+        with (
+            patch.object(
+                Path, "read_text", side_effect=AssertionError("File I/O in rule")
+            ),
+            patch.object(
+                Path, "read_bytes", side_effect=AssertionError("File I/O in rule")
+            ),
+            patch("socket.socket", side_effect=AssertionError("Network in rule")),
+        ):
+            records = check_procedure_support(
+                conversation, references, as_of=AS_OF, scope=SCOPE
+            )
+            records += check_completeness_style(
+                conversation, references, rubric, as_of=AS_OF, scope=SCOPE
+            )
+        saved = assessment(
+            conversation,
+            records,
+            eligible_references(references, as_of=AS_OF, scope=SCOPE),
+        )
+        self.assertEqual(len(saved["results"]), 4)
+        self.assertEqual((evidence, references, rubric), before)
+        self.assertEqual(saved["results"][-1]["result"], "cannot-assess")
+
+    def test_cli_audit_is_local_versioned_and_does_not_publish_human_metrics(self):
+        output_root = ML_ROOT / "output"
+        output_root.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=output_root) as directory:
+            root = Path(directory)
+            source, output = root / "evidence.json", root / "audit.json"
+            source.write_text(json.dumps(prepared()))
+            stdout, stderr = StringIO(), StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = main(
+                    [
+                        "audit",
+                        "--evidence",
+                        str(source),
+                        "--as-of",
+                        AS_OF,
+                        "--output",
+                        str(output),
+                    ]
+                )
+            self.assertEqual((code, stderr.getvalue()), (0, ""))
+            saved = json.loads(output.read_text())
+            self.assertEqual(saved["assessment_type"], "automated")
+            self.assertEqual(
+                saved["human_evaluation"],
+                {
+                    "status": "not-evaluated",
+                    "label_agreement": None,
+                    "citation_support": None,
+                    "unsupported_fault_rate": None,
+                },
+            )
+            self.assertTrue(saved["criteria_exclusions"])
+            self.assertEqual(len(saved["assessments"][0]["results"]), 4)
+            self.assertNotIn("LABEL_CANARY", json.dumps(saved))
+            self.assertEqual(saved["licence"], prepared()["licence"])
 
 
 if __name__ == "__main__":
