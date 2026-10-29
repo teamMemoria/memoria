@@ -236,6 +236,16 @@
   gap: 8px;
 }
 
+.agent-context form {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.agent-context .field {
+  width: 100%;
+}
+
 .evidence-finding h3 {
   margin: 4px 0 0;
   color: var(--color-heading);

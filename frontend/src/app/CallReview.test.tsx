@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import type { CallReview } from '../types/callReview'
+import type { AgentContext, CallReview } from '../types/callReview'
 import type { Conversation } from '../features/conversations/conversations'
 import {
   agent, callFixture, callPath, createDevCallApi, deferred, findingPath, openApp,
@@ -212,5 +212,46 @@ describe('Agent call review', () => {
     await act(() => router.navigate(callPath + '/transcript?reference=UNRELATED#approved-reference'))
     expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Approved reference unavailable' })).toBeTruthy()
     expect(within(screen.getByRole('dialog')).queryByText('Delivery procedure')).toBeNull()
+  })
+})
+
+describe('Agent context', () => {
+  const note = 'The customer was verified by chat before this call.'
+  const contextField = () => screen.findByLabelText<HTMLTextAreaElement>('Context for this call')
+
+  it('saves context without requesting a Manager review and keeps it after navigating away', async () => {
+    const callApi = createDevCallApi()
+    const requestReview = vi.spyOn(callApi, 'requestReview')
+    const { router } = openApp({ path: findingPath, callApi })
+    fireEvent.change(await contextField(), { target: { value: note } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save context' }))
+    await screen.findByText(/^Saved /)
+    expect(requestReview).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Automatic feedback' })).toBeTruthy()
+    await act(() => router.navigate(callPath))
+    await act(() => router.navigate(findingPath))
+    expect((await contextField()).value).toBe(note)
+  })
+
+  it('shows an error and keeps the typed text when saving fails', async () => {
+    const callApi = { ...createDevCallApi(), saveContext: vi.fn().mockRejectedValue(new Error('Offline')) }
+    openApp({ path: findingPath, callApi })
+    fireEvent.change(await contextField(), { target: { value: note } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save context' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Context could not be saved. Please try again.')
+    expect((await contextField()).value).toBe(note)
+    expect(screen.queryByText(/^Saved /)).toBeNull()
+  })
+
+  it('sends one save while a save is in progress', async () => {
+    const save = deferred<AgentContext>()
+    const saveContext = vi.fn(() => save.promise)
+    openApp({ path: findingPath, callApi: { ...createDevCallApi(), saveContext } })
+    fireEvent.change(await contextField(), { target: { value: note } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save context' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Saving…' }))
+    expect(saveContext).toHaveBeenCalledTimes(1)
+    await act(() => save.resolve({ text: note, savedAt: '2026-10-29T15:00:00Z' }))
+    expect(screen.getByText('Saved Oct 29, 2026, 3:00 PM UTC')).toBeTruthy()
   })
 })

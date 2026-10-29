@@ -17,6 +17,7 @@ import type {
 } from '../../types/callReview'
 import { canReadKnowledge } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
+import { AgentContext } from './AgentContext'
 import { Waveforms } from './Waveforms'
 import './procedure.css'
 
@@ -519,6 +520,15 @@ function AgentProcedure({
           </section>
         )}
       </div>
+      {finding && api && (
+        <AgentContext
+          api={api}
+          agentId={viewer.id}
+          conversationId={call.id}
+          saved={call.agentContext}
+          onSaved={(agentContext) => state.update({ agentContext })}
+        />
+      )}
       <footer className="evidence-footer">
         <p>
           {fullTranscript
