@@ -2,23 +2,26 @@
 
 Rule implementations supply explicit checks. Constructed tests establish only
 those documented patterns, not language understanding or human label agreement.
-All functions operate on values; file access and orchestration belong to the CLI.
+Callers supply parsed values and explicit assessment context.
 """
 
 import json
-import re
 from copy import deepcopy
 from hashlib import sha256
 
+from . import wording
 from .abcd import transcript_version
 from .citations import validate_citations
 from .references import (
     OPTIONAL_CONTENT_FIELDS,
     RECORD_FIELDS,
     reference_issues,
+    reference_passages,
     reference_version,
     review_issues,
 )
+
+quotation_context = wording.quotation_context
 
 CATEGORIES = ("procedure", "answer-support", "completeness", "communication-style")
 RESULTS = ("meets-criteria", "needs-review", "cannot-assess")
@@ -29,56 +32,31 @@ CRITERIA_IDS = {
 }
 
 
-def quotation_context(events: list[dict], position: int) -> list[dict]:
-    """Return adjacent explicit report/repetition cues, not inferred intent."""
-
-    def normal(text):
-        return " ".join(text.casefold().replace("’", "'").split()).rstrip(".!?")
-
-    phrase = re.escape(normal(events[position]["text"]))
-    cues = []
-    previous = next(
-        (
-            event
-            for event in reversed(events[:position])
-            if event["speaker"] != "action"
-        ),
-        None,
-    )
-    if previous is not None:
-        text = normal(previous["text"])
-        if (
-            previous["speaker"] == "customer"
-            and re.fullmatch(
-                r"(?:please|can you) (?:repeat|quote|say) (?:the |this )?(?:phrase|words)[: ]+[\"']?"
-                + phrase
-                + r"[.!?]?[\"']?",
-                text,
-            )
-        ) or (
-            previous["speaker"] == "agent"
-            and re.fullmatch(
-                r"(?:the (?:customer|caller) (?:said|wrote)|they said|i quote|the customer's words were):",
-                text,
-            )
-        ):
-            cues.append(previous)
-    following = next(
-        (event for event in events[position + 1 :] if event["speaker"] != "action"),
-        None,
-    )
+def validate_rubric(rubric: dict) -> None:
+    """Validate catalog shape, source positions and versions without approving it."""
     if (
-        following is not None
-        and following["speaker"] == "agent"
-        and normal(following["text"])
-        in {
-            "those were the customer's words",
-            "that is what the customer said",
-            "i was quoting the customer",
-        }
+        not isinstance(rubric, dict)
+        or rubric.keys() != {"schema_version", "references"}
+        or type(rubric["schema_version"]) is not int
+        or rubric["schema_version"] != 1
+        or not isinstance(rubric["references"], list)
+        or any(
+            not isinstance(section, dict)
+            or section.keys() - OPTIONAL_CONTENT_FIELDS != RECORD_FIELDS
+            for section in rubric["references"]
+        )
     ):
-        cues.append(following)
-    return cues
+        raise ValueError("Unsupported review rubric schema.")
+    for index, section in enumerate(rubric["references"]):
+        source = section.get("source")
+        if (
+            not isinstance(source, dict)
+            or source.get("pointer") != f"/references/{index}/text"
+        ):
+            raise ValueError(
+                "Rubric provenance does not match its local section position."
+            )
+    reference_passages(rubric["references"])
 
 
 def criteria_issues(criterion: dict, *, as_of: str, scope: str) -> list[str]:

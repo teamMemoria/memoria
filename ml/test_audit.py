@@ -10,6 +10,7 @@ from ml.audit import (
     category_result,
     criteria_issues,
     eligible_criteria,
+    validate_rubric,
 )
 from ml.citations import validate_citations
 from ml.references import (
@@ -79,6 +80,7 @@ def assessment(conversation, records, sources=None):
 class RubricTests(unittest.TestCase):
     def test_draft_sections_have_real_local_provenance_and_unset_approvals(self):
         document = json.loads((ML_ROOT / "rubric.json").read_text())
+        validate_rubric(document)
         for section in document["references"]:
             self.assertEqual(section["version"], reference_version(section))
             self.assertEqual(section["status"], "unapproved")
@@ -155,6 +157,18 @@ class RubricTests(unittest.TestCase):
             self.assertTrue(criteria_issues(criterion, as_of=AS_OF, scope=SCOPE))
         with self.assertRaises(ValueError):
             eligible_criteria([test_approved_criterion()] * 2, as_of=AS_OF, scope=SCOPE)
+
+    def test_rubric_rejects_malformed_or_mislocated_sections(self):
+        malformed = [None, {"schema_version": 1, "references": [None]}]
+        misplaced = criteria()
+        misplaced.reverse()
+        malformed.append({"schema_version": 1, "references": misplaced})
+        changed = criteria()
+        changed[0]["version"] = "changed"
+        malformed.append({"schema_version": 1, "references": changed})
+        for document in malformed:
+            with self.subTest(document=document), self.assertRaises(ValueError):
+                validate_rubric(document)
 
 
 class ResultContractTests(unittest.TestCase):
