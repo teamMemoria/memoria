@@ -82,20 +82,12 @@ def validate_citations(
 
     fields = {
         "conversation": {
-            "kind",
             "conversation_id",
             "transcript_version",
             "turn_id",
             "event_kind",
-            "quote",
         },
-        "reference": {
-            "kind",
-            "reference_id",
-            "reference_version",
-            "section_id",
-            "quote",
-        },
+        "reference": {"reference_id", "reference_version", "section_id"},
     }
     errors = []
     for index, citation in enumerate(citations):
@@ -107,10 +99,11 @@ def validate_citations(
         if not isinstance(kind, str) or kind not in fields:
             errors.append(prefix + "kind must be conversation or reference")
             continue
-        if set(citation) != fields[kind]:
+        expected = fields[kind] | {"kind", "quote"}
+        if set(citation) != expected:
             errors.append(prefix + "fields do not match the citation schema")
             continue
-        text_fields = fields[kind] - {"turn_id"}
+        text_fields = expected - {"turn_id"}
         if any(not _nonempty_text(citation[field]) for field in text_fields):
             errors.append(prefix + "text fields must be nonempty strings")
             continue

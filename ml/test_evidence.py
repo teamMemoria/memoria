@@ -4,7 +4,7 @@ import gzip
 import json
 import tempfile
 import unittest
-from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 from hashlib import sha256
 from io import StringIO
@@ -39,53 +39,49 @@ SOURCE = {
     "path": "data/abcd_v1.1.json",
     "sha256": ABCD_SHA256,
 }
-HUMAN_SEARCH_CASES = (
-    {
-        "query": "username email order ID validate purchase",
-        "target": "references",
-        "expected_ids": ["abcd-refund-initiate-purchase-validation"],
-        "forbidden_ids": [
-            "abcd-refund-initiate-account-lookup",
-            "abcd-refund-initiate-refund-details",
-        ],
-        "reviewed_by": "Nicolas",
-        "reviewed_at": "2026-10-28",
-        "review_basis": "Human acceptance of AI-assisted relevance review",
-    },
-    {
-        "query": "gift card paper check full address",
-        "target": "references",
-        "expected_ids": [
-            "abcd-refund-initiate-refund-details",
-            "abcd-refund-initiate-refund-method",
-        ],
-        "forbidden_ids": ["abcd-refund-initiate-account-lookup"],
-        "reviewed_by": "Nicolas",
-        "reviewed_at": "2026-10-28",
-        "review_basis": "Human acceptance of AI-assisted relevance review",
-    },
-    {
-        "query": "existing refund add another item",
-        "target": "references",
-        "expected_ids": [],
-        "forbidden_ids": [
-            "abcd-refund-initiate-refund-method",
-            "abcd-refund-initiate-purchase-validation",
-            "abcd-refund-initiate-refund-amount",
-        ],
-        "reviewed_by": "Nicolas",
-        "reviewed_at": "2026-10-28",
-        "review_basis": "Human acceptance of AI-assisted relevance review",
-    },
-    {
-        "query": "orbital telescope calibration",
-        "target": "references",
-        "expected_ids": [],
-        "forbidden_ids": [],
-        "reviewed_by": "Nicolas",
-        "reviewed_at": "2026-10-28",
-        "review_basis": "Human acceptance of AI-assisted relevance review",
-    },
+HUMAN_REVIEW = {
+    "reviewed_by": "Nicolas",
+    "reviewed_at": "2026-10-28",
+    "review_basis": "Human acceptance of AI-assisted relevance review",
+}
+HUMAN_SEARCH_CASES = tuple(
+    {**case, **HUMAN_REVIEW}
+    for case in (
+        {
+            "query": "username email order ID validate purchase",
+            "target": "references",
+            "expected_ids": ["abcd-refund-initiate-purchase-validation"],
+            "forbidden_ids": [
+                "abcd-refund-initiate-account-lookup",
+                "abcd-refund-initiate-refund-details",
+            ],
+        },
+        {
+            "query": "gift card paper check full address",
+            "target": "references",
+            "expected_ids": [
+                "abcd-refund-initiate-refund-details",
+                "abcd-refund-initiate-refund-method",
+            ],
+            "forbidden_ids": ["abcd-refund-initiate-account-lookup"],
+        },
+        {
+            "query": "existing refund add another item",
+            "target": "references",
+            "expected_ids": [],
+            "forbidden_ids": [
+                "abcd-refund-initiate-refund-method",
+                "abcd-refund-initiate-purchase-validation",
+                "abcd-refund-initiate-refund-amount",
+            ],
+        },
+        {
+            "query": "orbital telescope calibration",
+            "target": "references",
+            "expected_ids": [],
+            "forbidden_ids": [],
+        },
+    )
 )
 
 
@@ -163,130 +159,105 @@ def approved_reference(reference=None):
     return reference
 
 
+def changed(value, path, replacement):
+    result = deepcopy(value)
+    target = result
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = replacement
+    return result
+
+
 class PreparationTests(unittest.TestCase):
     def test_source_preparation_and_coverage(self):
-        with self.subTest(case="source order, splits and licence"):
-            result = prepare_dataset(
-                {"train": [source_record()], "dev": [], "test": [source_record(8570)]},
-                SOURCE,
-            )
-            first, second = result["conversations"]
-            self.assertEqual(
-                (first["id"], first["split"], second["split"]),
-                ("7921", "train", "test"),
-            )
-            self.assertEqual(
-                [event["turn_id"] for event in first["events"]], list(range(1, 7))
-            )
-            actions = [event for event in first["events"] if event["kind"] == "action"]
-            self.assertEqual([event["turn_id"] for event in actions], [3, 5])
-            self.assertEqual(actions[1]["text"], "Purchase validation in progress ...")
-            self.assertEqual(actions[0]["source_pointer"], "/train/0/original/2")
-            self.assertEqual(first["coverage"]["transcript"]["status"], "complete")
-            self.assertEqual(first["coverage"]["actions"]["status"], "complete")
-            self.assertEqual(result["licence"]["notice"], MIT_NOTICE)
-            self.assertNotIn("time", first["events"][0])
-            validate_evidence(result)
+        result = prepare_dataset(
+            {"train": [source_record()], "dev": [], "test": [source_record(8570)]},
+            SOURCE,
+        )
+        first, second = result["conversations"]
+        self.assertEqual(
+            (first["id"], first["split"], second["split"]), ("7921", "train", "test")
+        )
+        events = first["events"]
+        self.assertEqual([e["turn_id"] for e in events], list(range(1, 7)))
+        actions = [e for e in events if e["kind"] == "action"]
+        self.assertEqual([e["turn_id"] for e in actions], [3, 5])
+        self.assertEqual(actions[1]["text"], "Purchase validation in progress ...")
+        self.assertEqual(actions[0]["source_pointer"], "/train/0/original/2")
+        self.assertEqual(
+            [c["status"] for c in first["coverage"].values()], ["complete"] * 2
+        )
+        self.assertEqual(result["licence"]["notice"], MIT_NOTICE)
+        self.assertNotIn("time", events[0])
+        validate_evidence(result)
 
-        with self.subTest(case="determinism, input immutability and content version"):
-            record = source_record()
-            before = deepcopy(record)
-            first = prepare_conversation(record, split="train", index=0)
-            self.assertEqual(
-                first, prepare_conversation(record, split="train", index=0)
-            )
-            self.assertEqual(record, before)
-            changed = deepcopy(record)
-            changed["original"][-1][1] = "Thanks Taylor, please contact support."
-            self.assertNotEqual(
-                first["transcript_version"],
-                prepare_conversation(changed, split="train", index=0)[
-                    "transcript_version"
-                ],
-            )
+        record = source_record()
+        before = deepcopy(record)
+        self.assertEqual(first, prepare_conversation(record, split="train", index=0))
+        self.assertEqual(record, before)
+        record["original"][-1][1] = "Thanks Taylor, please contact support."
+        updated = prepare_conversation(record, split="train", index=0)
+        self.assertNotEqual(first["transcript_version"], updated["transcript_version"])
+        encoded = json.dumps(result)
+        for label in (
+            "FLOW_LABEL_CANARY",
+            "SUBFLOW_LABEL_CANARY",
+            "TARGET_LABEL_CANARY",
+            "CANDIDATE_LABEL_CANARY",
+            "DERIVED_ACTION_CANARY",
+        ):
+            self.assertNotIn(label, encoded)
+        for field in (
+            "scenario",
+            "personal",
+            "order",
+            "targets",
+            "candidates",
+            "flow",
+            "subflow",
+        ):
+            self.assertNotIn(f'"{field}":', encoded)
 
-        with self.subTest(case="audit allowlist excludes labels and customer records"):
-            encoded = json.dumps(prepared())
-            for label in (
-                "FLOW_LABEL_CANARY",
-                "SUBFLOW_LABEL_CANARY",
-                "TARGET_LABEL_CANARY",
-                "CANDIDATE_LABEL_CANARY",
-                "DERIVED_ACTION_CANARY",
-            ):
-                self.assertNotIn(label, encoded)
-            for field in (
-                "scenario",
-                "personal",
-                "order",
-                "targets",
-                "candidates",
-                "flow",
-                "subflow",
-            ):
-                self.assertNotIn(f'"{field}":', encoded)
-
-        with self.subTest(case="partial coverage preserves source positions"):
-            conversation = prepare_conversation(
-                source_record(), split="train", index=4, turn_ids=[2, 5, 6]
-            )
-            self.assertEqual(
-                [event["turn_id"] for event in conversation["events"]], [2, 5, 6]
-            )
-            self.assertEqual(
-                conversation["coverage"]["transcript"]["status"], "partial"
-            )
-            self.assertEqual(conversation["coverage"]["actions"]["status"], "partial")
-            self.assertEqual(
-                conversation["events"][1]["source_pointer"], "/train/4/original/4"
-            )
-
-        with self.subTest(case="missing actions do not imply failure"):
-            record = source_record()
-            record["original"] = [
-                event for event in record["original"] if event[0] != "action"
-            ]
-            record.pop("delexed")
-            conversation = prepare_conversation(record, split="train", index=0)
-            self.assertEqual(conversation["coverage"]["actions"]["status"], "unknown")
-            self.assertIn(
-                "absence is not failure", conversation["coverage"]["actions"]["reason"]
-            )
+        partial = prepare_conversation(
+            source_record(), split="train", index=4, turn_ids=[2, 5, 6]
+        )
+        self.assertEqual([e["turn_id"] for e in partial["events"]], [2, 5, 6])
+        self.assertEqual(
+            [c["status"] for c in partial["coverage"].values()], ["partial"] * 2
+        )
+        self.assertEqual(partial["events"][1]["source_pointer"], "/train/4/original/4")
+        record = source_record()
+        record["original"] = [e for e in record["original"] if e[0] != "action"]
+        record.pop("delexed")
+        coverage = prepare_conversation(record, split="train", index=0)["coverage"][
+            "actions"
+        ]
+        self.assertEqual(coverage["status"], "unknown")
+        self.assertIn("absence is not failure", coverage["reason"])
 
     def test_masking_preserves_non_sensitive_facts(self):
-        with self.subTest(case="names, identifiers and action text"):
-            events = prepared()["conversations"][0]["events"]
-            self.assertEqual(
-                [event["text"] for event in events],
-                [
-                    "Hello [PERSON_1]. Please give your username and order ID.",
-                    "[PERSON_1], [USERNAME_1], [EMAIL_1], [ORDER_ID_1].",
-                    "Account has been pulled up for [PERSON_1].",
-                    "Please use account [ACCOUNT_ID_1] for my $79 refund.",
-                    "Purchase validation in progress ...",
-                    "Thanks [PERSON_1], your refund is in progress.",
-                ],
-            )
-
+        self.assertEqual(
+            [e["text"] for e in prepared()["conversations"][0]["events"]],
+            [
+                "Hello [PERSON_1]. Please give your username and order ID.",
+                "[PERSON_1], [USERNAME_1], [EMAIL_1], [ORDER_ID_1].",
+                "Account has been pulled up for [PERSON_1].",
+                "Please use account [ACCOUNT_ID_1] for my $79 refund.",
+                "Purchase validation in progress ...",
+                "Thanks [PERSON_1], your refund is in progress.",
+            ],
+        )
         cases = (
             (
-                "structured contact, address, date and PIN",
                 [
-                    (
-                        "Taylor Parker: 12 Test St Ottawa, ON A1A1A1; (555) 123-4567; "
-                        "2020-01-28; PIN is 2468."
-                    )
+                    "Taylor Parker: 12 Test St Ottawa, ON A1A1A1; (555) 123-4567; 2020-01-28; PIN is 2468."
                 ],
                 source_record()["scenario"],
                 [
-                    (
-                        "[PERSON_1]: [ADDRESS_1]; [PHONE_1]; [PURCHASE_DATE_1]; "
-                        "PIN is [SECRET_1]."
-                    )
+                    "[PERSON_1]: [ADDRESS_1]; [PHONE_1]; [PURCHASE_DATE_1]; PIN is [SECRET_1]."
                 ],
             ),
             (
-                "consistent fallback tokens",
                 [
                     "Email new@example.test or phone +1 555-222-3333. Password is s3cret.",
                     "new@example.test, +1 555-222-3333, PIN: 9999, ID ABC98765; refund $79.",
@@ -298,54 +269,40 @@ class PreparationTests(unittest.TestCase):
                 ],
             ),
             (
-                "email containing a known name",
                 ["Taylor@new.example.test"],
                 {"personal": {"customer_name": "Taylor Parker"}},
                 ["[EMAIL_1]"],
             ),
             (
-                "currency does not exempt identifiers",
                 ["Refund $100000; ID 123456; ID ABC123456."],
                 {},
                 ["Refund $100000; ID [IDENTIFIER_1]; ID [IDENTIFIER_2]."],
             ),
             (
-                "known account preceded by currency",
                 ["Account: $100000."],
                 {"personal": {"account_id": "100000"}},
                 ["Account: $[ACCOUNT_ID_1]."],
             ),
-            (
-                "labelled secret preceded by currency",
-                ["PIN: $123456."],
-                {},
-                ["PIN: [SECRET_1]."],
-            ),
+            (["PIN: $123456."], {}, ["PIN: [SECRET_1]."]),
         )
-        for name, texts, scenario, expected in cases:
-            with self.subTest(case=name):
+        for texts, scenario, expected in cases:
+            with self.subTest(texts=texts):
                 self.assertEqual(mask_texts(texts, scenario), expected)
-
+        formats = (
+            "(555) 123-4567",
+            "(555)123-4567",
+            "555-123-4567",
+            "555.123.4567",
+            "555 123 4567",
+            "5551234567",
+        )
         for prefix in ("", "+1 "):
-            numbers = [
-                prefix + number
-                for number in (
-                    "(555) 123-4567",
-                    "(555)123-4567",
-                    "555-123-4567",
-                    "555.123.4567",
-                    "555 123 4567",
-                    "5551234567",
-                )
-            ]
+            numbers = [prefix + number for number in formats]
             for scenario in ({}, {"personal": {"phone": numbers[0]}}):
-                with self.subTest(
-                    case="phone formats", prefix=prefix, known=bool(scenario)
-                ):
+                with self.subTest(prefix=prefix, known=bool(scenario)):
                     self.assertEqual(
                         mask_texts(numbers, scenario), ["[PHONE_1]"] * len(numbers)
                     )
-
         for amount in (
             "$79",
             "$100000",
@@ -360,9 +317,8 @@ class PreparationTests(unittest.TestCase):
             "¥100000",
         ):
             text = f"The refund amount is {amount}."
-            with self.subTest(case="refund amount", amount=amount):
+            with self.subTest(amount=amount):
                 self.assertEqual(mask_texts([text], {}), [text])
-
         for field, label, value in (
             ("security_answer", "Security answer", "maple primary school"),
             ("password", "Password", "some.pass!word?"),
@@ -374,101 +330,65 @@ class PreparationTests(unittest.TestCase):
                 ("‘", "’"),
                 ("“", "”"),
             ):
-                with self.subTest(case="known secret", field=field, opening=opening):
+                with self.subTest(field=field, opening=opening):
+                    texts = [f"{label}: {opening}{value}{closing}.", value]
+                    expected = [f"{label}: {opening}[SECRET_1]{closing}.", "[SECRET_1]"]
                     self.assertEqual(
-                        mask_texts(
-                            [f"{label}: {opening}{value}{closing}.", value],
-                            {"personal": {field: value}},
-                        ),
-                        [f"{label}: {opening}[SECRET_1]{closing}.", "[SECRET_1]"],
+                        mask_texts(texts, {"personal": {field: value}}), expected
                     )
 
     def test_invalid_sources_and_prepared_evidence_fail_closed(self):
-        bad_records = []
-        for replacement in (
-            ["unknown", "PRIVATE"],
-            ["agent", ""],
-            ["agent", 42],
-            ["agent"],
-        ):
-            record = source_record()
-            record["original"][1] = replacement
-            bad_records.append(record)
-        record = source_record()
-        record["delexed"][1]["turn_count"] = 1
-        bad_records.append(record)
-        record = source_record()
-        record["delexed"].pop()
-        bad_records.append(record)
-        for index, record in enumerate(bad_records):
-            with self.subTest(case="invalid record", index=index):
+        bad_changes = [
+            (("original", 1), event)
+            for event in (
+                ["unknown", "PRIVATE"],
+                ["agent", ""],
+                ["agent", 42],
+                ["agent"],
+            )
+        ] + [
+            (("delexed", 1, "turn_count"), 1),
+            (("delexed",), source_record()["delexed"][:-1]),
+        ]
+        for path, value in bad_changes:
+            with self.subTest(path=path, value=value):
                 with self.assertRaises(ValueError) as error:
-                    prepare_conversation(record, split="train", index=5)
+                    prepare_conversation(
+                        changed(source_record(), path, value), split="train", index=5
+                    )
                 self.assertIn("/train/5", str(error.exception))
                 self.assertNotIn("PRIVATE", str(error.exception))
                 self.assertNotIn("Taylor", str(error.exception))
-
-        for name, dataset in (
-            ("missing ID", {"train": [], "dev": [], "test": []}),
-            (
-                "duplicate ID",
-                {"train": [source_record()], "dev": [source_record()], "test": []},
-            ),
-            ("missing split", {"train": [source_record()]}),
+        for dataset in (
+            {"train": [], "dev": [], "test": []},
+            {"train": [source_record()], "dev": [source_record()], "test": []},
+            {"train": [source_record()]},
         ):
-            with self.subTest(case=name), self.assertRaises(ValueError):
+            with self.subTest(dataset=dataset.keys()), self.assertRaises(ValueError):
                 prepare_dataset(dataset, SOURCE, ("7921",))
         for split in (None, [], {}, True):
-            with (
-                self.subTest(case="invalid split", split=split),
-                self.assertRaises(ValueError),
-            ):
+            with self.subTest(split=split), self.assertRaises(ValueError):
                 prepare_conversation(source_record(), split=split, index=0)
-
         for version in ("1", "2"):
-            evidence = prepared()
-            evidence["masking_version"] = version
             with (
-                self.subTest(case="legacy masking version", version=version),
+                self.subTest(version=version),
                 self.assertRaisesRegex(ValueError, "masking version"),
             ):
-                validate_evidence(evidence)
-
-        for name, change in (
-            ("top-level labels", lambda data: data.update(targets=["LEAK"])),
-            (
-                "conversation labels",
-                lambda data: data["conversations"][0].update(flow="LEAK"),
-            ),
-            (
-                "event labels",
-                lambda data: data["conversations"][0]["events"][0].update(
-                    targets=["LEAK"]
-                ),
-            ),
-            (
-                "changed text",
-                lambda data: data["conversations"][0]["events"][0].update(
-                    text="Changed"
-                ),
-            ),
-            (
-                "source pointer",
-                lambda data: data["conversations"][0]["events"][0].update(
-                    source_pointer="/test/0/original/0"
-                ),
-            ),
-            ("invalid split", lambda data: data["conversations"][0].update(split=[])),
-            ("source checksum", lambda data: data["source"].update(sha256="0" * 64)),
-            ("incomplete licence", lambda data: data.update(licence={"name": "MIT"})),
+                validate_evidence(changed(prepared(), ("masking_version",), version))
+        conversation = ("conversations", 0)
+        event = (*conversation, "events", 0)
+        for path, value in (
+            (("targets",), ["LEAK"]),
+            ((*conversation, "flow"), "LEAK"),
+            ((*event, "targets"), ["LEAK"]),
+            ((*event, "text"), "Changed"),
+            ((*event, "source_pointer"), "/test/0/original/0"),
+            ((*conversation, "split"), []),
+            (("source", "sha256"), "0" * 64),
+            (("licence",), {"name": "MIT"}),
         ):
-            data = prepared()
-            change(data)
-            with (
-                self.subTest(case="tampered evidence", change=name),
-                self.assertRaises(ValueError),
-            ):
-                validate_evidence(data)
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                validate_evidence(changed(prepared(), path, value))
 
 
 class ReferenceTests(unittest.TestCase):
@@ -478,50 +398,38 @@ class ReferenceTests(unittest.TestCase):
 
     def test_reference_approval_version_safety_and_currentness(self):
         references = catalog()
-        for reference in references:
-            with self.subTest(
-                case="catalog approval binding", reference=reference["id"]
-            ):
-                self.assertEqual(reference["version"], reference_version(reference))
-                if reference["status"] == "approved":
-                    self.assertTrue(reference["approved_by"])
-                    self.assertEqual(
-                        reference["approved_version"], reference["version"]
-                    )
-                    self.assertTrue(reference["interpretation_limits"])
-                    self.assertFalse(reference["safety_flags"])
-                else:
-                    self.assertEqual(reference["status"], "unapproved")
-                    self.assertTrue(reference["safety_flags"])
         self.assertEqual(len(references), 7)
+        for ref in references:
+            with self.subTest(reference=ref["id"]):
+                self.assertEqual(ref["version"], reference_version(ref))
+                if ref["status"] == "approved":
+                    self.assertTrue(ref["approved_by"])
+                    self.assertEqual(ref["approved_version"], ref["version"])
+                    self.assertTrue(ref["interpretation_limits"])
+                    self.assertFalse(ref["safety_flags"])
+                else:
+                    self.assertEqual(ref["status"], "unapproved")
+                    self.assertTrue(ref["safety_flags"])
         self.assertEqual(eligible_references(references, **ASSESSMENT), [])
-
-        with self.subTest(case="explicit approval"):
-            valid = approved_reference()
-            self.assertEqual(reference_issues(valid, **ASSESSMENT), [])
-            self.assertEqual(eligible_references([valid], **ASSESSMENT), [valid])
-            self.assertEqual(valid["version"], reference_version(valid))
-            self.assertEqual(
-                reference_passages([valid])[0]["interpretation_limits"],
-                valid["interpretation_limits"],
-            )
-
-        with self.subTest(case="interpretation limits are approval-bound content"):
-            reference = approved_reference()
-            old_version = reference["version"]
-            reference["interpretation_limits"].append("Changed interpretation.")
-            self.assertNotEqual(old_version, reference_version(reference))
-            reference["version"] = reference_version(reference)
-            self.assert_ineligible(reference)
-
-        with self.subTest(case="interpretation limits must be a text list"):
-            reference = approved_reference()
-            reference["interpretation_limits"] = "invalid"
-            reference["version"] = reference_version(reference)
-            reference["approved_version"] = reference["version"]
-            self.assert_ineligible(reference)
-
-        for field, value in (
+        valid = approved_reference()
+        self.assertEqual(reference_issues(valid, **ASSESSMENT), [])
+        self.assertEqual(eligible_references([valid], **ASSESSMENT), [valid])
+        self.assertEqual(valid["version"], reference_version(valid))
+        self.assertEqual(
+            reference_passages([valid])[0]["interpretation_limits"],
+            valid["interpretation_limits"],
+        )
+        for limits in (
+            [*valid["interpretation_limits"], "Changed interpretation."],
+            "invalid",
+        ):
+            ref = {**valid, "interpretation_limits": limits}
+            self.assertNotEqual(valid["version"], reference_version(ref))
+            ref["version"] = reference_version(ref)
+            if isinstance(limits, str):
+                ref["approved_version"] = ref["version"]
+            self.assert_ineligible(ref)
+        requirements = (
             ("status", "stale"),
             ("status", "disputed"),
             ("status", "unapproved"),
@@ -533,80 +441,58 @@ class ReferenceTests(unittest.TestCase):
             ("verified_at", "2026-10-26"),
             ("review_due", None),
             ("review_due", "2026-10-24"),
-        ):
-            reference = approved_reference()
-            reference[field] = value
-            with self.subTest(case="approval requirement", field=field, value=value):
-                self.assert_ineligible(reference)
-
-        for date, scope, allowed in (
+        )
+        for field, value in requirements:
+            with self.subTest(field=field, value=value):
+                self.assert_ineligible({**valid, field: value})
+        for day, scope, allowed in (
             ("2026-10-25", "refund-status", False),
             ("2026-11-01", "refund-initiation", True),
             ("2026-11-02", "refund-initiation", False),
         ):
-            with self.subTest(case="applicability", date=date, scope=scope):
+            with self.subTest(day=day, scope=scope):
                 self.assertEqual(
-                    reference_issues(approved_reference(), as_of=date, scope=scope)
-                    == [],
-                    allowed,
+                    not reference_issues(valid, as_of=day, scope=scope), allowed
                 )
-
         unsafe = [approved_reference(ref) for ref in references if ref["safety_flags"]]
         self.assertEqual(len(unsafe), 2)
-        for reference in unsafe:
-            with self.subTest(case="unsafe guidance", reference=reference["id"]):
-                self.assert_ineligible(reference)
+        for ref in unsafe:
+            self.assert_ineligible(ref)
         self.assertEqual(eligible_references(unsafe, **ASSESSMENT), [])
-
-        for assessment_date, allowed in (
+        for day, allowed in (
             ("2026-10-29", True),
             ("2027-10-28", True),
             ("2027-10-29", False),
         ):
-            with self.subTest(case="extended deadline", date=assessment_date):
-                reference = approved_reference()
-                reference["review_due"] = "2027-10-28"
+            with self.subTest(deadline=day):
+                ref = {**valid, "review_due": "2027-10-28"}
                 self.assertEqual(
                     bool(
-                        eligible_references(
-                            [reference],
-                            as_of=assessment_date,
-                            scope="refund-initiation",
-                        )
+                        eligible_references([ref], as_of=day, scope="refund-initiation")
                     ),
                     allowed,
                 )
-
         for mode in ("unchanged version", "changed version", "explicitly reapproved"):
-            with self.subTest(case="content edit", mode=mode):
-                reference = approved_reference()
-                version = reference["version"]
-                reference["text"] += " Changed wording."
-                self.assertNotEqual(version, reference_version(reference))
+            with self.subTest(edit=mode):
+                ref = {**valid, "text": valid["text"] + " Changed wording."}
+                self.assertNotEqual(valid["version"], reference_version(ref))
                 if mode != "unchanged version":
-                    reference["version"] = reference_version(reference)
+                    ref["version"] = reference_version(ref)
                 if mode == "explicitly reapproved":
-                    reference["approved_version"] = reference["version"]
-                    self.assertEqual(reference_issues(reference, **ASSESSMENT), [])
+                    ref["approved_version"] = ref["version"]
+                    self.assertEqual(reference_issues(ref, **ASSESSMENT), [])
                 else:
-                    self.assert_ineligible(reference)
-
-        with self.subTest(case="missing approved version"):
-            reference = approved_reference()
-            reference.pop("approved_version")
-            self.assert_ineligible(reference)
-        for value in (None, [], {}, {"id": "broken"}):
-            with self.subTest(case="malformed reference", value=value):
-                self.assert_ineligible(value)
-        for date in (None, "20261025", "2026-02-30", "today"):
-            with (
-                self.subTest(case="invalid date", date=date),
-                self.assertRaises(ValueError),
-            ):
-                eligible_references(references, as_of=date, scope="refund-initiation")
-        with self.subTest(case="duplicate reference ID"), self.assertRaises(ValueError):
-            reference = approved_reference()
-            eligible_references([reference, reference], **ASSESSMENT)
+                    self.assert_ineligible(ref)
+        missing_version = dict(valid)
+        missing_version.pop("approved_version")
+        for ref in (missing_version, None, [], {}, {"id": "broken"}):
+            with self.subTest(malformed=ref):
+                self.assert_ineligible(ref)
+        for day in (None, "20261025", "2026-02-30", "today"):
+            with self.subTest(day=day), self.assertRaises(ValueError):
+                eligible_references(references, as_of=day, scope="refund-initiation")
+        with self.assertRaises(ValueError):
+            eligible_references([valid, valid], **ASSESSMENT)
 
 
 class SearchTests(unittest.TestCase):
@@ -746,17 +632,6 @@ class CitationTests(unittest.TestCase):
                 ),
                 [],
             )
-        for name, citation in (
-            ("message", event),
-            ("action", action),
-            ("exact substring", {**event, "quote": "[PERSON_1]"}),
-            ("reference", reference),
-        ):
-            with self.subTest(case="valid citation", kind=name):
-                self.assertEqual(
-                    validate_citations([citation], conversations, references), []
-                )
-
         for citation, field, value in (
             (event, "conversation_id", "999"),
             (event, "transcript_version", "changed"),
@@ -793,67 +668,46 @@ class CitationTests(unittest.TestCase):
 
 
 class LocalSourceTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def test_pinned_conversations_and_reference_snapshots(self):
         path = ML_ROOT / "raw" / "abcd_v1.1.json.gz"
         guidelines = ML_ROOT / "raw" / "guidelines.json"
         if not path.exists() or not guidelines.exists():
-            raise unittest.SkipTest(
+            self.skipTest(
                 "Download the pinned ABCD files locally for source comparisons."
             )
         raw = gzip.decompress(path.read_bytes())
-        if sha256(raw).hexdigest() != ABCD_SHA256:
-            raise ValueError("Local dataset is not the pinned source.")
+        self.assertEqual(sha256(raw).hexdigest(), ABCD_SHA256)
         dataset = json.loads(raw)
-        cls.evidence = prepare_dataset(dataset, SOURCE)
-        cls.originals = {
-            str(record["convo_id"]): (split, index, record)
-            for split, records in dataset.items()
-            for index, record in enumerate(records)
-            if str(record["convo_id"]) in {"7921", "8570"}
+        evidence = prepare_dataset(dataset, SOURCE)
+        originals = {str(record["convo_id"]): record for record in dataset["train"]}
+        approved_versions = {
+            "7921": "sha256:4d5b33da8710e65ad617ef7e29bc6496ca84e51370cbb2d9f18fed233189e598",
+            "8570": "sha256:2ca1e5e5ed65471991129ac2bbc30e91e6d71da53495a1be170d0cdce641074d",
         }
-        cls.guideline_bytes = guidelines.read_bytes()
-        cls.guidelines = json.loads(cls.guideline_bytes)
-
-    def test_pinned_conversations_and_reference_snapshots(self):
-        for conversation in self.evidence["conversations"]:
-            with self.subTest(case="conversation", source_id=conversation["id"]):
-                split, index, original = self.originals[conversation["id"]]
-                self.assertEqual(conversation["split"], split)
-                self.assertEqual(split, "train")
-                self.assertEqual(conversation["source_pointer"], f"/{split}/{index}")
-                self.assertEqual(len(conversation["events"]), len(original["original"]))
-                expected_texts = mask_texts(
-                    [event[1] for event in original["original"]], original["scenario"]
+        for conversation in evidence["conversations"]:
+            with self.subTest(conversation=conversation["id"]):
+                self.assertEqual(
+                    conversation["transcript_version"],
+                    approved_versions[conversation["id"]],
                 )
-                for event, source_event, annotated, expected in zip(
-                    conversation["events"],
-                    original["original"],
-                    original["delexed"],
-                    expected_texts,
-                ):
-                    self.assertEqual(event["turn_id"], annotated["turn_count"])
-                    self.assertEqual(event["speaker"], source_event[0])
-                    self.assertEqual(event["text"], expected)
-                    self.assertEqual(
-                        event["kind"],
-                        "action" if source_event[0] == "action" else "message",
-                    )
+                original = originals[conversation["id"]]
+                self.assertEqual(len(conversation["events"]), len(original["original"]))
                 encoded = json.dumps(conversation["events"]).casefold()
                 for field, value in original["scenario"]["personal"].items():
                     if field != "member_level" and isinstance(value, str):
                         self.assertNotIn(value.casefold(), encoded)
                 for part in original["scenario"]["personal"]["customer_name"].split():
                     self.assertNotRegex(encoded, r"\b" + part.casefold() + r"\b")
-        validate_evidence(self.evidence)
+        validate_evidence(evidence)
 
+        guideline_bytes = guidelines.read_bytes()
+        guideline_data = json.loads(guideline_bytes)
         for reference in catalog():
-            with self.subTest(case="reference", source_id=reference["id"]):
+            with self.subTest(reference=reference["id"]):
                 self.assertEqual(
-                    reference["source"]["sha256"],
-                    sha256(self.guideline_bytes).hexdigest(),
+                    reference["source"]["sha256"], sha256(guideline_bytes).hexdigest()
                 )
-                section = self.guidelines
+                section = guideline_data
                 for segment in reference["source"]["pointer"].split("/")[1:]:
                     segment = segment.replace("~1", "/").replace("~0", "~")
                     section = (
@@ -861,45 +715,23 @@ class LocalSourceTests(unittest.TestCase):
                         if isinstance(section, list)
                         else section[segment]
                     )
-                expected = (
-                    "\n".join([section["text"], *section["subtext"]])
-                    if isinstance(section, dict)
-                    else section
-                )
+                if isinstance(section, dict):
+                    expected = "\n".join([section["text"], *section["subtext"]])
+                    conditions = section["subtext"]
+                else:
+                    expected, conditions = section, []
                 self.assertEqual(reference["text"], expected)
-                self.assertEqual(
-                    reference["conditions"],
-                    section["subtext"] if isinstance(section, dict) else [],
-                )
+                self.assertEqual(reference["conditions"], conditions)
 
 
 class CliTests(unittest.TestCase):
-    def test_cli_review_respects_requested_scope(self):
-        with self.workspace():
-            destination = self.root / "scoped-review.json"
-            code, _, errors = self.run_review(
-                "search",
-                destination,
-                "--query",
-                "refund",
-                "--review-only",
-                "--scope",
-                "refund-update",
-            )
-            self.assertEqual((code, errors), (0, ""))
-            result = json.loads(destination.read_text())
-            self.assertEqual(result["scope"], "refund-update")
-            self.assertEqual(result["reference_matches"], [])
-            self.assertNotIn("audit_input", result)
-
-    @contextmanager
-    def workspace(self):
+    def setUp(self):
         output_root = ML_ROOT / "output"
         output_root.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=output_root) as directory:
-            self.root = Path(directory)
-            self.input = self.write_json("prepared.json", prepared())
-            yield
+        directory = tempfile.TemporaryDirectory(dir=output_root)
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.input = self.write_json("prepared.json", prepared())
 
     def write_json(self, filename, data):
         path = self.root / filename
@@ -909,34 +741,44 @@ class CliTests(unittest.TestCase):
     def run_cli(self, *arguments):
         output, errors = StringIO(), StringIO()
         with redirect_stdout(output), redirect_stderr(errors):
-            code = main(list(arguments))
-        return code, output.getvalue(), errors.getvalue()
+            code = main(list(map(str, arguments)))
+        return code, errors.getvalue()
 
-    def run_review(self, command, destination, *arguments):
-        return self.run_cli(
+    def run_review(self, command, *arguments, output="result.json"):
+        destination = self.root / output
+        code, errors = self.run_cli(
             command,
             "--evidence",
-            str(self.input),
+            self.input,
             "--as-of",
             ASSESSMENT["as_of"],
             "--output",
-            str(destination),
+            destination,
             *arguments,
         )
+        result = json.loads(destination.read_text()) if destination.exists() else None
+        return code, result, errors
+
+    def test_cli_review_respects_requested_scope(self):
+        code, result, errors = self.run_review(
+            "search", "--query", "refund", "--review-only", "--scope", "refund-update"
+        )
+        self.assertEqual((code, errors), (0, ""))
+        self.assertEqual(result["scope"], "refund-update")
+        self.assertEqual(result["reference_matches"], [])
+        self.assertNotIn("audit_input", result)
 
     def test_cli_search_review_and_citation_validation(self):
         for review_only in (False, True):
-            with self.subTest(case="search", review_only=review_only), self.workspace():
-                destination = self.root / "search.json"
+            with self.subTest(review_only=review_only):
                 arguments = ["--query", "username order ID"]
                 if review_only:
                     arguments.append("--review-only")
                 with patch(
                     "socket.socket", side_effect=AssertionError("Network forbidden")
                 ):
-                    code, _, errors = self.run_review("search", destination, *arguments)
+                    code, result, errors = self.run_review("search", *arguments)
                 self.assertEqual((code, errors), (0, ""))
-                result = json.loads(destination.read_text())
                 if review_only:
                     self.assertEqual(result["purpose"], "reference-review")
                     self.assertNotIn("audit_input", result)
@@ -951,84 +793,74 @@ class CliTests(unittest.TestCase):
                     self.assertEqual(result["audit_input"]["references"], [])
                     self.assertTrue(result["reference_exclusions"])
                     self.assertTrue(result["conversation_matches"])
-
-        for kind in ("conversation", "unapproved reference"):
-            with self.subTest(case="validate", kind=kind), self.workspace():
-                citation = (
-                    conversation_passages(prepared()["conversations"])[0]["citation"]
-                    if kind == "conversation"
-                    else reference_passages(catalog())[0]["citation"]
-                )
-                citations = self.write_json("citations.json", [citation])
-                destination = self.root / "validation.json"
-                code, _, _ = self.run_review(
-                    "validate", destination, "--citations", str(citations)
-                )
-                result = json.loads(destination.read_text())
-                if kind == "conversation":
-                    self.assertEqual(code, 0)
-                    self.assertEqual(result, {"valid": True, "errors": []})
-                else:
-                    self.assertEqual(code, 1)
-                    self.assertFalse(result["valid"])
+        citations = (
+            (conversation_passages(prepared()["conversations"])[0]["citation"], 0),
+            (reference_passages(catalog())[0]["citation"], 1),
+        )
+        for citation, expected_code in citations:
+            with self.subTest(citation=citation["kind"]):
+                path = self.write_json("citations.json", [citation])
+                code, result, _ = self.run_review("validate", "--citations", path)
+                self.assertEqual(code, expected_code)
+                self.assertEqual(result["valid"], expected_code == 0)
+                self.assertEqual(bool(result["errors"]), expected_code != 0)
 
     def test_cli_invalid_inputs_and_output_safeguards(self):
         missing_status = catalog()[0]
         missing_status.pop("status")
-        for name, records, review_only in (
-            ("malformed records", [None, 12, {}], False),
-            ("missing review state", [missing_status], True),
+        for records, arguments in (
+            ([None, 12, {}], []),
+            ([missing_status], ["--review-only"]),
         ):
-            with self.subTest(case=name), self.workspace():
+            with self.subTest(records=records):
                 references = self.write_json(
                     "references.json", {"schema_version": 1, "references": records}
                 )
-                destination = self.root / "search.json"
-                arguments = ["--references", str(references), "--query", "refund"]
-                if review_only:
-                    arguments.append("--review-only")
-                code, _, errors = self.run_review("search", destination, *arguments)
+                code, result, errors = self.run_review(
+                    "search",
+                    "--references",
+                    references,
+                    "--query",
+                    "refund",
+                    *arguments,
+                )
                 self.assertEqual(code, 1)
                 self.assertIn("invalid record", errors)
-                self.assertFalse(destination.exists())
-
+                self.assertIsNone(result)
         for name, content in (
             ("corrupt.gz", bytes.fromhex("1f8b0800000000000000ff")),
             ("missing.json", None),
             ("invalid.json", b"{not JSON with PRIVATE_VALUE"),
             ("checksum.json", b"{}"),
         ):
-            with self.subTest(case=name), self.workspace():
-                source = self.root / name
+            with self.subTest(source=name):
+                source, destination = self.root / name, self.root / "result.json"
                 if content is not None:
                     source.write_bytes(content)
-                destination = self.root / "output.json"
-                code, _, errors = self.run_cli(
-                    "prepare", "--source", str(source), "--output", str(destination)
+                code, errors = self.run_cli(
+                    "prepare", "--source", source, "--output", destination
                 )
                 self.assertEqual(code, 1)
                 self.assertIn("error", json.loads(errors))
                 self.assertNotIn("PRIVATE_VALUE", errors)
                 self.assertNotIn("Traceback", errors)
                 self.assertFalse(destination.exists())
-
-        with self.subTest(case="output cannot replace input"), self.workspace():
-            before = self.input.read_bytes()
-            code, _, errors = self.run_review("search", self.input, "--query", "refund")
-            self.assertEqual(code, 1)
-            self.assertIn("overwrite", errors)
-            self.assertEqual(before, self.input.read_bytes())
-
-        with self.subTest(case="outputs must remain local"), self.workspace():
-            code, _, errors = self.run_cli(
-                "prepare",
-                "--source",
-                str(self.input),
-                "--output",
-                "/tmp/not-ignored-evidence.json",
-            )
-            self.assertEqual(code, 1)
-            self.assertIn("ml/output", errors)
+        before = self.input.read_bytes()
+        code, _, errors = self.run_review(
+            "search", "--query", "refund", output="prepared.json"
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("overwrite", errors)
+        self.assertEqual(before, self.input.read_bytes())
+        code, errors = self.run_cli(
+            "prepare",
+            "--source",
+            self.input,
+            "--output",
+            "/tmp/not-ignored-evidence.json",
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("ml/output", errors)
 
 
 if __name__ == "__main__":

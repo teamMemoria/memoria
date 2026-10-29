@@ -63,6 +63,16 @@ def _has_text_fields(value, fields):
     )
 
 
+def _text_list(value):
+    return isinstance(value, list) and all(
+        isinstance(item, str) and item.strip() for item in value
+    )
+
+
+def _valid_scope(scope):
+    return isinstance(scope, str) and bool(scope.strip()) and scope == scope.strip()
+
+
 def reference_version(reference: dict) -> str:
     """Version content and provenance, not mutable human-review metadata."""
     if not isinstance(reference, dict) or not set(CONTENT_FIELDS) <= reference.keys():
@@ -97,7 +107,7 @@ def _context(as_of, scope):
     assessment_day = _day(as_of)
     if assessment_day is None:
         raise ValueError("as_of must be an explicit YYYY-MM-DD date.")
-    if not isinstance(scope, str) or not scope.strip() or scope != scope.strip():
+    if not _valid_scope(scope):
         raise ValueError("scope must be a nonempty, trimmed string.")
     return assessment_day
 
@@ -116,14 +126,7 @@ def reference_issues(reference: dict, *, as_of: str, scope: str) -> list[str]:
         issues.append("Reference identifiers and text must be nonempty strings.")
     list_fields = ["conditions", "exclusions", "scope", "safety_flags"]
     list_fields.extend(OPTIONAL_CONTENT_FIELDS & reference.keys())
-    if any(
-        not isinstance(reference[field], list)
-        or any(
-            not isinstance(value, str) or not value.strip()
-            for value in reference[field]
-        )
-        for field in list_fields
-    ):
+    if any(not _text_list(reference[field]) for field in list_fields):
         return issues + ["Reference conditions, scope and flags must be string lists."]
     source = reference["source"]
     if (
@@ -147,10 +150,7 @@ def reference_issues(reference: dict, *, as_of: str, scope: str) -> list[str]:
         issues.append("Reference is not approved.")
     if reference["approved_version"] != reference["version"]:
         issues.append("Approval does not cover this reference version.")
-    if (
-        not isinstance(reference["approved_by"], str)
-        or not reference["approved_by"].strip()
-    ):
+    if not _has_text_fields(reference, ("approved_by",)):
         issues.append("Human approver is not recorded.")
     approved_at = _day(reference["approved_at"])
     verified_at = _day(reference["verified_at"])
@@ -203,9 +203,7 @@ def reference_passages(
     """Build passages without treating their retrieval as approval."""
     if not isinstance(references, list):
         raise TypeError("References must be a list.")
-    if scope is not None and (
-        not isinstance(scope, str) or not scope.strip() or scope != scope.strip()
-    ):
+    if scope is not None and not _valid_scope(scope):
         raise ValueError("scope must be a nonempty, trimmed string.")
     passages = []
     for reference in references:
@@ -215,11 +213,7 @@ def reference_passages(
             raise ValueError("Reference passage has invalid content or version.")
         if scope is not None:
             if any(
-                not isinstance(reference.get(field), list)
-                or any(
-                    not isinstance(value, str) or not value.strip()
-                    for value in reference[field]
-                )
+                not _text_list(reference.get(field))
                 for field in ("scope", "exclusions")
             ):
                 raise ValueError("Reference scope and exclusions must be text lists.")
@@ -240,9 +234,7 @@ def reference_passages(
         )
         if "interpretation_limits" in reference:
             limits = reference["interpretation_limits"]
-            if not isinstance(limits, list) or any(
-                not isinstance(limit, str) or not limit.strip() for limit in limits
-            ):
+            if not _text_list(limits):
                 raise ValueError("Reference interpretation limits must be a text list.")
             passages[-1]["interpretation_limits"] = list(limits)
     return passages
