@@ -2,6 +2,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentContext, CallReview, ReviewRequest } from '../types/callReview'
 import type { Conversation } from '../features/conversations/conversations'
+import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
 import {
   agent, callFixture, callPath, createDevCallApi, deferred, findingPath, openApp,
 } from './TestSetup'
@@ -259,6 +260,8 @@ describe('Agent context', () => {
 describe('Flag feedback', () => {
   const reason = 'Purchase was verified in chat before turn 8.'
   const reasonField = () => screen.findByLabelText<HTMLTextAreaElement>('Reason for review')
+  const flagPanel = () => screen.getByRole('region', { name: 'Flag feedback' })
+  const footerStatus = () => document.querySelector('.evidence-footer p')?.textContent
 
   it('sends one review request, shows its status and keeps automatic feedback', async () => {
     const callApi = createDevCallApi()
@@ -268,15 +271,28 @@ describe('Flag feedback', () => {
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Request review' }).disabled).toBe(true)
     fireEvent.change(field, { target: { value: reason } })
     fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
-    await screen.findByText('Review requested')
+    await within(flagPanel()).findByText('Review requested')
+    expect(footerStatus()).toBe('Review requested')
     expect(requestReview).toHaveBeenCalledTimes(1)
     expect(requestReview).toHaveBeenCalledWith(agent.id, 'C1042', 'procedure-order', reason)
     expect(screen.getByText(`Reason: ${reason}`)).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Automatic feedback' })).toBeTruthy()
     await act(() => router.navigate(callPath))
     await act(() => router.navigate(findingPath))
-    await screen.findByText('Review requested')
+    await within(await screen.findByRole('region', { name: 'Flag feedback' })).findByText('Review requested')
     expect(screen.queryByLabelText('Reason for review')).toBeNull()
+  })
+
+  it('shows the requested review in the Agent conversation list', async () => {
+    const callApi = createDevCallApi()
+    const { router } = openApp({ path: findingPath, callApi, conversationsApi: createDevConversationsApi(callApi) })
+    fireEvent.change(await reasonField(), { target: { value: reason } })
+    expect(footerStatus()).toBe('Feedback ready')
+    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
+    await within(flagPanel()).findByText('Review requested')
+    await act(() => router.navigate('/agent/conversations'))
+    const row = (await screen.findByText('C1042')).closest('tr')!
+    expect(within(row).getByText('Review requested')).toBeTruthy()
   })
 
   it('sends one request while a request is in progress', async () => {
@@ -290,7 +306,7 @@ describe('Flag feedback', () => {
     await act(() => pending.resolve({
       findingId: 'procedure-order', reason, requestedAt: '2026-10-29T15:00:00Z', status: 'requested',
     }))
-    expect(screen.getByText('Review requested')).toBeTruthy()
+    expect(within(flagPanel()).getByText('Review requested')).toBeTruthy()
   })
 
   it('shows an error and keeps the reason when the request fails', async () => {
@@ -300,6 +316,6 @@ describe('Flag feedback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
     expect((await screen.findByRole('alert')).textContent).toBe('The review request could not be sent. Please try again.')
     expect((await reasonField()).value).toBe(reason)
-    expect(screen.queryByText('Review requested')).toBeNull()
+    expect(footerStatus()).toBe('Feedback ready')
   })
 })

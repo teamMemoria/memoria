@@ -17,6 +17,10 @@ import type {
 } from '../../types/callReview'
 import { canReadKnowledge } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
+import {
+  reviewRequestStatuses,
+  reviewStatusLabels,
+} from '../conversations/conversations'
 import { AgentContext } from './AgentContext'
 import { FlagFeedback } from './FlagFeedback'
 import { Waveforms } from './Waveforms'
@@ -544,7 +548,11 @@ function AgentProcedure({
         <p>
           {fullTranscript
             ? `${turns.length} ${call.transcript?.complete ? 'complete conversation' : 'available'} turns`
-            : 'Feedback ready'}
+            : reviewStatusLabels[
+                call.reviewRequest
+                  ? reviewRequestStatuses[call.reviewRequest.status]
+                  : 'feedback-ready'
+              ]}
         </p>
         {!fullTranscript && (
           <Button variant="secondary" disabled>
