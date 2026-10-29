@@ -85,6 +85,10 @@
   color: var(--color-text);
   line-height: 28px;
 }
+.control-input--multiline {
+  display: block;
+  resize: vertical;
+}
 .field-input--search .control-input {
   padding-left: 44px;
 }

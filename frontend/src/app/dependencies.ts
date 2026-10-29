@@ -21,12 +21,13 @@ export function createDependencies(): {
   if (import.meta.env.DEV) {
     const role =
       import.meta.env.VITE_DEV_ROLE === 'manager' ? 'manager' : 'agent'
+    const knowledgeReviewApi = createDevKnowledgeReviewApi()
     return {
       viewerApi: createDevViewerApi(role),
       conversationsApi: createDevConversationsApi(),
       callApi: createDevCallApi(),
-      knowledgeApi: createDevApprovedKnowledgeApi(),
-      knowledgeReviewApi: createDevKnowledgeReviewApi(),
+      knowledgeApi: createDevApprovedKnowledgeApi(knowledgeReviewApi),
+      knowledgeReviewApi,
     }
   }
 

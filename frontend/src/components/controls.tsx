@@ -57,6 +57,33 @@ export function TextField({
   )
 }
 
+type TextAreaFieldProps = ComponentProps<'textarea'> & {
+  id: string
+  label: string
+}
+
+export function TextAreaField({
+  id,
+  label,
+  className = '',
+  rows = 4,
+  ...props
+}: TextAreaFieldProps) {
+  return (
+    <label className="field" htmlFor={id}>
+      <span>{label}</span>
+      <span className="field-input">
+        <textarea
+          {...props}
+          id={id}
+          rows={rows}
+          className={`control-input control-input--multiline ${className}`}
+        />
+      </span>
+    </label>
+  )
+}
+
 type SelectFieldProps = ComponentProps<'select'> & { id: string; label: string }
 
 export function SelectField({

@@ -27,12 +27,54 @@ export function canReadKnowledge(entry: KnowledgeEntry, agentId: string) {
   )
 }
 
+export type ConversationPassage = {
+  conversationId: string
+  turnNumber: number
+  speaker: 'Agent' | 'Customer'
+  text: string
+}
+
+export type KnowledgeDecision = {
+  outcome: 'approved' | 'rejected'
+  reason: string | null
+  managerName: string
+  decidedAt: string
+}
+
 // A knowledge entry as Managers see it in the review queue.
 export type KnowledgeDraft = KnowledgeEntry & {
   sourceConversationIds: string[]
   updatedAt: string
+  passages: ConversationPassage[]
+  // The authoritative source a Manager must check before approving.
+  verificationReference: { title: string; url: string } | null
+  decision: KnowledgeDecision | null
+}
+
+export type KnowledgeReviewDetail = {
+  entry: KnowledgeDraft
+  // Knowledge permission, supplied by the backend; separate from call review.
+  canDecide: boolean
 }
 
 export interface KnowledgeReviewApi {
   listForManager(managerId: string): Promise<KnowledgeDraft[]>
+  getForManager(
+    managerId: string,
+    entryId: string,
+  ): Promise<KnowledgeReviewDetail | null>
+  approve(
+    managerId: string,
+    entryId: string,
+    verifiedReferenceUrl: string,
+  ): Promise<KnowledgeDraft>
+  reject(
+    managerId: string,
+    entryId: string,
+    reason: string,
+  ): Promise<KnowledgeDraft>
+}
+
+export function canDecideKnowledge(entry: KnowledgeDraft) {
+  return entry.status !== 'approved' && entry.status !== 'rejected'
 }
