@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { CallReview } from '../types/callReview'
 import type { Conversation } from '../features/conversations/conversations'
 import {
-  agent, callFixture, callPath, deferred, findingPath, openApp,
+  agent, callFixture, callPath, createDevCallApi, deferred, findingPath, openApp,
 } from './TestSetup'
 
 const conversation: Conversation = {
@@ -85,7 +85,7 @@ describe('Agent call review', () => {
     const call = await callFixture()
     if (kind === 'foreign owner') call.agentId = 'another-agent'
     if (kind === 'wrong ID') call.id = 'PRIVATE'
-    openApp({ path: callPath, callApi: { getCallForAgent: async () => kind === 'missing' ? null : call } })
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => kind === 'missing' ? null : call } })
     await screen.findByRole('heading', { name: 'Conversation unavailable' })
     expect(screen.queryByText(call.summary)).toBeNull()
     fireEvent.click(within(screen.getByRole('main')).getByRole('link', { name: 'Conversations' }))
@@ -94,7 +94,7 @@ describe('Agent call review', () => {
 
   it('keeps processing calls distinct from completed feedback when opened from the list', async () => {
     const call = await callFixture({ status: 'processing' })
-    openApp({ callApi: { getCallForAgent: async () => call } })
+    openApp({ callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
     fireEvent.click(await screen.findByRole('link', { name: 'Open conversation C1042: Refund request' }))
     await screen.findByRole('heading', { name: 'Feedback is processing' })
     expect(screen.queryByRole('region', { name: 'Automatic feedback' })).toBeNull()
@@ -107,7 +107,7 @@ describe('Agent call review', () => {
       feedback: 'No agent failure has been established.', managerName: 'Maya Chen',
       decidedAt: '2026-10-09T10:00:00Z',
     } })
-    openApp({ path: callPath, callApi: { getCallForAgent: async () => call } })
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
     const decision = await screen.findByRole('region', { name: 'Manager decision' })
     expect(within(decision).getByText('Cannot assess')).toBeTruthy()
     expect(within(decision).getByText('No agent failure has been established.')).toBeTruthy()
@@ -121,7 +121,7 @@ describe('Agent call review', () => {
     if (kind === 'missing transcript') call.transcript = null
     if (kind === 'missing cited turn') call.transcript!.turns = call.transcript!.turns.filter((turn) => turn.number !== 13)
     if (kind === 'disputed reference') call.references[0].status = 'disputed'
-    openApp({ path: findingPath, callApi: { getCallForAgent: async () => call } })
+    openApp({ path: findingPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
     await screen.findByRole('heading', { name: 'Cannot assess' })
     expect(screen.getByText('Missing evidence does not establish an agent error.')).toBeTruthy()
     expect(screen.queryByText(/Suggested next step:/)).toBeNull()
@@ -141,7 +141,7 @@ describe('Agent call review', () => {
   it('labels a partial transcript and returns to the call without inventing the missing passage', async () => {
     const call = await callFixture()
     call.transcript = { complete: false, turns: call.transcript!.turns.slice(0, 8), unavailableReason: 'Only the first eight turns are available.' }
-    openApp({ path: callPath + '/transcript', callApi: { getCallForAgent: async () => call } })
+    openApp({ path: callPath + '/transcript', callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
     await screen.findByRole('heading', { name: 'Available transcript' })
     expect(screen.getByText('Only the first eight turns are available.')).toBeTruthy()
     expect(screen.queryByText('I’ve verified the purchase. The jacket is eligible.')).toBeNull()
@@ -157,7 +157,7 @@ describe('Agent call review', () => {
     const call = await callFixture()
     const response = deferred<CallReview | Conversation[]>()
     const request = vi.fn().mockRejectedValueOnce(new Error('Internal API failure')).mockReturnValueOnce(response.promise)
-    openApp({ path, conversationsApi: { listForAgent: request }, callApi: { getCallForAgent: request } })
+    openApp({ path, conversationsApi: { listForAgent: request }, callApi: { ...createDevCallApi(), getCallForAgent: request } })
     await screen.findByRole('alert')
     expect(screen.queryByText('Internal API failure')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
@@ -174,7 +174,7 @@ describe('Agent call review', () => {
     const previous = deferred<CallReview | null>()
     const current = deferred<CallReview | null>()
     const getCallForAgent = vi.fn().mockReturnValueOnce(previous.promise).mockReturnValueOnce(current.promise)
-    const { router } = openApp({ path: callPath, callApi: { getCallForAgent } })
+    const { router } = openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent } })
     await screen.findByText('Loading conversation…')
     await act(() => router.navigate('/agent/conversations/OTHER'))
     await act(() => current.resolve(null))
@@ -204,7 +204,7 @@ describe('Agent call review', () => {
     call.criteria[1].referenceId = 'RP-02'
     const { router } = openApp({
       path: callPath + '/transcript?reference=RP-02#approved-reference',
-      callApi: { getCallForAgent: async () => call },
+      callApi: { ...createDevCallApi(), getCallForAgent: async () => call },
     })
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'Delivery procedure' })).toBeTruthy()

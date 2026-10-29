@@ -64,6 +64,8 @@ export type CallReview = {
     unavailableReason: string | null
   } | null
   references: KnowledgeEntry[]
+  agentContext: AgentContext | null
+  reviewRequest: ReviewRequest | null
   decision: {
     outcome: 'confirmed' | 'corrected' | 'dismissed' | 'cannot-assess'
     reason: string
@@ -73,9 +75,33 @@ export type CallReview = {
   } | null
 }
 
+export type AgentContext = {
+  text: string
+  savedAt: string
+}
+
+export type ReviewRequest = {
+  findingId: string
+  reason: string
+  requestedAt: string
+  status: 'requested' | 'complete'
+}
+
 export interface CallApi {
   getCallForAgent(
     agentId: string,
     conversationId: string,
   ): Promise<CallReview | null>
+  // Saving context never requests a Manager review; flagging is separate.
+  saveContext(
+    agentId: string,
+    conversationId: string,
+    text: string,
+  ): Promise<AgentContext>
+  requestReview(
+    agentId: string,
+    conversationId: string,
+    findingId: string,
+    reason: string,
+  ): Promise<ReviewRequest>
 }

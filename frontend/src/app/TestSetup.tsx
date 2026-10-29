@@ -9,7 +9,7 @@ import { createDevCallApi } from '../lib/devCallApi'
 import type { Viewer } from '../types/viewer'
 import App from './App'
 
-export { agent, callFixture, deferred }
+export { agent, callFixture, createDevCallApi, deferred }
 
 export const manager: Viewer = {
   id: 'manager-maya-chen',

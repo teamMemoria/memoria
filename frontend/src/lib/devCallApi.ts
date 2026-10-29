@@ -176,15 +176,50 @@ const call: CallReview = {
   ],
   transcript: { complete: true, turns, unavailableReason: null },
   references: [refundProcedure],
+  agentContext: null,
+  reviewRequest: null,
   decision: null,
 }
 
 export function createDevCallApi(): CallApi {
+  // Each API keeps its own copy so saves survive navigation within a session.
+  const saved = structuredClone(call)
+
+  function ownedCall(agentId: string, conversationId: string) {
+    if (saved.agentId !== agentId || saved.id !== conversationId) {
+      throw new Error('This conversation is not available.')
+    }
+    return saved
+  }
+
   return {
     async getCallForAgent(agentId, conversationId) {
-      return call.agentId === agentId && call.id === conversationId
-        ? structuredClone(call)
+      return saved.agentId === agentId && saved.id === conversationId
+        ? structuredClone(saved)
         : null
+    },
+    async saveContext(agentId, conversationId, text) {
+      const target = ownedCall(agentId, conversationId)
+      if (!text.trim()) throw new Error('Context cannot be empty.')
+      target.agentContext = { text: text.trim(), savedAt: new Date().toISOString() }
+      return structuredClone(target.agentContext)
+    },
+    async requestReview(agentId, conversationId, findingId, reason) {
+      const target = ownedCall(agentId, conversationId)
+      if (!target.findings.some((finding) => finding.id === findingId)) {
+        throw new Error('This finding is not available.')
+      }
+      if (!reason.trim()) throw new Error('A reason is required.')
+      if (target.reviewRequest) {
+        throw new Error('A review has already been requested.')
+      }
+      target.reviewRequest = {
+        findingId,
+        reason: reason.trim(),
+        requestedAt: new Date().toISOString(),
+        status: 'requested',
+      }
+      return structuredClone(target.reviewRequest)
     },
   }
 }

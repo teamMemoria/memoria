@@ -1,7 +1,7 @@
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Viewer } from '../types/viewer'
-import { agent, deferred, manager, openApp } from './TestSetup'
+import { agent, createDevCallApi, deferred, manager, openApp } from './TestSetup'
 import { createDependencies } from './dependencies'
 
 describe('workspace access and navigation', () => {
@@ -72,7 +72,7 @@ describe('workspace access and navigation', () => {
     openApp({
       path,
       viewerApi: { getViewer: async () => viewer },
-      callApi: { getCallForAgent: calls },
+      callApi: { ...createDevCallApi(), getCallForAgent: calls },
       conversationsApi: { listForAgent: conversations },
       knowledgeApi: { listForAgent: list, getForAgent: detail },
     })
