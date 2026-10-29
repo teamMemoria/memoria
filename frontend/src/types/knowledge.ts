@@ -26,3 +26,13 @@ export function canReadKnowledge(entry: KnowledgeEntry, agentId: string) {
     entry.status === 'approved' && entry.availableToAgentIds.includes(agentId)
   )
 }
+
+// A knowledge entry as Managers see it in the review queue.
+export type KnowledgeDraft = KnowledgeEntry & {
+  sourceConversationIds: string[]
+  updatedAt: string
+}
+
+export interface KnowledgeReviewApi {
+  listForManager(managerId: string): Promise<KnowledgeDraft[]>
+}

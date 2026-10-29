@@ -1,7 +1,11 @@
 import type { CallApi } from '../types/callReview'
 import { createDevCallApi } from '../lib/devCallApi'
-import type { ApprovedKnowledgeApi } from '../types/knowledge'
+import type {
+  ApprovedKnowledgeApi,
+  KnowledgeReviewApi,
+} from '../types/knowledge'
 import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
+import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
 import type { ViewerApi } from '../types/viewer'
 import { createDevViewerApi } from '../lib/viewer'
 import type { ConversationsApi } from '../features/conversations/conversations'
@@ -12,6 +16,7 @@ export function createDependencies(): {
   conversationsApi: ConversationsApi | null
   callApi: CallApi | null
   knowledgeApi: ApprovedKnowledgeApi | null
+  knowledgeReviewApi: KnowledgeReviewApi | null
 } {
   if (import.meta.env.DEV) {
     const role =
@@ -21,6 +26,7 @@ export function createDependencies(): {
       conversationsApi: createDevConversationsApi(),
       callApi: createDevCallApi(),
       knowledgeApi: createDevApprovedKnowledgeApi(),
+      knowledgeReviewApi: createDevKnowledgeReviewApi(),
     }
   }
 
@@ -29,5 +35,6 @@ export function createDependencies(): {
     conversationsApi: null,
     callApi: null,
     knowledgeApi: null,
+    knowledgeReviewApi: null,
   }
 }

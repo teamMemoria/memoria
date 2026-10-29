@@ -1,7 +1,10 @@
 import type { CallApi } from '../types/callReview'
 import { CallOverview } from '../features/call-overview/CallOverview'
 import { Procedure } from '../features/procedure/Procedure'
-import type { ApprovedKnowledgeApi } from '../types/knowledge'
+import type {
+  ApprovedKnowledgeApi,
+  KnowledgeReviewApi,
+} from '../types/knowledge'
 import {
   ApprovedKnowledge,
   KnowledgeArticle,
@@ -11,6 +14,10 @@ import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
 import { AgentConversations } from '../features/conversations/AgentConversations'
 import type { ConversationsApi } from '../features/conversations/conversations'
+import {
+  KnowledgeDrafts,
+  KnowledgeReview,
+} from '../features/knowledge-drafts/KnowledgeDrafts'
 
 function RouteMessage({ title, home }: { title: string; home: string }) {
   return (
@@ -26,11 +33,13 @@ export function AppRoutes({
   conversationsApi,
   callApi = null,
   knowledgeApi = null,
+  knowledgeReviewApi = null,
 }: {
   viewer: Viewer
   conversationsApi: ConversationsApi | null
   callApi?: CallApi | null
   knowledgeApi?: ApprovedKnowledgeApi | null
+  knowledgeReviewApi?: KnowledgeReviewApi | null
 }) {
   const home = `/${viewer.role}/conversations`
 
@@ -98,7 +107,18 @@ export function AppRoutes({
         >
           <Route index element={<Navigate to="conversations" replace />} />
           <Route path="conversations" element={<h1>Team conversations</h1>} />
-          <Route path="knowledge" element={<h1>Knowledge drafts</h1>} />
+          <Route path="knowledge">
+            <Route
+              index
+              element={
+                <KnowledgeDrafts viewer={viewer} api={knowledgeReviewApi} />
+              }
+            />
+            <Route
+              path=":entryId"
+              element={<KnowledgeReview viewer={viewer} />}
+            />
+          </Route>
         </Route>
         <Route
           path="*"
