@@ -6,6 +6,7 @@ import { createDevConversationsApi } from '../features/conversations/devConversa
 import { agent, callFixture, deferred } from '../lib/callReview.test-data'
 import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
 import { createDevCallApi } from '../lib/devCallApi'
+import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
 import type { Viewer } from '../types/viewer'
 import App from './App'
 
@@ -55,6 +56,7 @@ export function openApp({
           conversationsApi={createDevConversationsApi()}
           callApi={createDevCallApi()}
           knowledgeApi={createDevApprovedKnowledgeApi()}
+          teamReviewApi={createDevTeamReviewApi()}
           {...overrides}
         />
       ),

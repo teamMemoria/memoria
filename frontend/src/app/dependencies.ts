@@ -6,12 +6,15 @@ import type { ViewerApi } from '../types/viewer'
 import { createDevViewerApi } from '../lib/viewer'
 import type { ConversationsApi } from '../features/conversations/conversations'
 import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
+import type { TeamReviewApi } from '../features/review-queue/teamQueue'
+import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
 
 export function createDependencies(): {
   viewerApi: ViewerApi | null
   conversationsApi: ConversationsApi | null
   callApi: CallApi | null
   knowledgeApi: ApprovedKnowledgeApi | null
+  teamReviewApi: TeamReviewApi | null
 } {
   if (import.meta.env.DEV) {
     const role =
@@ -22,6 +25,7 @@ export function createDependencies(): {
       conversationsApi: createDevConversationsApi(callApi),
       callApi,
       knowledgeApi: createDevApprovedKnowledgeApi(),
+      teamReviewApi: createDevTeamReviewApi(callApi),
     }
   }
 
@@ -30,5 +34,6 @@ export function createDependencies(): {
     conversationsApi: null,
     callApi: null,
     knowledgeApi: null,
+    teamReviewApi: null,
   }
 }

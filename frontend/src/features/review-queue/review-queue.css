@@ -1,0 +1,24 @@
+.review-queue {
+  display: grid;
+  gap: 32px;
+  min-width: 0;
+}
+.review-queue-summary {
+  margin: 0;
+}
+.review-queue-flag {
+  display: grid;
+  gap: 4px;
+}
+.review-queue-muted {
+  color: var(--color-muted);
+}
+.review-queue-table td {
+  vertical-align: top;
+}
+.review-queue-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: start;
+}

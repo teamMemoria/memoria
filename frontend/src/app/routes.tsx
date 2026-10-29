@@ -11,6 +11,11 @@ import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
 import { AgentConversations } from '../features/conversations/AgentConversations'
 import type { ConversationsApi } from '../features/conversations/conversations'
+import {
+  FindingReview,
+  ReviewQueue,
+} from '../features/review-queue/ReviewQueue'
+import type { TeamReviewApi } from '../features/review-queue/teamQueue'
 
 function RouteMessage({ title, home }: { title: string; home: string }) {
   return (
@@ -26,11 +31,13 @@ export function AppRoutes({
   conversationsApi,
   callApi = null,
   knowledgeApi = null,
+  teamReviewApi = null,
 }: {
   viewer: Viewer
   conversationsApi: ConversationsApi | null
   callApi?: CallApi | null
   knowledgeApi?: ApprovedKnowledgeApi | null
+  teamReviewApi?: TeamReviewApi | null
 }) {
   const home = `/${viewer.role}/conversations`
 
@@ -97,7 +104,16 @@ export function AppRoutes({
           }
         >
           <Route index element={<Navigate to="conversations" replace />} />
-          <Route path="conversations" element={<h1>Team conversations</h1>} />
+          <Route path="conversations">
+            <Route
+              index
+              element={<ReviewQueue viewer={viewer} api={teamReviewApi} />}
+            />
+            <Route
+              path=":conversationId/findings/:findingId"
+              element={<FindingReview viewer={viewer} />}
+            />
+          </Route>
           <Route path="knowledge" element={<h1>Knowledge drafts</h1>} />
         </Route>
         <Route
