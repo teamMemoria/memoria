@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import type { AgentContext, CallReview } from '../types/callReview'
+import type { AgentContext, CallReview, ReviewRequest } from '../types/callReview'
 import type { Conversation } from '../features/conversations/conversations'
 import {
   agent, callFixture, callPath, createDevCallApi, deferred, findingPath, openApp,
@@ -253,5 +253,53 @@ describe('Agent context', () => {
     expect(saveContext).toHaveBeenCalledTimes(1)
     await act(() => save.resolve({ text: note, savedAt: '2026-10-29T15:00:00Z' }))
     expect(screen.getByText('Saved Oct 29, 2026, 3:00 PM UTC')).toBeTruthy()
+  })
+})
+
+describe('Flag feedback', () => {
+  const reason = 'Purchase was verified in chat before turn 8.'
+  const reasonField = () => screen.findByLabelText<HTMLTextAreaElement>('Reason for review')
+
+  it('sends one review request, shows its status and keeps automatic feedback', async () => {
+    const callApi = createDevCallApi()
+    const requestReview = vi.spyOn(callApi, 'requestReview')
+    const { router } = openApp({ path: findingPath, callApi })
+    const field = await reasonField()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Request review' }).disabled).toBe(true)
+    fireEvent.change(field, { target: { value: reason } })
+    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
+    await screen.findByText('Review requested')
+    expect(requestReview).toHaveBeenCalledTimes(1)
+    expect(requestReview).toHaveBeenCalledWith(agent.id, 'C1042', 'procedure-order', reason)
+    expect(screen.getByText(`Reason: ${reason}`)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Automatic feedback' })).toBeTruthy()
+    await act(() => router.navigate(callPath))
+    await act(() => router.navigate(findingPath))
+    await screen.findByText('Review requested')
+    expect(screen.queryByLabelText('Reason for review')).toBeNull()
+  })
+
+  it('sends one request while a request is in progress', async () => {
+    const pending = deferred<ReviewRequest>()
+    const requestReview = vi.fn(() => pending.promise)
+    openApp({ path: findingPath, callApi: { ...createDevCallApi(), requestReview } })
+    fireEvent.change(await reasonField(), { target: { value: reason } })
+    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sending…' }))
+    expect(requestReview).toHaveBeenCalledTimes(1)
+    await act(() => pending.resolve({
+      findingId: 'procedure-order', reason, requestedAt: '2026-10-29T15:00:00Z', status: 'requested',
+    }))
+    expect(screen.getByText('Review requested')).toBeTruthy()
+  })
+
+  it('shows an error and keeps the reason when the request fails', async () => {
+    const callApi = { ...createDevCallApi(), requestReview: vi.fn().mockRejectedValue(new Error('Offline')) }
+    openApp({ path: findingPath, callApi })
+    fireEvent.change(await reasonField(), { target: { value: reason } })
+    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('The review request could not be sent. Please try again.')
+    expect((await reasonField()).value).toBe(reason)
+    expect(screen.queryByText('Review requested')).toBeNull()
   })
 })

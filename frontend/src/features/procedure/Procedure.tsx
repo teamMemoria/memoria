@@ -18,6 +18,7 @@ import type {
 import { canReadKnowledge } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
 import { AgentContext } from './AgentContext'
+import { FlagFeedback } from './FlagFeedback'
 import { Waveforms } from './Waveforms'
 import './procedure.css'
 
@@ -521,13 +522,23 @@ function AgentProcedure({
         )}
       </div>
       {finding && api && (
-        <AgentContext
-          api={api}
-          agentId={viewer.id}
-          conversationId={call.id}
-          saved={call.agentContext}
-          onSaved={(agentContext) => state.update({ agentContext })}
-        />
+        <div className="agent-actions">
+          <AgentContext
+            api={api}
+            agentId={viewer.id}
+            conversationId={call.id}
+            saved={call.agentContext}
+            onSaved={(agentContext) => state.update({ agentContext })}
+          />
+          <FlagFeedback
+            api={api}
+            agentId={viewer.id}
+            conversationId={call.id}
+            findingId={finding.id}
+            request={call.reviewRequest}
+            onRequested={(reviewRequest) => state.update({ reviewRequest })}
+          />
+        </div>
       )}
       <footer className="evidence-footer">
         <p>

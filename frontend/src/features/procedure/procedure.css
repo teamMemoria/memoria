@@ -236,13 +236,22 @@
   gap: 8px;
 }
 
-.agent-context form {
+.agent-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.agent-context form,
+.flag-feedback form {
   display: grid;
   gap: 12px;
   justify-items: start;
 }
 
-.agent-context .field {
+.agent-context .field,
+.flag-feedback .field {
   width: 100%;
 }
 
@@ -416,7 +425,8 @@
 }
 
 @media (max-width: 1100px) {
-  .evidence-columns {
+  .evidence-columns,
+  .agent-actions {
     grid-template-columns: minmax(0, 1fr);
   }
 
