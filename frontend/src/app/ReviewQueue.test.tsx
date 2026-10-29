@@ -50,7 +50,7 @@ describe('Manager review queue', () => {
   it('opens the flagged finding from its row and keeps the filters on return', async () => {
     const { router } = openApp({ path: `${path}?q=lamp`, viewerApi: asManager })
     fireEvent.click(await screen.findByRole('link', { name: 'Review C1051: Exchange offered without checking stock.' }))
-    await screen.findByRole('heading', { name: 'Review call C1051' })
+    await screen.findByRole('heading', { name: 'Exchange offered without checking stock.', level: 1 })
     expect(router.state.location.pathname).toBe('/manager/conversations/C1051/findings/answer-support')
     fireEvent.click(screen.getByRole('link', { name: 'Team conversations', current: false }))
     await screen.findByRole('table')
@@ -73,7 +73,7 @@ describe('Manager review queue', () => {
     const listForManager = vi.fn()
       .mockRejectedValueOnce(new Error('Internal details'))
       .mockResolvedValueOnce([])
-    openApp({ path, viewerApi: asManager, teamReviewApi: { listForManager } })
+    openApp({ path, viewerApi: asManager, teamReviewApi: { ...createDevTeamReviewApi(), listForManager } })
     expect(await screen.findByText('Loading team conversations…')).toBeTruthy()
     expect((await screen.findByRole('alert')).textContent).toBe('Team conversations could not be loaded. Please try again.')
     expect(screen.queryByText('Internal details')).toBeNull()
@@ -84,7 +84,7 @@ describe('Manager review queue', () => {
   it('says when nothing is flagged and offers all conversations', async () => {
     const records = (await createDevTeamReviewApi().listForManager(manager.id))
       .filter((record): record is TeamConversation => record.reviewStatus !== 'review-requested')
-    openApp({ path, viewerApi: asManager, teamReviewApi: { listForManager: async () => records } })
+    openApp({ path, viewerApi: asManager, teamReviewApi: { ...createDevTeamReviewApi(), listForManager: async () => records } })
     await screen.findByRole('heading', { name: 'No flagged feedback' })
     expect(screen.getByText('0 flagged for review')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Show all conversations' }))
@@ -93,7 +93,7 @@ describe('Manager review queue', () => {
 
   it('refuses the review queue to Agents, in the page and in the development API', async () => {
     const listForManager = vi.fn()
-    openApp({ path, viewerApi: { getViewer: async () => agent }, teamReviewApi: { listForManager } })
+    openApp({ path, viewerApi: { getViewer: async () => agent }, teamReviewApi: { ...createDevTeamReviewApi(), listForManager } })
     await screen.findByRole('heading', { name: 'Page unavailable for your role' })
     expect(listForManager).not.toHaveBeenCalled()
     await expect(createDevTeamReviewApi().listForManager(agent.id)).rejects.toThrow()

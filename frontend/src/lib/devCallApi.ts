@@ -181,22 +181,167 @@ const call: CallReview = {
   decision: null,
 }
 
-export function createDevCallApi(): CallApi {
+// Team calls Managers can review in development.
+function teamCall(overrides: Partial<CallReview> & Pick<CallReview, 'id' | 'agentId' | 'agentName' | 'topic'>): CallReview {
+  return {
+    ...structuredClone(call),
+    criteria: [],
+    references: [],
+    agentContext: null,
+    reviewRequest: null,
+    decision: null,
+    ...overrides,
+  }
+}
+
+const teamCalls: CallReview[] = [
+  teamCall({
+    id: 'C1051',
+    agentId: 'agent-priya-shah',
+    agentName: 'Priya Shah',
+    topic: 'Lamp exchange',
+    date: '2026-10-12',
+    duration: '3:10',
+    summary: 'Exchange arranged for a damaged lamp.',
+    findings: [
+      {
+        id: 'answer-support',
+        title: 'Exchange offered without checking stock.',
+        criterionId: 'answer-support',
+        explanation: 'The exchange was offered at turn 3. No stock check is visible in the transcript.',
+        suggestion: 'Check stock before offering an exchange.',
+        evidenceTurnNumbers: [3],
+        referenceId: null,
+        referenceStep: null,
+        procedureSteps: [],
+      },
+    ],
+    transcript: {
+      complete: true,
+      unavailableReason: null,
+      turns: [
+        { number: 1, speaker: 'Customer', text: 'My lamp arrived with a cracked shade.', time: '0:05' },
+        { number: 2, speaker: 'Agent', text: 'I’m sorry about that. Let me look at your order.', time: '0:20' },
+        { number: 3, speaker: 'Agent', text: 'I can swap the damaged lamp for a new one.', time: '1:02' },
+        { number: 4, speaker: 'Customer', text: 'That would be great, thanks.', time: '1:15' },
+      ],
+    },
+    agentContext: {
+      text: 'I checked stock on the order screen while the customer was talking.',
+      savedAt: '2026-10-13T09:20:00Z',
+    },
+    reviewRequest: {
+      findingId: 'answer-support',
+      reason: 'Stock was checked in the order system before the call.',
+      requestedAt: '2026-10-13T09:30:00Z',
+      status: 'requested',
+    },
+  }),
+  teamCall({
+    id: 'C1058',
+    agentId: 'agent-sam-rivera',
+    agentName: 'Sam Rivera',
+    topic: 'Card refund timing',
+    date: '2026-10-14',
+    duration: '2:48',
+    summary: 'Refund timing explained for a card payment.',
+    findings: [
+      {
+        id: 'completeness',
+        title: 'Refund timeline not confirmed with the customer.',
+        criterionId: 'completeness',
+        explanation: 'The agent explained the refund at turn 2. The customer’s confirmation is not visible.',
+        suggestion: 'Confirm the customer understands the refund timeline.',
+        evidenceTurnNumbers: [2],
+        referenceId: 'RP-01',
+        referenceStep: 4,
+        procedureSteps: [],
+      },
+    ],
+    transcript: {
+      complete: false,
+      unavailableReason: 'The recording ended before the call finished.',
+      turns: [
+        { number: 1, speaker: 'Customer', text: 'When will my refund reach my card?', time: '0:04' },
+        { number: 2, speaker: 'Agent', text: 'It can take 5 to 10 business days to reach your card.', time: '0:31' },
+      ],
+    },
+    references: [refundProcedure],
+    reviewRequest: {
+      findingId: 'completeness',
+      reason: 'The customer confirmed the timeline after the transcript cut off.',
+      requestedAt: '2026-10-15T16:10:00Z',
+      status: 'requested',
+    },
+  }),
+  teamCall({
+    id: 'C1060',
+    agentId: 'agent-priya-shah',
+    agentName: 'Priya Shah',
+    topic: 'Delivery delay',
+    date: '2026-10-10',
+    findings: [
+      {
+        id: 'procedure-order',
+        title: 'Tracking checked after offering compensation.',
+        criterionId: 'procedure',
+        explanation: 'Compensation was offered at turn 2 and tracking was checked at turn 3.',
+        suggestion: 'Check tracking before offering compensation.',
+        evidenceTurnNumbers: [2, 3],
+        referenceId: null,
+        referenceStep: null,
+        procedureSteps: [],
+      },
+    ],
+    transcript: {
+      complete: true,
+      unavailableReason: null,
+      turns: [
+        { number: 1, speaker: 'Customer', text: 'My parcel is three days late.', time: '0:06' },
+        { number: 2, speaker: 'Agent', text: 'I can offer a delivery credit for the delay.', time: '0:40' },
+        { number: 3, speaker: 'Agent', text: 'Tracking shows it arrives tomorrow.', time: '1:05' },
+      ],
+    },
+    reviewRequest: {
+      findingId: 'procedure-order',
+      reason: 'Tracking was checked on a second screen first.',
+      requestedAt: '2026-10-11T11:00:00Z',
+      status: 'complete',
+    },
+    decision: {
+      outcome: 'dismissed',
+      reason: 'The order system log shows tracking was checked first.',
+      feedback: 'No change needed. Mentioning the tracking check aloud helps the record.',
+      managerName: 'Maya Chen',
+      decidedAt: '2026-10-11T15:00:00Z',
+    },
+  }),
+]
+
+export type ManagerDecision = NonNullable<CallReview['decision']>
+
+export type DevCallApi = CallApi & {
+  // Development-only access for the Manager team review API.
+  getCall(conversationId: string): Promise<CallReview | null>
+  recordDecision(conversationId: string, decision: ManagerDecision): Promise<void>
+}
+
+export function createDevCallApi(): DevCallApi {
   // Each API keeps its own copy so saves survive navigation within a session.
-  const saved = structuredClone(call)
+  const saved = structuredClone([call, ...teamCalls])
 
   function ownedCall(agentId: string, conversationId: string) {
-    if (saved.agentId !== agentId || saved.id !== conversationId) {
+    const target = saved.find((item) => item.id === conversationId)
+    if (!target || target.agentId !== agentId) {
       throw new Error('This conversation is not available.')
     }
-    return saved
+    return target
   }
 
   return {
     async getCallForAgent(agentId, conversationId) {
-      return saved.agentId === agentId && saved.id === conversationId
-        ? structuredClone(saved)
-        : null
+      const target = saved.find((item) => item.id === conversationId)
+      return target && target.agentId === agentId ? structuredClone(target) : null
     },
     async saveContext(agentId, conversationId, text) {
       const target = ownedCall(agentId, conversationId)
@@ -220,6 +365,16 @@ export function createDevCallApi(): CallApi {
         status: 'requested',
       }
       return structuredClone(target.reviewRequest)
+    },
+    async getCall(conversationId) {
+      const target = saved.find((item) => item.id === conversationId)
+      return target ? structuredClone(target) : null
+    },
+    async recordDecision(conversationId, decision) {
+      const target = saved.find((item) => item.id === conversationId)
+      if (!target?.reviewRequest) throw new Error('No review was requested.')
+      target.decision = structuredClone(decision)
+      target.reviewRequest.status = 'complete'
     },
   }
 }

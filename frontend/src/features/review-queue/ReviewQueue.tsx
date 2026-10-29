@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
-import { Icon } from '../../components/Icon'
+import { Link, useSearchParams } from 'react-router'
 import {
   Button,
   Panel,
@@ -249,34 +248,6 @@ export function ReviewQueue({
           </div>
         </>
       )}
-    </div>
-  )
-}
-
-export function FindingReview({ viewer }: { viewer: Viewer }) {
-  const { conversationId = '', findingId = '' } = useParams()
-  const [params] = useSearchParams()
-  const search = params.size ? `?${params}` : ''
-
-  if (viewer.role !== 'manager') {
-    return (
-      <Panel title="Page unavailable for your role">
-        <p>Finding review is available in the Manager workspace.</p>
-      </Panel>
-    )
-  }
-
-  return (
-    <div className="review-queue">
-      <Link className="review-queue-back" to={`/manager/conversations${search}`}>
-        <Icon name="arrowLeft" />
-        Team conversations
-      </Link>
-      <h1>Review call {conversationId}</h1>
-      <p className="metadata-line">
-        <span>Finding {findingId}</span>
-      </p>
-      <p>Manager decisions for this finding are not available yet.</p>
     </div>
   )
 }

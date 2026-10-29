@@ -47,6 +47,7 @@ export function openApp({
   path = '/',
   ...overrides
 }: Partial<ComponentProps<typeof App>> & { path?: string } = {}) {
+  const callApi = createDevCallApi()
   const router = createMemoryRouter([
     {
       path: '*',
@@ -54,9 +55,9 @@ export function openApp({
         <App
           viewerApi={{ getViewer: async () => agent }}
           conversationsApi={createDevConversationsApi()}
-          callApi={createDevCallApi()}
+          callApi={callApi}
           knowledgeApi={createDevApprovedKnowledgeApi()}
-          teamReviewApi={createDevTeamReviewApi()}
+          teamReviewApi={createDevTeamReviewApi(callApi)}
           {...overrides}
         />
       ),

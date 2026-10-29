@@ -11,10 +11,8 @@ import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
 import { AgentConversations } from '../features/conversations/AgentConversations'
 import type { ConversationsApi } from '../features/conversations/conversations'
-import {
-  FindingReview,
-  ReviewQueue,
-} from '../features/review-queue/ReviewQueue'
+import { FindingReview } from '../features/review-queue/FindingReview'
+import { ReviewQueue } from '../features/review-queue/ReviewQueue'
 import type { TeamReviewApi } from '../features/review-queue/teamQueue'
 
 function RouteMessage({ title, home }: { title: string; home: string }) {
@@ -111,7 +109,7 @@ export function AppRoutes({
             />
             <Route
               path=":conversationId/findings/:findingId"
-              element={<FindingReview viewer={viewer} />}
+              element={<FindingReview viewer={viewer} api={teamReviewApi} />}
             />
           </Route>
           <Route path="knowledge" element={<h1>Knowledge drafts</h1>} />

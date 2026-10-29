@@ -1,9 +1,13 @@
-import type { CallApi } from '../../types/callReview'
+import type { DevCallApi } from '../../lib/devCallApi'
 import { reviewRequestStatuses } from '../conversations/conversations'
 import type { TeamConversation, TeamReviewApi } from './teamQueue'
 
-const teams: Record<string, string[]> = {
-  'manager-maya-chen': ['agent-alex-morgan', 'agent-priya-shah', 'agent-sam-rivera'],
+const managers: Record<string, { name: string; team: string[]; canDecide: boolean }> = {
+  'manager-maya-chen': {
+    name: 'Maya Chen',
+    team: ['agent-alex-morgan', 'agent-priya-shah', 'agent-sam-rivera'],
+    canDecide: true,
+  },
 }
 
 const conversations: TeamConversation[] = [
@@ -87,17 +91,28 @@ const conversations: TeamConversation[] = [
   },
 ]
 
-// Pass the call API to include flags agents raised in this session.
-export function createDevTeamReviewApi(callApi?: CallApi): TeamReviewApi {
+// Pass the call API to read flags and save decisions made in this session.
+export function createDevTeamReviewApi(callApi?: DevCallApi): TeamReviewApi {
+  function manager(managerId: string) {
+    const found = managers[managerId]
+    if (!found) throw new Error('Team review is available to Managers only.')
+    return found
+  }
+
+  async function teamCall(managerId: string, conversationId: string) {
+    const { team } = manager(managerId)
+    const call = await callApi?.getCall(conversationId)
+    return call && team.includes(call.agentId) ? call : null
+  }
+
   return {
     async listForManager(managerId) {
-      const team = teams[managerId]
-      if (!team) throw new Error('Team review is available to Managers only.')
+      const { team } = manager(managerId)
       return Promise.all(
         conversations
           .filter((conversation) => team.includes(conversation.agentId))
           .map(async (conversation) => {
-            const call = await callApi?.getCallForAgent(conversation.agentId, conversation.id)
+            const call = await callApi?.getCall(conversation.id)
             const request = call?.reviewRequest
             if (!call || !request) return structuredClone(conversation)
             return {
@@ -112,6 +127,35 @@ export function createDevTeamReviewApi(callApi?: CallApi): TeamReviewApi {
             }
           }),
       )
+    },
+    async getCallForManager(managerId, conversationId) {
+      const call = await teamCall(managerId, conversationId)
+      return call ? { call, canDecide: manager(managerId).canDecide } : null
+    },
+    async saveDecision(managerId, conversationId, findingId, decision) {
+      const { name, canDecide } = manager(managerId)
+      if (!canDecide) throw new Error('You do not have call review permission.')
+      const call = await teamCall(managerId, conversationId)
+      if (
+        !call ||
+        call.decision ||
+        call.reviewRequest?.findingId !== findingId ||
+        call.reviewRequest.status !== 'requested'
+      ) {
+        throw new Error('This finding cannot be decided.')
+      }
+      if (!decision.reason.trim() || !decision.feedback.trim()) {
+        throw new Error('A reason and feedback are required.')
+      }
+      const saved = {
+        outcome: decision.outcome,
+        reason: decision.reason.trim(),
+        feedback: decision.feedback.trim(),
+        managerName: name,
+        decidedAt: new Date().toISOString(),
+      }
+      await callApi!.recordDecision(conversationId, saved)
+      return saved
     },
   }
 }

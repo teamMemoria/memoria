@@ -1,4 +1,4 @@
-import type { ReviewRequest } from '../../types/callReview'
+import type { CallReview, ReviewRequest } from '../../types/callReview'
 import {
   conversationStatusLabels,
   filterConversations,
@@ -11,9 +11,47 @@ export type FlaggedFeedback = ReviewRequest & { findingTitle: string }
 // A team conversation as Managers see it, with the agent's flag if any.
 export type TeamConversation = Conversation & { flag: FlaggedFeedback | null }
 
+export type ManagerDecision = NonNullable<CallReview['decision']>
+export type DecisionInput = Pick<ManagerDecision, 'outcome' | 'reason' | 'feedback'>
+
+export type FindingReviewDetail = {
+  call: CallReview
+  // Call-review permission, supplied by the backend.
+  canDecide: boolean
+}
+
 export interface TeamReviewApi {
   listForManager(managerId: string): Promise<TeamConversation[]>
+  getCallForManager(
+    managerId: string,
+    conversationId: string,
+  ): Promise<FindingReviewDetail | null>
+  saveDecision(
+    managerId: string,
+    conversationId: string,
+    findingId: string,
+    decision: DecisionInput,
+  ): Promise<ManagerDecision>
 }
+
+export const decisionOutcomes = {
+  confirmed: {
+    label: 'Confirmed',
+    description: 'The automatic feedback is correct.',
+  },
+  corrected: {
+    label: 'Corrected',
+    description: 'The feedback needs a correction, explained below.',
+  },
+  dismissed: {
+    label: 'Dismissed',
+    description: 'The feedback does not apply to this call.',
+  },
+  'cannot-assess': {
+    label: 'Cannot assess',
+    description: 'The evidence is not enough to decide.',
+  },
+} as const satisfies Record<ManagerDecision['outcome'], { label: string; description: string }>
 
 // Managers land on flagged feedback first.
 export const defaultQueueStatus = 'review-requested'
