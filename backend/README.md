@@ -23,3 +23,10 @@ Then give every conversation a topic. The label-to-topic mapping is in
 `src/backend/data/topic_mapping.toml`; edit it and re-run to change topics:
 
     uv run assign-topics
+
+## Hand-scored evaluation set
+
+`evaluation/` holds the scoring rubric and the score sheet for the
+hand-scored evaluation set. The conversations in the sheet were picked with:
+
+    uv run select-eval-set
