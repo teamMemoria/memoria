@@ -8,6 +8,7 @@ Callers supply parsed values and explicit assessment context.
 import json
 from copy import deepcopy
 from hashlib import sha256
+from math import isfinite
 
 from . import wording
 from .abcd import transcript_version
@@ -30,6 +31,31 @@ CRITERIA_IDS = {
     "respect": "memoria-wording-respect",
     "acknowledgement": "memoria-wording-acknowledgement",
 }
+
+
+def validate_report_limits(limits):
+    """Validate the complete execution settings recorded with a report."""
+    if not isinstance(limits, dict) or limits.keys() != {
+        "max_events",
+        "max_input_bytes",
+        "max_output_bytes",
+        "timeout_seconds",
+    }:
+        raise ValueError("Report limits must include every execution setting.")
+    for name, value in limits.items():
+        if name == "timeout_seconds":
+            try:
+                valid = type(value) in (int, float) and isfinite(value) and value > 0
+            except OverflowError:
+                valid = False
+        else:
+            valid = type(value) is int and value > 0
+        if not valid:
+            raise ValueError("Report limits must be positive finite values.")
+    if limits["max_output_bytes"] < 4096:
+        raise ValueError(
+            "Output budget must allow at least 4096 bytes for an error report."
+        )
 
 
 def validate_rubric(rubric: dict) -> None:
@@ -230,31 +256,24 @@ def _result_citations(value):
             yield from _result_citations(item)
 
 
-def build_assessment(
+def validate_results(
     conversation: dict,
     results: list[dict],
     eligible_sources: list[dict],
     *,
     as_of: str,
     scope: str,
-    rule_versions: dict,
-) -> dict:
-    """Validate the final output against the explicit eligible-source union."""
+    require_all: bool = True,
+) -> None:
+    """Validate complete results or a nonempty subset against eligible sources."""
     review_issues({}, as_of=as_of, scope=scope)
     try:
         if conversation["transcript_version"] != transcript_version(conversation):
             raise ValueError("Transcript version does not match its evidence.")
     except (KeyError, TypeError):
         raise ValueError("Invalid conversation evidence.") from None
-    if (
-        not isinstance(rule_versions, dict)
-        or not rule_versions
-        or any(
-            not isinstance(key, str) or not isinstance(value, str) or not value
-            for key, value in rule_versions.items()
-        )
-    ):
-        raise ValueError("Explicit rule versions are required.")
+    if type(require_all) is not bool:
+        raise TypeError("require_all must be a boolean.")
     if not isinstance(eligible_sources, list):
         raise TypeError("Eligible sources must be a list.")
     seen = set()
@@ -282,7 +301,7 @@ def build_assessment(
     }
     if (
         not isinstance(results, list)
-        or len(results) != len(CATEGORIES)
+        or not results
         or any(
             not isinstance(result, dict)
             or result.keys() != result_fields
@@ -290,9 +309,17 @@ def build_assessment(
             or result["category"] not in CATEGORIES
             for result in results
         )
-        or sorted(result["category"] for result in results) != sorted(CATEGORIES)
+        or len({result["category"] for result in results}) != len(results)
+        or (
+            require_all
+            and sorted(result["category"] for result in results) != sorted(CATEGORIES)
+        )
     ):
-        raise ValueError("An assessment requires exactly the four category records.")
+        raise ValueError(
+            "An assessment requires exactly the four category records."
+            if require_all
+            else "Partial results require unique, known category records."
+        )
     finding_ids = set()
     for result in results:
         if (
@@ -342,9 +369,31 @@ def build_assessment(
     citations = list(_result_citations(results))
     if validate_citations(citations, [conversation], eligible_sources):
         raise ValueError("Audit output contains an invalid or ineligible citation.")
+
+
+def build_assessment(
+    conversation: dict,
+    results: list[dict],
+    eligible_sources: list[dict],
+    *,
+    as_of: str,
+    scope: str,
+    rule_versions: dict,
+) -> dict:
+    """Build a complete assessment after validating all four category records."""
+    if (
+        not isinstance(rule_versions, dict)
+        or not rule_versions
+        or any(
+            not isinstance(key, str) or not isinstance(value, str) or not value
+            for key, value in rule_versions.items()
+        )
+    ):
+        raise ValueError("Explicit rule versions are required.")
+    validate_results(conversation, results, eligible_sources, as_of=as_of, scope=scope)
     used_ids = {
         citation["reference_id"]
-        for citation in citations
+        for citation in _result_citations(results)
         if citation["kind"] == "reference"
     }
     trace = [

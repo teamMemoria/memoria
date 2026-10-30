@@ -12,6 +12,7 @@ from ml.audit import (
     category_result,
     criteria_issues,
     eligible_criteria,
+    validate_results,
     validate_rubric,
 )
 from ml.citations import validate_citations
@@ -177,6 +178,90 @@ class ResultContractTests(unittest.TestCase):
     def setUp(self):
         self.conversation = prepared()["conversations"][0]
         self.policies = eligible_references(catalog(), as_of=AS_OF, scope=SCOPE)
+
+    def test_partial_validation_is_explicit_and_preserves_complete_requirement(self):
+        partial = results(self.conversation)[:2]
+        before = deepcopy((partial, self.policies))
+        validate_results(
+            self.conversation,
+            partial,
+            self.policies,
+            as_of=AS_OF,
+            scope=SCOPE,
+            require_all=False,
+        )
+        self.assertEqual((partial, self.policies), before)
+        with self.assertRaises(ValueError):
+            assessment(self.conversation, partial, self.policies)
+        for invalid in (
+            [],
+            [partial[0], partial[0]],
+            [{**partial[0], "category": "other"}],
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                validate_results(
+                    self.conversation,
+                    invalid,
+                    self.policies,
+                    as_of=AS_OF,
+                    scope=SCOPE,
+                    require_all=False,
+                )
+
+    def test_partial_validation_keeps_source_and_nested_citation_gates(self):
+        partial = results(self.conversation)[:1]
+        with self.assertRaises(ValueError):
+            validate_results(
+                self.conversation,
+                partial,
+                criteria(),
+                as_of=AS_OF,
+                scope=SCOPE,
+                require_all=False,
+            )
+        partial[0]["details"]["citations"] = [{"kind": "bad", "quote": "untrusted"}]
+        with self.assertRaises(ValueError):
+            validate_results(
+                self.conversation,
+                partial,
+                self.policies,
+                as_of=AS_OF,
+                scope=SCOPE,
+                require_all=False,
+            )
+
+    def test_partial_validation_rejects_duplicate_findings_across_categories(self):
+        from ml.abcd import conversation_passages
+
+        citations = [
+            conversation_passages([self.conversation])[0]["citation"],
+            reference_passages(self.policies)[0]["citation"],
+        ]
+        partial = [
+            category_result(
+                self.conversation, category, [check("needs-review", citations)]
+            )
+            for category in ("procedure", "answer-support")
+        ]
+        partial[1]["findings"][0]["id"] = partial[0]["findings"][0]["id"]
+        for record in partial:
+            validate_results(
+                self.conversation,
+                [record],
+                self.policies,
+                as_of=AS_OF,
+                scope=SCOPE,
+                require_all=False,
+            )
+        with self.assertRaisesRegex(ValueError, "unique"):
+            validate_results(
+                self.conversation,
+                partial,
+                self.policies,
+                as_of=AS_OF,
+                scope=SCOPE,
+                require_all=False,
+            )
 
     def test_result_precedence_and_explained_uncertainty(self):
         for statuses, expected in (
