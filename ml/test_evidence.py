@@ -2,21 +2,16 @@
 
 import gzip
 import json
-import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 from hashlib import sha256
-from io import StringIO
 from pathlib import Path
-from unittest.mock import patch
 
 from ml.abcd import (
     ABCD_COMMIT,
     ABCD_SHA256,
     MIT_NOTICE,
     conversation_passages,
-    main,
     mask_texts,
     prepare_conversation,
     prepare_dataset,
@@ -260,12 +255,12 @@ class PreparationTests(unittest.TestCase):
             (
                 [
                     "Email new@example.test or phone +1 555-222-3333. Password is s3cret.",
-                    "new@example.test, +1 555-222-3333, PIN: 9999, ID ABC98765; refund $79.",
+                    'new@example.test, +1 555-222-3333, PIN: "9999", ID ABC98765; refund $79.',
                 ],
                 {},
                 [
-                    "Email [EMAIL_1] or phone [PHONE_1]. Password is [SECRET_1].",
-                    "[EMAIL_1], [PHONE_1], PIN: [SECRET_2], ID [IDENTIFIER_1]; refund $79.",
+                    "Email [EMAIL_1] or phone [PHONE_1]. Password is [SECRET_1]",
+                    '[EMAIL_1], [PHONE_1], PIN: "[SECRET_2]", ID [IDENTIFIER_1]; refund $79.',
                 ],
             ),
             (
@@ -283,7 +278,7 @@ class PreparationTests(unittest.TestCase):
                 {"personal": {"account_id": "100000"}},
                 ["Account: $[ACCOUNT_ID_1]."],
             ),
-            (["PIN: $123456."], {}, ["PIN: [SECRET_1]."]),
+            (["PIN: $123456."], {}, ["PIN: [SECRET_1]"]),
         )
         for texts, scenario, expected in cases:
             with self.subTest(texts=texts):
@@ -337,6 +332,199 @@ class PreparationTests(unittest.TestCase):
                         mask_texts(texts, {"personal": {field: value}}), expected
                     )
 
+    def test_unknown_labelled_secrets_are_redacted_in_full_across_turns(self):
+        for opening, closing in (("'", "'"), ('"', '"'), ("‘", "’"), ("“", "”")):
+            for label in ("Password is", "Security answer:", "PIN number ="):
+                for value in ("alpha.beta", "blue sky", "some.pass!word?", "a;b,c"):
+                    with self.subTest(opening=opening, label=label, value=value):
+                        texts = [
+                            f"Earlier action recorded {value}.",
+                            f"{label} {opening}{value}{closing}.",
+                            f"The agent repeated {value}.",
+                        ]
+                        self.assertEqual(
+                            mask_texts(texts, {}),
+                            [
+                                "Earlier action recorded [SECRET_1].",
+                                f"{label} {opening}[SECRET_1]{closing}.",
+                                "The agent repeated [SECRET_1].",
+                            ],
+                        )
+        for value in ("hunter", "alpha.beta", "blue sky", "some.pass!word?"):
+            with self.subTest(unquoted=value):
+                texts = [value, f"Security answer: {value}.", value]
+                self.assertEqual(
+                    mask_texts(texts, {}),
+                    ["[SECRET_1]", "Security answer: [SECRET_1]", "[SECRET_1]"],
+                )
+
+    def test_labelled_secret_boundaries_preserve_separate_facts_or_fail_closed(self):
+        self.assertEqual(
+            mask_texts(
+                [
+                    'Password is "alpha.beta"; refund $79.',
+                    'PIN: "4321", ID ABC98765; refund $100000.',
+                    "Action copied alpha.beta and 4321.",
+                ],
+                {},
+            ),
+            [
+                'Password is "[SECRET_1]"; refund $79.',
+                'PIN: "[SECRET_2]", ID [IDENTIFIER_1]; refund $100000.',
+                "Action copied [SECRET_1] and [SECRET_2].",
+            ],
+        )
+        for text in (
+            'Password is "alpha.beta.',
+            "Security answer: ‘blue sky.",
+            'Password is "".',
+            'Password: "alpha"beta',
+            'Password: "alpha"#suffix',
+            'Password: "alpha".beta',
+            "PIN:",
+            "Password is alpha.beta. Please refund $79.",
+        ):
+            with self.subTest(text=text), self.assertRaises(ValueError) as error:
+                mask_texts([text], {})
+            self.assertNotIn("alpha", str(error.exception))
+            self.assertNotIn("blue", str(error.exception))
+        self.assertEqual(
+            mask_texts(
+                ['Password: "alpha"; password: "alpha.beta".', "alpha.beta"], {}
+            ),
+            ['Password: "[SECRET_1]"; password: "[SECRET_2]".', "[SECRET_2]"],
+        )
+
+    def test_overlapping_recognisers_redact_the_complete_sensitive_span(self):
+        for value in (
+            "alpha@example.test#suffix",
+            "ABC123456#suffix",
+            "+1 555-222-3333.ext",
+            "$123456.78#suffix",
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    mask_texts([f'Password: "{value}".', value], {}),
+                    ['Password: "[SECRET_1]".', "[SECRET_1]"],
+                )
+        self.assertEqual(
+            mask_texts(
+                ["alpha@example.test", "Taylor@new.example.test"],
+                {"personal": {"password": "alpha", "customer_name": "Taylor Parker"}},
+            ),
+            ["[EMAIL_1]", "[EMAIL_2]"],
+        )
+        self.assertEqual(
+            mask_texts(
+                ["alpha.beta.gamma"],
+                {
+                    "personal": {
+                        "password": "alpha.beta",
+                        "security_answer": "beta.gamma",
+                    }
+                },
+            ),
+            ["[IDENTIFIER_1]"],
+        )
+
+    def test_secret_matching_retains_literal_unicode_and_quoted_whitespace(self):
+        for value, folded in (("Straße", "STRASSE"), ("ﬃ", "FFI")):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    mask_texts([f'Password: "{value}"', value, folded], {}),
+                    ['Password: "[SECRET_1]"', "[SECRET_1]", "[SECRET_1]"],
+                )
+                self.assertEqual(
+                    mask_texts([value, f"Password: {value}.", folded], {}),
+                    ["[SECRET_1]", "Password: [SECRET_1]", "[SECRET_1]"],
+                )
+        self.assertEqual(
+            mask_texts(
+                [
+                    'Password: "  alpha.beta  ".',
+                    "  alpha.beta  ",
+                    "Read  alpha.beta  now.",
+                ],
+                {},
+            ),
+            ['Password: "[SECRET_1]".', "[SECRET_1]", "Read[SECRET_1]now."],
+        )
+        self.assertEqual(
+            mask_texts(
+                ["Straße@new.example.test"], {"personal": {"password": "Straße"}}
+            ),
+            ["[EMAIL_1]"],
+        )
+
+    def test_unquoted_separators_require_an_unambiguous_known_value(self):
+        for value in ("alpha,beta", "alpha;beta", "alpha\nbeta"):
+            with self.subTest(value=value), self.assertRaises(ValueError) as error:
+                mask_texts(["Password: " + value], {})
+            self.assertNotIn("alpha", str(error.exception))
+            self.assertNotIn("beta", str(error.exception))
+            self.assertEqual(
+                mask_texts([f'Password: "{value}"; refund $79.', value], {}),
+                ['Password: "[SECRET_1]"; refund $79.', "[SECRET_1]"],
+            )
+            self.assertEqual(
+                mask_texts(["Password: " + value], {"personal": {"password": value}}),
+                ["Password: [SECRET_1]"],
+            )
+        for text in (
+            "PIN: 9999, ID ABC98765; refund $79.",
+            "PIN: 4321, ID ABC98765; refund $100000.",
+        ):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                mask_texts([text], {})
+        with self.assertRaises(ValueError):
+            mask_texts(
+                ["Password: hunter; refund $79."],
+                {"personal": {"password": "hunter"}},
+            )
+
+    def test_unquoted_multiple_secret_labels_fail_closed(self):
+        for value in (
+            "alpha PIN: beta",
+            "alpha and security answer: beta",
+            "alpha password is beta",
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError) as error:
+                mask_texts(["Earlier alpha then beta", "Password: " + value], {})
+            self.assertNotIn("alpha", str(error.exception))
+            self.assertNotIn("beta", str(error.exception))
+            self.assertEqual(
+                mask_texts(
+                    [value, "Password: " + value], {"personal": {"password": value}}
+                ),
+                ["[SECRET_1]", "Password: [SECRET_1]"],
+            )
+
+    def test_discovered_secrets_are_masked_in_preserved_message_and_action_events(self):
+        record = source_record()
+        record["original"] = [
+            ["action", "Copied alpha.beta and blue sky."],
+            ["customer", 'Password: "alpha.beta"; security answer: "blue sky".'],
+            ["action", "Stored alpha.beta and blue sky."],
+        ]
+        record.pop("delexed")
+        conversation = prepare_conversation(record, split="dev", index=2)
+        self.assertEqual(
+            [event["text"] for event in conversation["events"]],
+            [
+                "Copied [SECRET_2] and [SECRET_3].",
+                'Password: "[SECRET_2]"; security answer: "[SECRET_3]".',
+                "Stored [SECRET_2] and [SECRET_3].",
+            ],
+        )
+        self.assertEqual(
+            [event["kind"] for event in conversation["events"]],
+            ["action", "message", "action"],
+        )
+        self.assertEqual(
+            [event["source_pointer"] for event in conversation["events"]],
+            ["/dev/2/original/0", "/dev/2/original/1", "/dev/2/original/2"],
+        )
+
     def test_invalid_sources_and_prepared_evidence_fail_closed(self):
         bad_changes = [
             (("original", 1), event)
@@ -369,7 +557,7 @@ class PreparationTests(unittest.TestCase):
         for split in (None, [], {}, True):
             with self.subTest(split=split), self.assertRaises(ValueError):
                 prepare_conversation(source_record(), split=split, index=0)
-        for version in ("1", "2"):
+        for version in ("1", "2", "3"):
             with (
                 self.subTest(version=version),
                 self.assertRaisesRegex(ValueError, "masking version"),
@@ -680,15 +868,15 @@ class LocalSourceTests(unittest.TestCase):
         dataset = json.loads(raw)
         evidence = prepare_dataset(dataset, SOURCE)
         originals = {str(record["convo_id"]): record for record in dataset["train"]}
-        approved_versions = {
-            "7921": "sha256:4d5b33da8710e65ad617ef7e29bc6496ca84e51370cbb2d9f18fed233189e598",
-            "8570": "sha256:2ca1e5e5ed65471991129ac2bbc30e91e6d71da53495a1be170d0cdce641074d",
+        expected_versions = {
+            "7921": "sha256:b95be525b02a5c125054beb7265129e71b0b7b11bb56118256c87d12cb7d6511",
+            "8570": "sha256:fcb8c29bf6cc477285c4dcedfd3e45a53e36e6fd7bebc435f3e15f4e4b974585",
         }
         for conversation in evidence["conversations"]:
             with self.subTest(conversation=conversation["id"]):
                 self.assertEqual(
                     conversation["transcript_version"],
-                    approved_versions[conversation["id"]],
+                    expected_versions[conversation["id"]],
                 )
                 original = originals[conversation["id"]]
                 self.assertEqual(len(conversation["events"]), len(original["original"]))
@@ -722,145 +910,6 @@ class LocalSourceTests(unittest.TestCase):
                     expected, conditions = section, []
                 self.assertEqual(reference["text"], expected)
                 self.assertEqual(reference["conditions"], conditions)
-
-
-class CliTests(unittest.TestCase):
-    def setUp(self):
-        output_root = ML_ROOT / "output"
-        output_root.mkdir(exist_ok=True)
-        directory = tempfile.TemporaryDirectory(dir=output_root)
-        self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
-        self.input = self.write_json("prepared.json", prepared())
-
-    def write_json(self, filename, data):
-        path = self.root / filename
-        path.write_text(json.dumps(data), encoding="utf-8")
-        return path
-
-    def run_cli(self, *arguments):
-        output, errors = StringIO(), StringIO()
-        with redirect_stdout(output), redirect_stderr(errors):
-            code = main(list(map(str, arguments)))
-        return code, errors.getvalue()
-
-    def run_review(self, command, *arguments, output="result.json"):
-        destination = self.root / output
-        code, errors = self.run_cli(
-            command,
-            "--evidence",
-            self.input,
-            "--as-of",
-            ASSESSMENT["as_of"],
-            "--output",
-            destination,
-            *arguments,
-        )
-        result = json.loads(destination.read_text()) if destination.exists() else None
-        return code, result, errors
-
-    def test_cli_review_respects_requested_scope(self):
-        code, result, errors = self.run_review(
-            "search", "--query", "refund", "--review-only", "--scope", "refund-update"
-        )
-        self.assertEqual((code, errors), (0, ""))
-        self.assertEqual(result["scope"], "refund-update")
-        self.assertEqual(result["reference_matches"], [])
-        self.assertNotIn("audit_input", result)
-
-    def test_cli_search_review_and_citation_validation(self):
-        for review_only in (False, True):
-            with self.subTest(review_only=review_only):
-                arguments = ["--query", "username order ID"]
-                if review_only:
-                    arguments.append("--review-only")
-                with patch(
-                    "socket.socket", side_effect=AssertionError("Network forbidden")
-                ):
-                    code, result, errors = self.run_review("search", *arguments)
-                self.assertEqual((code, errors), (0, ""))
-                if review_only:
-                    self.assertEqual(result["purpose"], "reference-review")
-                    self.assertNotIn("audit_input", result)
-                    self.assertTrue(result["reference_matches"])
-                    self.assertEqual(
-                        {ref["id"]: ref["status"] for ref in result["review_states"]},
-                        {ref["id"]: ref["status"] for ref in catalog()},
-                    )
-                else:
-                    self.assertEqual(result["purpose"], "audit-input")
-                    self.assertEqual(result["reference_matches"], [])
-                    self.assertEqual(result["audit_input"]["references"], [])
-                    self.assertTrue(result["reference_exclusions"])
-                    self.assertTrue(result["conversation_matches"])
-        citations = (
-            (conversation_passages(prepared()["conversations"])[0]["citation"], 0),
-            (reference_passages(catalog())[0]["citation"], 1),
-        )
-        for citation, expected_code in citations:
-            with self.subTest(citation=citation["kind"]):
-                path = self.write_json("citations.json", [citation])
-                code, result, _ = self.run_review("validate", "--citations", path)
-                self.assertEqual(code, expected_code)
-                self.assertEqual(result["valid"], expected_code == 0)
-                self.assertEqual(bool(result["errors"]), expected_code != 0)
-
-    def test_cli_invalid_inputs_and_output_safeguards(self):
-        missing_status = catalog()[0]
-        missing_status.pop("status")
-        for records, arguments in (
-            ([None, 12, {}], []),
-            ([missing_status], ["--review-only"]),
-        ):
-            with self.subTest(records=records):
-                references = self.write_json(
-                    "references.json", {"schema_version": 1, "references": records}
-                )
-                code, result, errors = self.run_review(
-                    "search",
-                    "--references",
-                    references,
-                    "--query",
-                    "refund",
-                    *arguments,
-                )
-                self.assertEqual(code, 1)
-                self.assertIn("invalid record", errors)
-                self.assertIsNone(result)
-        for name, content in (
-            ("corrupt.gz", bytes.fromhex("1f8b0800000000000000ff")),
-            ("missing.json", None),
-            ("invalid.json", b"{not JSON with PRIVATE_VALUE"),
-            ("checksum.json", b"{}"),
-        ):
-            with self.subTest(source=name):
-                source, destination = self.root / name, self.root / "result.json"
-                if content is not None:
-                    source.write_bytes(content)
-                code, errors = self.run_cli(
-                    "prepare", "--source", source, "--output", destination
-                )
-                self.assertEqual(code, 1)
-                self.assertIn("error", json.loads(errors))
-                self.assertNotIn("PRIVATE_VALUE", errors)
-                self.assertNotIn("Traceback", errors)
-                self.assertFalse(destination.exists())
-        before = self.input.read_bytes()
-        code, _, errors = self.run_review(
-            "search", "--query", "refund", output="prepared.json"
-        )
-        self.assertEqual(code, 1)
-        self.assertIn("overwrite", errors)
-        self.assertEqual(before, self.input.read_bytes())
-        code, errors = self.run_cli(
-            "prepare",
-            "--source",
-            self.input,
-            "--output",
-            "/tmp/not-ignored-evidence.json",
-        )
-        self.assertEqual(code, 1)
-        self.assertIn("ml/output", errors)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Prepare local ABCD evidence; the command line only composes pure rules."""
+"""Pure preparation, masking and validation of local ABCD evidence."""
 
 import json
 import re
@@ -7,7 +7,7 @@ from hashlib import sha256
 ABCD_COMMIT = "6b8700ce67c6b37b062dd7a60abc76d7ef832a97"
 ABCD_SHA256 = "005d425e890b30a1cdaf0d29d83b08bb7abf038d90fc4924a12e82228e587789"
 CONVERSATION_IDS = ("7921", "8570")
-MASKING_VERSION = "3"
+MASKING_VERSION = "4"
 MIT_NOTICE = """MIT License
 
 Copyright (c) 2021 ASAPP Research
@@ -85,15 +85,67 @@ def _normalized(value: str) -> str:
     return " ".join(value.casefold().split())
 
 
+def _labelled_secrets(text: str, metadata_values: set[str]):
+    """Read explicit values only; ambiguous boundaries cannot yield safe output."""
+    label = re.compile(
+        r"\b(?:password|pin(?: number)?|security answer)\s*(?:is|:|=)\s*",
+        re.IGNORECASE,
+    )
+    quotes = {'"': '"', "'": "'", "“": "”", "‘": "’"}
+    position = 0
+    while match := label.search(text, position):
+        start = match.end()
+        if start == len(text):
+            raise ValueError("A labelled secret has an empty or ambiguous value.")
+        if text[start] in quotes:
+            end = text.find(quotes[text[start]], start + 1)
+            if end < 0 or text[end - 1] == "\\":
+                raise ValueError(
+                    "A labelled secret has an unclosed or ambiguous quote."
+                )
+            if not re.match(r"(?:\s|[.,;!?](?:\s|$)|$)", text[end + 1 :]):
+                raise ValueError("A labelled secret has an ambiguous value boundary.")
+            value = text[start + 1 : end]
+            position = end + 1
+            quoted = True
+        else:
+            end = len(text)
+            value = text[start:end].strip()
+            known_value = _normalized(value) in metadata_values or any(
+                value.endswith(mark) and _normalized(value[:-1]) in metadata_values
+                for mark in ".!?"
+            )
+            if not known_value and (
+                any(mark in value for mark in ",;\n")
+                or re.search(r"[.!?]\s+\S", value)
+                or label.search(value)
+            ):
+                raise ValueError("A labelled secret has an ambiguous value boundary.")
+            position = end
+            quoted = False
+        if not value.strip():
+            raise ValueError("A labelled secret has an empty or ambiguous value.")
+        yield value, quoted
+
+
 def mask_texts(texts: list[str], scenario: dict) -> list[str]:
-    """Use source values and conservative fallbacks; never return the private map."""
+    """Discover explicit secrets before masking every turn, including earlier ones.
+
+    Quoted values have exact boundaries. Unknown unquoted values extend to the
+    end of the turn, including punctuation; separators or additional sentences
+    make their boundary ambiguous and fail without exporting text. Matching
+    metadata can establish the full unquoted value, not an arbitrary prefix.
+    This is conservative lexical redaction, not general personal-data detection.
+    """
     if not isinstance(scenario, dict):
         raise TypeError("Customer masking metadata must be an object.")
     if not isinstance(texts, list) or any(not isinstance(text, str) for text in texts):
         raise ValueError("Masking requires a list of text values.")
     replacements, counters = {}, {}
+    spellings = set()
 
     def token(value, kind):
+        spellings.add(value)
         key = _normalized(value)
         if kind == "PHONE":
             key = re.sub(r"\D", "", value) or key
@@ -121,49 +173,97 @@ def mask_texts(texts: list[str], scenario: dict) -> list[str]:
             if field == "customer_name":
                 for part in value.split():
                     if len(part) > 1:
+                        spellings.add(part)
                         replacements.setdefault(_normalized(part), replacement)
 
+    metadata_values = set(replacements)
+    for text in texts:
+        for value, quoted in _labelled_secrets(text, metadata_values):
+            if _normalized(value) in replacements:
+                spellings.add(value)
+                continue
+            if (
+                not quoted
+                and value[-1] in ".!?"
+                and _normalized(value[:-1]) in replacements
+            ):
+                spellings.add(value[:-1])
+                continue
+            replacement = token(value, "SECRET")
+            if not quoted:
+                bare = value
+                while bare.endswith((".", "!", "?")):
+                    bare = bare[:-1]
+                    if bare.strip():
+                        spellings.add(bare)
+                        replacements.setdefault(_normalized(bare), replacement)
+
+    def literal_pattern(value):
+        body = "".join(
+            r"\s+" if part.isspace() else re.escape(part)
+            for part in re.split(r"(\s+)", value)
+        )
+        left = r"(?<!\w)" if re.match(r"\w", value) else ""
+        right = r"(?!\w)" if re.search(r"\w$", value) else ""
+        return left + body + right
+
     known = "|".join(
-        r"\s+".join(re.escape(part) for part in value.split())
-        for value in sorted(replacements, key=lambda item: (-len(item), item))
+        literal_pattern(value)
+        for value in sorted(
+            spellings | replacements.keys(), key=lambda item: (-len(item), item)
+        )
     )
-    secret_value = r"[^\s,;.!?]+"
-    if known:
-        secret_value = rf"(?:{known})(?!\w)|{secret_value}"
     patterns = [r"(?P<email>[\w.+-]+@(?:[\w-]+\.)+[\w-]+)"]
-    if known:
-        patterns.append(r"(?P<known>(?<!\w)(?:" + known + r")(?!\w))")
     patterns.extend(
         (
             r"(?P<phone>(?<!\w)(?:\+\d{1,3}[ .-]?)?(?:\(\d{3}\)|\d{3})[ .-]?\d{3}[ .-]?\d{4}(?!\w))",
             r"(?P<identifier>\b(?=[a-z0-9]*\d)(?=[a-z0-9]*[a-z])[a-z0-9]{8,}\b|\b\d{6,}\b)",
-            r"(?P<secret_label>\b(?:password|pin(?: number)?|security answer)\s*(?:is|:|=)\s*[\"'“”‘’]?)(?P<secret_value>"
-            + secret_value
-            + ")",
         )
     )
     pattern = re.compile("|".join(patterns), re.IGNORECASE)
+    known_pattern = (
+        re.compile(r"(?=((?:" + known + r")))", re.IGNORECASE) if known else None
+    )
 
-    def replace(match):
-        if match.group("secret_value") is not None:
-            return match.group("secret_label") + token(
-                match.group("secret_value"), "SECRET"
-            )
-        kind = match.lastgroup
+    def replacement(value, kind):
         if kind == "known":
-            return replacements.get(_normalized(match.group())) or token(
-                match.group(), "IDENTIFIER"
-            )
-        if kind in ("phone", "identifier") and re.search(
-            r"[$€£¥]\s*[+-]?\d[\d,.]*$", match.string[: match.end()]
-        ):
-            return match.group()
+            return replacements.get(_normalized(value)) or token(value, "IDENTIFIER")
         return token(
-            match.group(),
+            value,
             {"email": "EMAIL", "phone": "PHONE", "identifier": "IDENTIFIER"}[kind],
         )
 
-    return [pattern.sub(replace, text) for text in texts]
+    masked = []
+    for text in texts:
+        candidates = [
+            (*match.span(), match.lastgroup)
+            for match in pattern.finditer(text)
+            if not (
+                match.lastgroup in ("phone", "identifier")
+                and re.search(r"[$€£¥]\s*[+-]?\d[\d,.]*$", text[: match.end()])
+            )
+        ]
+        if known_pattern is not None:
+            candidates.extend(
+                (*match.span(1), "known") for match in known_pattern.finditer(text)
+            )
+        candidates.sort(key=lambda candidate: (candidate[0], -candidate[1]))
+        parts, cursor, index = [], 0, 0
+        while index < len(candidates):
+            start, end, kind = candidates[index]
+            longest = end - start
+            index += 1
+            while index < len(candidates) and candidates[index][0] < end:
+                other_start, other_end, other_kind = candidates[index]
+                if other_end - other_start > longest:
+                    longest, kind = other_end - other_start, other_kind
+                end = max(end, other_end)
+                index += 1
+            parts.extend((text[cursor:start], replacement(text[start:end], kind)))
+            cursor = end
+        parts.append(text[cursor:])
+        masked.append("".join(parts))
+    return masked
 
 
 def transcript_version(conversation: dict) -> str:
@@ -292,6 +392,7 @@ def prepare_conversation(
 def prepare_dataset(
     dataset: dict, source: dict, conversation_ids: tuple[str, ...] = CONVERSATION_IDS
 ) -> dict:
+    """Prepare parsed data after the caller verifies the pinned raw-byte checksum."""
     _validate_source(source)
     if (
         not isinstance(dataset, dict)
@@ -433,174 +534,3 @@ def conversation_passages(conversations: list[dict]) -> list[dict]:
         for conversation in conversations
         for event in conversation["events"]
     ]
-
-
-def main(argv=None) -> int:
-    import argparse
-    import gzip
-    import sys
-    from pathlib import Path
-    from zlib import error as CompressionError
-
-    from .citations import validate_citations
-    from .references import (
-        OPTIONAL_CONTENT_FIELDS,
-        RECORD_FIELDS,
-        eligible_references,
-        reference_issues,
-        reference_passages,
-        search_passages,
-    )
-
-    parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    prepare = commands.add_parser("prepare", help="Mask the two pinned source records.")
-    prepare.add_argument("--source", required=True)
-    for name in ("search", "validate"):
-        command = commands.add_parser(name)
-        command.add_argument("--evidence", required=True)
-        command.add_argument("--references", default="ml/references.json")
-        command.add_argument("--as-of", required=True)
-        command.add_argument("--scope", default="refund-initiation")
-        if name == "search":
-            command.add_argument("--query", required=True)
-            command.add_argument("--review-only", action="store_true")
-        else:
-            command.add_argument("--citations", required=True)
-    for command in commands.choices.values():
-        command.add_argument(
-            "--output", required=True, help="JSON path within ml/output/."
-        )
-    args = parser.parse_args(argv)
-    output_root = Path(__file__).resolve().parent / "output"
-
-    def read_json(path):
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-
-    try:
-        output = Path(args.output).resolve()
-        if not output.is_relative_to(output_root) or output == output_root:
-            raise ValueError("Output must be a file inside ml/output/.")
-        if any(
-            output == Path(value).resolve()
-            for field in ("source", "evidence", "references", "citations")
-            if (value := getattr(args, field, None)) is not None
-        ):
-            raise ValueError("Output must not overwrite an input file.")
-        exit_code = 0
-        if args.command == "prepare":
-            raw = Path(args.source).read_bytes()
-            if raw[:2] == b"\x1f\x8b":
-                raw = gzip.decompress(raw)
-            digest = sha256(raw).hexdigest()
-            if digest != ABCD_SHA256:
-                raise ValueError(
-                    "Source checksum differs from the pinned ABCD dataset."
-                )
-            result = prepare_dataset(json.loads(raw), _source_metadata())
-        else:
-            evidence = read_json(args.evidence)
-            validate_evidence(evidence)
-            catalog = read_json(args.references)
-            if (
-                not isinstance(catalog, dict)
-                or catalog.keys() != {"schema_version", "references"}
-                or type(catalog["schema_version"]) is not int
-                or catalog["schema_version"] != 1
-            ):
-                raise ValueError("Unsupported reference catalog schema.")
-            references = catalog["references"]
-            eligible = eligible_references(
-                references, as_of=args.as_of, scope=args.scope
-            )
-            if any(
-                not isinstance(ref, dict)
-                or ref.keys() - OPTIONAL_CONTENT_FIELDS != RECORD_FIELDS
-                or not isinstance(ref["id"], str)
-                or not ref["id"].strip()
-                or not isinstance(ref["status"], str)
-                for ref in references
-            ):
-                raise ValueError("Reference catalog contains an invalid record.")
-            reference_passages(references)
-            if args.command == "validate":
-                errors = validate_citations(
-                    read_json(args.citations), evidence["conversations"], eligible
-                )
-                result = {"valid": not errors, "errors": errors}
-                exit_code = int(bool(errors))
-            else:
-                candidates = references if args.review_only else eligible
-                exclusions = []
-                for ref in references:
-                    reasons = reference_issues(ref, as_of=args.as_of, scope=args.scope)
-                    if reasons:
-                        exclusions.append({"id": ref["id"], "reasons": reasons})
-                result = {
-                    "purpose": "reference-review"
-                    if args.review_only
-                    else "audit-input",
-                    "as_of": args.as_of,
-                    "scope": args.scope,
-                    "conversation_matches": search_passages(
-                        args.query, conversation_passages(evidence["conversations"])
-                    ),
-                    "reference_matches": search_passages(
-                        args.query, reference_passages(candidates, scope=args.scope)
-                    ),
-                    "reference_exclusions": exclusions,
-                    "licence": evidence["licence"],
-                }
-                if args.review_only:
-                    result["review_states"] = [
-                        {
-                            "id": ref["id"],
-                            "status": ref["status"],
-                            "safety_flags": ref["safety_flags"],
-                        }
-                        for ref in references
-                    ]
-                else:
-                    result["audit_input"] = {**evidence, "references": eligible}
-                matches = result["conversation_matches"] + result["reference_matches"]
-                errors = validate_citations(
-                    [match["citation"] for match in matches],
-                    evidence["conversations"],
-                    candidates,
-                )
-                if errors:
-                    raise ValueError("Search produced an invalid citation.")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(
-            json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
-            encoding="utf-8",
-        )
-        print(
-            json.dumps(
-                {
-                    "output": str(output),
-                    "command": args.command,
-                    "valid": exit_code == 0,
-                }
-            )
-        )
-        return exit_code
-    except (
-        OSError,
-        EOFError,
-        UnicodeError,
-        ValueError,
-        TypeError,
-        CompressionError,
-    ) as error:
-        message = (
-            str(error)
-            if type(error) in (ValueError, TypeError)
-            else "Unable to read valid local input or write output."
-        )
-        print(json.dumps({"error": message}), file=sys.stderr)
-        return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
