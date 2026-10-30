@@ -23,3 +23,9 @@ Then give every conversation a topic. The label-to-topic mapping is in
 `src/backend/data/topic_mapping.toml`; edit it and re-run to change topics:
 
     uv run assign-topics
+
+Finally, spread the conversations over an 8-week timeline. These times are
+generated (fixed seed, so always the same) and stored in
+`synthetic_started_at`, separate from any real source date:
+
+    uv run assign-synthetic-dates
