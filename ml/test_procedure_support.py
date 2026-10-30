@@ -166,6 +166,158 @@ class ProcedureSupportTests(unittest.TestCase):
         events[4][1] = "Purchase validation complete."
         self.assertEqual(self.evaluate(events)[0]["result"], "cannot-assess")
 
+    def test_reported_customer_choices_do_not_establish_a_refund_branch(self):
+        for method in ("credit card", "gift card", "paper check", "add value"):
+            choice = f"I'd like a {method} refund."
+            for context in (
+                [
+                    ["agent", f"Please repeat the sentence: {choice}"],
+                    ["customer", choice],
+                ],
+                [
+                    ["customer", "The agent said:"],
+                    ["customer", choice],
+                    ["customer", "Those were the agent's words."],
+                ],
+                [["customer", choice], ["customer", "I was quoting the agent."]],
+            ):
+                with self.subTest(method=method, context=context):
+                    skipped = [
+                        "agent",
+                        "I processed the refund without entering the required details.",
+                    ]
+                    procedure = self.evaluate(context + [skipped])[0]
+                    self.assertEqual(procedure["result"], "cannot-assess")
+                    self.assertFalse(procedure["findings"])
+                    genuine = self.evaluate(context + [["customer", choice], skipped])[
+                        0
+                    ]
+                    self.assertEqual(genuine["result"], "needs-review")
+                    self.assertEqual(len(genuine["findings"]), 1)
+
+    def test_reported_customer_facts_do_not_supply_procedure_evidence(self):
+        for method, index, section in (
+            ("credit card", 0, "refund-reason"),
+            ("credit card", 3, "purchase-validation"),
+            ("gift card", 6, "refund-details"),
+        ):
+            with self.subTest(section=section):
+                events = supported_steps(method)
+                original = events[index]
+                events[index : index + 1] = [
+                    ["agent", f"Please repeat the sentence: {original[1]}"],
+                    original,
+                ]
+                procedure = self.evaluate(events)[0]
+                step = next(
+                    step
+                    for step in procedure["details"]["steps"]
+                    if step["step"] == section
+                )
+                self.assertEqual(step["result"], "cannot-assess")
+                self.assertFalse(procedure["findings"])
+        events = supported_steps()
+        events[3:3] = [
+            ["agent", "Please repeat the phrase I forgot my username."],
+            ["customer", "I forgot my username."],
+        ]
+        self.assertEqual(self.evaluate(events)[0]["result"], "meets-criteria")
+
+    def test_validation_fields_require_positive_submission_forms(self):
+        values = "tparker321, tparker321@example.test and ORD1234567"
+        for statement in (
+            f"Do not use {values}; those are someone else's details.",
+            f"Are {values} correct?",
+            f'The example values are "{values}".',
+            f"These details are incorrect: {values}.",
+        ):
+            with self.subTest(statement=statement):
+                events = supported_steps()
+                events[3][1] = statement
+                procedure = self.evaluate(events)[0]
+                self.assertEqual(procedure["result"], "cannot-assess")
+                self.assertFalse(procedure["findings"])
+                independent = self.evaluate(
+                    [["agent", "I skipped account lookup."], *events]
+                )[0]
+                self.assertEqual(independent["result"], "needs-review")
+                self.assertEqual(len(independent["findings"]), 1)
+
+    def test_validation_accepts_supported_positive_submissions_after_uncertainty(self):
+        for submissions in (
+            ["tparker321 tparker321@example.test ORD1234567"],
+            ["tparker321, tparker321@example.test, and ORD1234567."],
+            ["tparker321", "tparker321@example.test", "ORD1234567"],
+            [
+                "My username is tparker321, my email address is tparker321@example.test and my order ID is ORD1234567."
+            ],
+            [
+                "Username: tparker321; email: tparker321@example.test; order ID: ORD1234567."
+            ],
+            [
+                "My username is tparker321.",
+                "My email is tparker321@example.test.",
+                "My order ID is ORD1234567.",
+            ],
+        ):
+            with self.subTest(submissions=submissions):
+                events = supported_steps()
+                events[3:4] = [
+                    [
+                        "customer",
+                        "Do not use tparker321, tparker321@example.test or ORD1234567; those are someone else's details.",
+                    ],
+                    *[["customer", text] for text in submissions],
+                ]
+                self.assertEqual(self.evaluate(events)[0]["result"], "meets-criteria")
+
+    def test_disavowed_fields_invalidate_prior_submissions_until_replaced(self):
+        for statement, replacement in (
+            (
+                "Do not use tparker321, tparker321@example.test or ORD1234567; those are someone else's details.",
+                "tparker321 tparker321@example.test ORD1234567",
+            ),
+            (
+                "My order ID is not ORD1234567.",
+                "My order ID is ORD1234567.",
+            ),
+            ("My order ID is wrong.", "My order ID is ORD1234567."),
+            ("Do not use my email address.", "My email is tparker321@example.test."),
+            ("My username is incorrect.", "My username is tparker321."),
+        ):
+            with self.subTest(statement=statement):
+                events = supported_steps()
+                events.insert(4, ["customer", statement])
+                self.assertEqual(self.evaluate(events)[0]["result"], "cannot-assess")
+                events.insert(5, ["customer", replacement])
+                source = conversation(events)
+                procedure = check_procedure_support(source, catalog(), **CONTEXT)[0]
+                self.assertEqual(procedure["result"], "meets-criteria")
+                validation = next(
+                    check
+                    for check in procedure["details"]["checks"]
+                    if check["rule_id"].endswith(":purchase-validation")
+                )
+                self.assertNotIn(
+                    5,
+                    [
+                        c["turn_id"]
+                        for c in validation["citations"]
+                        if c["kind"] == "conversation"
+                    ],
+                )
+                self.assertEqual(
+                    validate_citations(
+                        validation["citations"],
+                        [source],
+                        eligible_references(catalog(), **CONTEXT),
+                    ),
+                    [],
+                )
+        events = supported_steps()
+        events.insert(4, ["customer", "The item was damaged."])
+        self.assertEqual(self.evaluate(events)[0]["result"], "meets-criteria")
+
     def test_missing_and_partial_evidence_never_establish_skipping(self):
         events = supported_steps()
         for reduced in (
