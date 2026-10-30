@@ -346,6 +346,76 @@ class AuditIntegrationTests(unittest.TestCase):
             },
         )
 
+    def test_uncertain_customer_prerequisites_do_not_pass_or_fault_in_export(self):
+        from ml.test_procedure_support import supported_steps
+
+        negated_inputs = supported_steps()
+        negated_inputs[3][1] = (
+            "Do not use tparker321, tparker321@example.test or ORD1234567; "
+            "those are someone else's details."
+        )
+        cases = (
+            [
+                ["agent", "Please repeat the sentence: I'd like a gift card refund."],
+                ["customer", "I'd like a gift card refund."],
+                [
+                    "agent",
+                    "I processed the refund without entering the required details.",
+                ],
+            ],
+            negated_inputs,
+        )
+        for events in cases:
+            with self.subTest(events=events):
+                result = self.assess_events(events)["results"][0]
+                self.assertEqual(result["result"], "cannot-assess")
+                self.assertFalse(result["findings"])
+                self.assertTrue(result["limitations"])
+
+    def test_quoted_requests_and_assertion_questions_remain_uncertain_in_export(self):
+        cases = (
+            [
+                [
+                    "customer",
+                    'The example sentence is "Hello; I want a refund; goodbye."',
+                ],
+                ["agent", "I will not address your refund request."],
+            ],
+            [
+                ["customer", "I want a refund."],
+                ["agent", "Your refund is in progress?"],
+            ],
+            [
+                ["customer", "I want a refund."],
+                ["agent", "I will not address your refund request?"],
+            ],
+        )
+        for events in cases:
+            with self.subTest(events=events):
+                result = self.assess_events(events)["results"][2]
+                self.assertEqual(result["result"], "cannot-assess")
+                self.assertFalse(result["findings"])
+                self.assertTrue(result["limitations"])
+
+    def test_quoted_examples_do_not_hide_a_separate_supported_refusal_in_export(self):
+        result = self.assess_events(
+            [
+                [
+                    "customer",
+                    'The example sentence is "Hello; I want a refund; goodbye."',
+                ],
+                ["customer", "I want a refund."],
+                ["agent", "I will not address your refund request."],
+            ]
+        )["results"][2]
+        self.assertEqual(result["result"], "needs-review")
+        self.assertEqual(len(result["findings"]), 1)
+        self.assertEqual(
+            [citation["turn_id"] for citation in result["findings"][0]["citations"]],
+            [2, 3],
+        )
+        self.assertTrue(result["limitations"])
+
     def test_reported_and_repeated_faults_remain_neutral_in_export(self):
         candidates = (
             ("procedure", "I skipped purchase validation."),

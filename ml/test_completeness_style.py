@@ -148,6 +148,143 @@ class CompletenessTests(unittest.TestCase):
             [2, 3],
         )
 
+    def test_inline_quoted_clauses_do_not_create_requests(self):
+        quoted = [
+            f"The example sentence is {opening}Hello; I want a refund; goodbye.{closing}"
+            for opening, closing in (
+                ('"', '"'),
+                ("'", "'"),
+                ("“", "”"),
+                ("‘", "’"),
+                ("`", "`"),
+                ('""', '""'),
+                ("''", "''"),
+                ("““", "””"),
+                ("``", "``"),
+                ("```", "```"),
+            )
+        ]
+        quoted.extend(
+            (
+                'The example is "Hello and I want a refund and please explain the next step."',
+                "The example is “He said 'Hello; I want a refund; goodbye.'”",
+                'The example is "Hello \\"friend\\"; I want a refund; goodbye."',
+                'The example is "Hello; I want a refund; goodbye.',
+                "The example is ‘Hello; I want a refund; goodbye.",
+                "The example is ”Hello; I want a refund; goodbye.",
+            )
+        )
+        for text in quoted:
+            with self.subTest(text=text):
+                completeness, _ = evaluate(
+                    conversation(
+                        ("customer", text),
+                        ("agent", "I will not address your refund request."),
+                    )
+                )
+                self.assertEqual(completeness["result"], "cannot-assess")
+                self.assertEqual(completeness["details"]["requests"], [])
+                self.assertFalse(completeness["findings"])
+
+    def test_inline_quotes_preserve_independent_unquoted_requests_and_faults(self):
+        example = 'The example is "Hello; I want to return an item; goodbye."'
+        for text in (
+            f"I'd like a refund; {example}",
+            f"{example}; I’d like a refund.",
+            f"{example} and I want a refund.",
+        ):
+            with self.subTest(text=text):
+                completeness, _ = evaluate(
+                    conversation(
+                        ("customer", text),
+                        ("agent", "I will not address your refund request."),
+                    )
+                )
+                self.assertEqual(completeness["result"], "needs-review")
+                requests = completeness["details"]["requests"]
+                self.assertEqual([request["topic"] for request in requests], ["refund"])
+                self.assertEqual(
+                    [
+                        cite["turn_id"]
+                        for cite in completeness["findings"][0]["citations"]
+                    ],
+                    [1, 2],
+                )
+
+    def test_inline_quoted_changes_do_not_mutate_an_actual_request(self):
+        for phrase in ("Never mind", "Actually, I want to return an item instead"):
+            with self.subTest(phrase=phrase):
+                completeness, _ = evaluate(
+                    conversation(
+                        ("customer", "I want a refund."),
+                        ("agent", "I will not address your refund request."),
+                        ("customer", f'The example is "Hello; {phrase}; goodbye."'),
+                    )
+                )
+                self.assertEqual(completeness["result"], "needs-review")
+                request = completeness["details"]["requests"][0]
+                self.assertEqual(request["state"], "active")
+                self.assertEqual(request["change_citations"], [])
+
+    def test_assertion_shaped_questions_do_not_address_or_refuse_requests(self):
+        for text in (
+            "Your refund is in progress?",
+            "I will process your refund?",
+            "I will not address your refund request?",
+            "I have credited your card for $79?",
+            "Your refund is $79?",
+        ):
+            with self.subTest(text=text):
+                completeness, _ = evaluate(
+                    conversation(("customer", "I want a refund."), ("agent", text))
+                )
+                self.assertEqual(completeness["result"], "cannot-assess")
+                self.assertFalse(completeness["findings"])
+                request = completeness["details"]["requests"][0]
+                self.assertIsNone(request["response_kind"])
+                self.assertFalse(request["response_citations"])
+        completeness, _ = evaluate(
+            conversation(
+                ("customer", "I want a refund?"),
+                ("agent", "I will not address your refund request."),
+            )
+        )
+        self.assertEqual(completeness["details"]["requests"], [])
+        self.assertFalse(completeness["findings"])
+
+    def test_explicit_request_instruction_and_closing_questions_remain_supported(self):
+        completeness, style = evaluate(
+            conversation(
+                ("customer", "Can you issue a refund?"),
+                ("agent", "Can you give me your username, email and order ID?"),
+                ("agent", "I'll sort your refund."),
+                ("agent", "Is there anything else I can help you with?"),
+            ),
+            wording_criteria(True),
+        )
+        self.assertEqual(completeness["result"], "meets-criteria")
+        self.assertEqual(style["result"], "meets-criteria")
+
+    def test_question_uncertainty_preserves_independent_later_responses(self):
+        for response, kind, result in (
+            ("I will process your refund.", "promise", "cannot-assess"),
+            ("I will not address your refund request.", "refusal", "needs-review"),
+        ):
+            with self.subTest(response=response):
+                completeness, _ = evaluate(
+                    conversation(
+                        ("customer", "I want a refund."),
+                        ("agent", "Your refund is in progress?"),
+                        ("agent", response),
+                    )
+                )
+                self.assertEqual(completeness["result"], result)
+                request = completeness["details"]["requests"][0]
+                self.assertEqual(request["response_kind"], kind)
+                self.assertEqual(
+                    [cite["turn_id"] for cite in request["response_citations"]], [3]
+                )
+
     def test_promise_is_not_an_answer_to_a_different_question(self):
         source = conversation(
             ("customer", "I want a refund and please explain the next step."),
@@ -756,6 +893,20 @@ class CompletenessTests(unittest.TestCase):
 
 
 class WordingTests(unittest.TestCase):
+    def test_assertion_shaped_questions_do_not_establish_wording_faults(self):
+        for text in (
+            "You are an idiot?",
+            "You're stupid?",
+            "Provide your order ID and do not provide your order ID?",
+        ):
+            with self.subTest(text=text):
+                _, style = evaluate(
+                    conversation(("customer", "I want a refund."), ("agent", text)),
+                    wording_criteria(True),
+                )
+                self.assertEqual(style["result"], "cannot-assess")
+                self.assertFalse(style["findings"])
+
     def test_approved_test_rubric_supports_only_recognised_positive_wording(self):
         completeness, style = evaluate(positive_conversation(), wording_criteria(True))
         self.assertEqual(completeness["result"], "meets-criteria")

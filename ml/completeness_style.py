@@ -21,6 +21,10 @@ change requests. An unsupported explicit change leaves candidate requests
 uncertain until a supported clarification resolves them; no new intent is guessed.
 The same request grammar applies to separate turns and explicit clauses; citations
 always identify the original source turn rather than invented clause positions.
+Clause separators inside single ASCII, curly or backtick spans stay quoted.
+Unmatched quotes or unsupported delimiter runs leave the rest uninterpreted.
+Question marks are meaningful: only explicit can-you requests/instructions and the known
+closing question are recognised as questions, not assertion-shaped questions.
 """
 
 import re
@@ -34,7 +38,7 @@ from .audit import (
 from .references import eligible_references, reference_passages
 from .wording import quotation_context
 
-RULE_VERSION = "refund-initiation-completeness-style-v4"
+RULE_VERSION = "refund-initiation-completeness-style-v5"
 CRITERION_VERSIONS = {
     "clarity": "sha256:0a3402a0f339e93d82e5a2bc79504b592659a1913c835ee55feb100c10734e39",
     "respect": "sha256:0a8f546f87b4f980619ed49012e4935be9f788e9b3b96f532013d79ff1ec1ce1",
@@ -75,10 +79,52 @@ CONTRADICTION = "provide your order id and do not provide your order id"
 
 
 def _normal(text):
-    return " ".join(text.casefold().replace("’", "'").split()).rstrip(".!?")
+    return " ".join(text.casefold().replace("’", "'").split()).rstrip(".!")
+
+
+def _customer_clauses(text):
+    text = " ".join(text.casefold().split())
+    quotes = {'"': '"', "'": "'", "“": "”", "‘": "’", "`": "`"}
+    separator = re.compile(
+        r";\s*| and (?=(?:please|can you|i (?:want|need|would like))\b)"
+    )
+    start = position = 0
+    closing = None
+    while position < len(text):
+        character = text[position]
+        if (
+            character in "'’"
+            and position
+            and position + 1 < len(text)
+            and text[position - 1].isalnum()
+            and text[position + 1].isalnum()
+        ):
+            pass
+        elif closing:
+            if character == "\\":
+                position += 2
+                continue
+            if character == closing:
+                closing = None
+        elif character in quotes:
+            if position + 1 < len(text) and text[position + 1] == character:
+                break
+            closing = quotes[character]
+        elif character in "”’":
+            break
+        elif match := separator.match(text, position):
+            yield text[start:position]
+            position = start = match.end()
+            continue
+        position += 1
+    yield text[start:]
 
 
 def _request(text):
+    if text.endswith("?"):
+        if not text.startswith("can you "):
+            return None
+        text = text[:-1]
     if any(re.fullmatch(pattern, text) for pattern in REFUND_REQUESTS):
         return "refund", None
     if any(re.fullmatch(pattern, text) for pattern in RETURN_REQUESTS):
@@ -91,6 +137,12 @@ def _request(text):
 
 def _agent_form(text):
     """Return only explicit forms; a missing match is never a negative finding."""
+    if text.endswith("?"):
+        text = text[:-1]
+        if text != "is there anything else i can help you with" and not (
+            text.startswith("can you ") and re.fullmatch(INSTRUCTION, text)
+        ):
+            return "unknown", None
     for pattern, kind in (
         (ACKNOWLEDGEMENT, "acknowledgement"),
         (PROMISE, "promise"),
@@ -237,10 +289,7 @@ def _request_links(conversation, citations):
                     [citation, *[citations[cue["turn_id"]] for cue in context]]
                 )
             else:
-                for clause in re.split(
-                    r";\s*| and (?=(?:please|can you|i (?:want|need|would like))\b)",
-                    text,
-                ):
+                for clause in _customer_clauses(event["text"]):
                     if clause:
                         customer_clause(_normal(clause), citation, turn)
             continue

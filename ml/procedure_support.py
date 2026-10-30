@@ -6,6 +6,9 @@ constructed tests. Recognised speech is the finite policy/skip/correction forms
 below and tested equivalents. Explicit quotation/repetition context leaves the
 affected statement unattributed. A closing must follow the last recorded action
 or non-courtesy customer message. Unmatched speech is never interpreted as fault.
+Validation inputs require token-only submissions or explicit username/email/order-ID
+labels joined by commas, semicolons or 'and'. Other field-bearing wording leaves
+those inputs uncertain; it is not interpreted as a valid submission or a failure.
 """
 
 import re
@@ -16,7 +19,7 @@ from .citations import validate_citations
 from .references import eligible_references, reference_issues, reference_passages
 from .wording import quotation_context
 
-RULE_VERSION = "refund-initiation-procedure-support-v4"
+RULE_VERSION = "refund-initiation-procedure-support-v5"
 SUPPORTED = {
     "account-lookup": "sha256:246f40ce9e1d2b814b533a4b06178296f9a23aeeb746cd9de6eed262106bea46",
     "purchase-validation": "sha256:93169ef390df0df481e67f916fec58c8bd21c17179ef42a2e90d345e6b86383a",
@@ -237,6 +240,33 @@ def _prior_satisfaction(section, events, skip, method):
     return _detail_evidence(prior, method) if section == "refund-details" else []
 
 
+def _validation_fields(text):
+    text = text.removesuffix(".")
+    token = r"\[(?:username|email|order_id)_\d+\]"
+    if re.fullmatch(
+        rf"{token}(?:(?:\s+(?:and\s+)?|,\s*(?:and\s+)?|;\s*){token})*", text
+    ):
+        return set(re.findall(r"\[(username|email|order_id)_\d+\]", text))
+    fields = set()
+    for clause in re.split(r"\s*(?:;|,\s*(?:and\s+)?|\band\b)\s*", text):
+        field = next(
+            (
+                field
+                for field, label in (
+                    ("username", "username"),
+                    ("email", r"email(?: address)?"),
+                    ("order_id", "order id"),
+                )
+                if re.fullmatch(rf"(?:my )?{label}(?: is |:\s*)\[{field}_\d+\]", clause)
+            ),
+            None,
+        )
+        if field is None:
+            return set()
+        fields.add(field)
+    return fields
+
+
 def _validation_evidence(events):
     observed = [
         event
@@ -249,24 +279,36 @@ def _validation_evidence(events):
         "No recognised evidence establishes this step; absence is not a skipped step."
     )
     if complete:
-        preceding_customers = [
-            event
-            for event in events
-            if event["speaker"] == "customer"
-            and event["turn_id"] < complete[0]["turn_id"]
-        ]
-        before = " ".join(event["text"] for event in preceding_customers)
-        if all(
-            re.search(r"\[" + field + r"_\d+\]", before)
-            for field in ("USERNAME", "EMAIL", "ORDER_ID")
-        ):
+        inputs, input_events = {}, []
+        for event in events:
+            if (
+                event["speaker"] != "customer"
+                or event["turn_id"] >= complete[0]["turn_id"]
+            ):
+                continue
+            text = _text(event)
+            fields = _validation_fields(text)
+            mentioned = set(re.findall(r"\[(username|email|order_id)_\d+\]", text))
+            mentioned.update(
+                label.replace(" ", "_")
+                for label in re.findall(r"\b(username|email|order id)\b", text)
+            )
+            if mentioned:
+                input_events.append(event)
+            for field in mentioned:
+                inputs.pop(field, None)
+            inputs.update({field: event for field in fields})
+        if inputs.keys() >= {"username", "email", "order_id"}:
             result, explanation = (
                 "meets-criteria",
                 "Standard purchase fields precede an explicit recorded validation completion.",
             )
-            observed = preceding_customers + complete
+            observed = [
+                event for event in events if event in inputs.values()
+            ] + complete
         else:
             explanation = "Validation completion is recorded, but the standard input checks cannot be established."
+            observed = input_events + observed
     elif observed:
         explanation = (
             "Validation is recorded as in progress; this is not evidence of successful validation."
@@ -375,8 +417,9 @@ def _observed_step(section, events, method, method_event, reported):
 
 def _procedure(events, reference_for, citations, reported):
     checks, steps = [], []
-    method, method_event = _method(events)
-    recovery = _needs_recovery(events)
+    direct = [event for event in events if event["turn_id"] not in reported]
+    method, method_event = _method(direct)
+    recovery = _needs_recovery(direct)
     for section in (
         "refund-reason",
         "account-lookup",
@@ -408,7 +451,7 @@ def _procedure(events, reference_for, citations, reported):
                 ([requirement] if requirement else [])
                 + [
                     citations[event["turn_id"]]
-                    for event in events
+                    for event in direct
                     if _needs_recovery([event])
                 ],
             )
@@ -427,7 +470,7 @@ def _procedure(events, reference_for, citations, reported):
                 None,
             )
             satisfied = (
-                _prior_satisfaction(section, events, skip, method) if skip else []
+                _prior_satisfaction(section, direct, skip, method) if skip else []
             )
             if (
                 skip
@@ -461,7 +504,11 @@ def _procedure(events, reference_for, citations, reported):
                 )
             else:
                 result, explanation, observed = _observed_step(
-                    section, events, method, method_event, reported
+                    section,
+                    events if section == "closing" else direct,
+                    method,
+                    method_event,
+                    reported,
                 )
                 check = _check(
                     section,
@@ -556,6 +603,9 @@ def _ordering_checks(events, recovery, reference_for, citations, reported, steps
 
 def _answers(events, reference_for, citations, reported):
     checks, claims = [], []
+    recovery = _needs_recovery(
+        event for event in events if event["turn_id"] not in reported
+    )
     for event in events:
         if event["speaker"] != "agent":
             continue
@@ -590,7 +640,7 @@ def _answers(events, reference_for, citations, reported):
                 )
                 family += ":" + condition
             requirement, issue = reference_for(section)
-            if section == "purchase-validation" and _needs_recovery(events):
+            if section == "purchase-validation" and recovery:
                 issue = "Account recovery is needed, but reviewed recovery guidance is unavailable."
             check = _check(
                 f"claim-{family}-{event['turn_id']}",
@@ -712,7 +762,7 @@ def check_procedure_support(
     reported = {
         event["turn_id"]: context
         for position, event in enumerate(events)
-        if event["speaker"] == "agent"
+        if event["speaker"] != "action"
         and (context := quotation_context(events, position))
     }
     procedure_checks, steps = _procedure(events, reference_for, citation_map, reported)
