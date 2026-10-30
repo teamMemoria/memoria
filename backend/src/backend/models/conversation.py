@@ -1,10 +1,11 @@
 from datetime import date
 from enum import StrEnum
 
-from sqlalchemy import Date, Enum, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Date, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
+from backend.models.columns import str_enum
 
 
 class Speaker(StrEnum):
@@ -70,15 +71,7 @@ class Turn(Base):
     # The source's turn number. Kept as-is (it can have gaps) so evidence
     # references match the original transcript.
     line_number: Mapped[int]
-    speaker: Mapped[Speaker] = mapped_column(
-        Enum(
-            Speaker,
-            native_enum=False,
-            create_constraint=True,
-            length=20,
-            values_callable=lambda e: [m.value for m in e],
-        )
-    )
+    speaker: Mapped[Speaker] = mapped_column(str_enum(Speaker, "speaker"))
     text: Mapped[str] = mapped_column(Text)
 
     conversation: Mapped[Conversation] = relationship(back_populates="turns")
