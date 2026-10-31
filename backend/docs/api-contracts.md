@@ -63,7 +63,7 @@ are checked with `can_read_agent_record(user, organization_id, agent_id)`.
 
 ## Proposed routes
 
-`/api/viewer` is implemented (#71); the rest come in #72–#74. The agent is always the authenticated requester (#71),
+`/api/viewer` (#71) and `/api/agent/conversations` (#72) are implemented; the rest come in #73–#74. The agent is always the authenticated requester (#71),
 never an ID taken from the URL or query string.
 
 | Method and path | Response | Frontend interface |
@@ -86,6 +86,19 @@ Error bodies use FastAPI's default shape: `{"detail": "..."}`.
 | `503` | The provider raised `ProviderUnavailableError` |
 
 An empty list is a `200` with `[]`, not an error.
+
+### `GET /api/agent/conversations`
+
+Requires `conversations:read-own`. Returns only the requester's conversations in their own
+organization, newest first. `automatedResult` and `reviewStatus` are independent fields:
+a processing call has `automatedResult: "processing"` and `reviewStatus: null`.
+
+| Status | Body | When |
+|---|---|---|
+| `200` | `Conversation[]` | Success, including `[]` when the agent has no conversations |
+| `401` | `{"detail": "Missing identity"}` | No identity |
+| `403` | `{"detail": "Not permitted"}` | A Manager or Knowledge Approver without `conversations:read-own` |
+| `503` | `{"detail": "Data source unavailable"}` | The conversation provider is down |
 
 ### Examples
 

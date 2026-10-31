@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from backend.api import viewer
+from backend.api import conversations, viewer
 from backend.core.config import Settings
 from backend.providers import (
     Providers,
@@ -30,6 +30,7 @@ def create_app(
         return {"status": "ok"}
 
     app.include_router(viewer.router)
+    app.include_router(conversations.router)
     return app
 
 
