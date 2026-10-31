@@ -28,6 +28,8 @@ VIEWERS = {
         {"id": ALEX, "displayName": "Alex Morgan", "role": "agent"},
         {"id": SAM, "displayName": "Sam Rivera", "role": "agent"},
         {"id": "manager-maya-chen", "displayName": "Maya Chen", "role": "manager"},
+        # The frontend has no approver role yet; knowledge review screens live in the manager area.
+        {"id": "approver-devon-park", "displayName": "Devon Park", "role": "manager"},
     ],
     HARBOR: [
         {"id": RILEY, "displayName": "Riley Chen", "role": "agent"},
