@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from backend.api import calls, conversations, viewer
+from backend.api import calls, conversations, knowledge, viewer
 from backend.core.config import Settings
 from backend.providers import (
     Providers,
@@ -32,6 +32,7 @@ def create_app(
     app.include_router(viewer.router)
     app.include_router(conversations.router)
     app.include_router(calls.router)
+    app.include_router(knowledge.router)
     return app
 
 

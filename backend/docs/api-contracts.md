@@ -63,7 +63,7 @@ are checked with `can_read_agent_record(user, organization_id, agent_id)`.
 
 ## Proposed routes
 
-`/api/viewer` (#71), `/api/agent/conversations` (#72) and `/api/agent/conversations/{conversationId}` (#73) are implemented; knowledge comes in #74. The agent is always the authenticated requester (#71),
+All five are implemented: `/api/viewer` (#71), conversations (#72), call detail (#73) and knowledge (#74). The agent is always the authenticated requester (#71),
 never an ID taken from the URL or query string.
 
 | Method and path | Response | Frontend interface |
@@ -113,7 +113,8 @@ Requires `conversations:read-own`. Returns the `CallReview` for one of the reque
   this call's transcript.
 - **References** are the versions the call was assessed against. A reference that has since become
   stale is still returned, with its `status` and `version` unchanged, so the agent sees what they were
-  measured against (fixture `C1047`).
+  measured against (fixture `C1047`). As with the knowledge routes, `availableToAgentIds` is
+  trimmed to `[requesterId]`.
 - **`decision`** is the Manager's decision, kept beside the automated `criteria`, never merged into them.
 
 | Status | Body | When |
@@ -123,6 +124,26 @@ Requires `conversations:read-own`. Returns the `CallReview` for one of the reque
 | `403` | `{"detail": "Not permitted"}` | A Manager or Knowledge Approver without `conversations:read-own` |
 | `404` | `{"detail": "Conversation not found"}` | Unknown call, call record unavailable, or another agent's or organization's call |
 | `503` | `{"detail": "Data source unavailable"}` | The call provider is down |
+
+### `GET /api/agent/knowledge` and `GET /api/agent/knowledge/{entryId}`
+
+Requires `knowledge:read`. Returns approved entries assigned to the requester in their own
+organization, with content, source, version, approval information and dates. Draft, rejected,
+disputed and stale entries are never returned. The detail route applies exactly the same rule
+as the list, so a direct request cannot open an entry the list hides.
+
+Unknown dates (`approvedAt`, `effectiveAt`, `lastConfirmedAt`) and an unknown `approvedBy`,
+`owner` or `source` stay `null`.
+
+`availableToAgentIds` is trimmed to `[requesterId]`, so an agent never learns who else an entry is
+assigned to. The frontend's `canReadKnowledge` check still passes.
+
+| Status | Body | When |
+|---|---|---|
+| `200` | `KnowledgeEntry[]` / `KnowledgeEntry` | Success, including `[]` when nothing is assigned (for example a Manager) |
+| `401` | `{"detail": "Missing identity"}` | No identity |
+| `404` | `{"detail": "Knowledge entry not found"}` | Missing, not approved, assigned to someone else, or in another organization |
+| `503` | `{"detail": "Data source unavailable"}` | The knowledge provider is down |
 
 ### Examples
 
@@ -211,8 +232,9 @@ Documented here rather than filled with invented data. Each needs agreement with
    Knowledge Approver. #71 keeps organization and permissions in the server-side user context;
    the frontend may need a `permissions` field later.
 2. **No organization ID on any response.** Organization scoping happens on the server only.
-3. **`KnowledgeEntry.availableToAgentIds` exposes every assigned agent's ID** to any agent who can
-   read the entry. #74 should decide whether to trim this to the requester or drop it from responses.
+3. **`KnowledgeEntry.availableToAgentIds` exposes every assigned agent's ID.** Resolved on the server:
+   the knowledge routes and `CallReview.references` trim it to `[requesterId]`. The field could be
+   dropped from the frontend type entirely once the frontend stops relying on it.
 4. **No technical-failure state.** `CallReview.status` is only `ready | processing` and
    `AutomatedResult` has no `failed`. #76 requires failures to stay distinct from `cannot-assess`,
    so a new value will be needed.
