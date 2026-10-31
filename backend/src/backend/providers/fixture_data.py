@@ -10,6 +10,7 @@ Coverage:
 - C1044  transcript unavailable, so every criterion is cannot-assess
 - C1045  still processing
 - C1046  listed, but its call record is unavailable (provider returns None)
+- C1047  transcript cut short, and the cited procedure version is now stale
 - C2001  another agent in the same organization
 - C3001  another organization
 - Knowledge entries in every status, one approved entry Alex cannot see,
@@ -81,6 +82,15 @@ CONVERSATIONS = {
             "agentName": "Alex Morgan",
             "date": "2026-10-03",
             "automatedResult": "meets-criteria",
+            "reviewStatus": "feedback-ready",
+        },
+        {
+            "id": "C1047",
+            "topic": "Refund policy question",
+            "agentId": ALEX,
+            "agentName": "Alex Morgan",
+            "date": "2026-10-05",
+            "automatedResult": "needs-review",
             "reviewStatus": "feedback-ready",
         },
         {
@@ -159,6 +169,19 @@ ADDRESS_CHANGE = {
         "Confirm the full new address back to the customer before saving it.",
     ],
     "steps": [],
+}
+
+
+# The version of RP-01 that C1047 was assessed against. It has since been
+# replaced by v1, but the call keeps the version it was actually judged on.
+REFUND_PROCEDURE_V0 = {
+    **REFUND_PROCEDURE,
+    "status": "stale",
+    "version": "v0",
+    "approvedAt": "2026-09-01",
+    "effectiveAt": "2026-09-01",
+    "source": {"title": "Refund handling procedure RP-01 v0", "url": None},
+    "paragraphs": ["Superseded by RP-01 v1 on 2026-10-01."],
 }
 
 
@@ -454,6 +477,74 @@ CALLS = {
             "findings": [],
             "transcript": None,
             "references": [],
+            "decision": None,
+        },
+        {
+            "id": "C1047",
+            "agentId": ALEX,
+            "agentName": "Alex Morgan",
+            "topic": "Refund policy question",
+            "date": "2026-10-05",
+            "duration": "1:40",
+            "summary": "Recording ended before the call finished.",
+            "status": "ready",
+            "criteria": [
+                _criterion(
+                    "procedure",
+                    "Procedure",
+                    "needs-review",
+                    "The refund is offered at turn 3 before the customer is identified. "
+                    "RP-01 v0, step 1, requires identifying the customer first.",
+                    [3],
+                    reference_id="RP-01",
+                ),
+                _criterion(
+                    "answer-support",
+                    "Answer support",
+                    "meets-criteria",
+                    "The 30-day window stated at turn 4 agrees with RP-01 v0.",
+                    [4],
+                    reference_id="RP-01",
+                ),
+                _criterion(
+                    "completeness",
+                    "Completeness",
+                    "cannot-assess",
+                    "The recording ends at turn 4, so it is unknown whether the request was resolved.",
+                    [],
+                ),
+                _criterion(
+                    "communication-style",
+                    "Communication style",
+                    "meets-criteria",
+                    "The agent greets the customer at turn 1 and answers clearly at turn 4.",
+                    [1, 4],
+                ),
+            ],
+            "findings": [],
+            "transcript": {
+                "complete": False,
+                "turns": _turns(
+                    [
+                        (1, "Agent", "Good morning, how can I help?", "0:00"),
+                        (
+                            2,
+                            "Customer",
+                            "Can I still return a coat I bought last week?",
+                            "0:12",
+                        ),
+                        (3, "Agent", "Yes, I can refund that for you.", "0:31"),
+                        (
+                            4,
+                            "Agent",
+                            "Returns are accepted within 30 days of purchase.",
+                            "0:50",
+                        ),
+                    ]
+                ),
+                "unavailableReason": "The recording ended before the call finished.",
+            },
+            "references": [REFUND_PROCEDURE_V0],
             "decision": None,
         },
         # C1046 is intentionally missing: it appears in the list but its call record is unavailable.
