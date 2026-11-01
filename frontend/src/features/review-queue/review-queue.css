@@ -43,7 +43,22 @@
 }
 .finding-review-evidence section {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--control-radius);
+}
+/* Subheadings sit close to the text they label. */
+.finding-review-field {
+  display: grid;
+  gap: 4px;
+}
+.finding-review h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
 }
 .finding-review-turns {
   display: grid;
@@ -80,7 +95,10 @@
 }
 .finding-review-form legend {
   margin-bottom: 8px;
+  padding: 0;
+  font-size: 16px;
   font-weight: 600;
+  line-height: 24px;
 }
 .finding-review-option {
   display: flex;

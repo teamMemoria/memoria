@@ -35,10 +35,14 @@ function SavedDecision({ decision }: { decision: ManagerDecision }) {
       <StatusLabel tone={decision.outcome === 'confirmed' ? 'attention' : 'positive'}>
         {decisionOutcomes[decision.outcome].label}
       </StatusLabel>
-      <h3>Reason</h3>
-      <p>{decision.reason}</p>
-      <h3>Feedback for the agent</h3>
-      <p>{decision.feedback}</p>
+      <div className="finding-review-field">
+        <h3>Reason</h3>
+        <p>{decision.reason}</p>
+      </div>
+      <div className="finding-review-field">
+        <h3>Feedback for the agent</h3>
+        <p>{decision.feedback}</p>
+      </div>
       <p className="metadata-line">
         <span>{decision.managerName}</span>
         <span>{decidedAtFormatter.format(new Date(decision.decidedAt))} UTC</span>
@@ -296,10 +300,14 @@ export function FindingReview({
         </div>
         <div className="finding-review-side">
           <Panel title="Agent input">
-            <h3>Flag reason</h3>
-            <p>{flagged ? call.reviewRequest!.reason : 'This finding was not flagged.'}</p>
-            <h3>Agent context</h3>
-            <p>{call.agentContext?.text ?? 'The agent did not add context.'}</p>
+            <div className="finding-review-field">
+              <h3>Flag reason</h3>
+              <p>{flagged ? call.reviewRequest!.reason : 'This finding was not flagged.'}</p>
+            </div>
+            <div className="finding-review-field">
+              <h3>Agent context</h3>
+              <p>{call.agentContext?.text ?? 'The agent did not add context.'}</p>
+            </div>
           </Panel>
           <Panel title="Manager decision">
             {call.decision ? (
