@@ -100,6 +100,11 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
       <caption className="knowledge-drafts-sr-only">
         {queueTabs[tab]} knowledge entries
       </caption>
+      <colgroup>
+        {[36, 14, 18, 16, 16].map((width, index) => (
+          <col key={index} style={{ width: `${width}%` }} />
+        ))}
+      </colgroup>
       <thead>
         <tr>
           <th scope="col">Title</th>
