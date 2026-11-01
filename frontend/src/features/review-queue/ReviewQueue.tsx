@@ -185,6 +185,11 @@ export function ReviewQueue({
               <caption className="conversation-sr-only">
                 Team conversations, flagged feedback newest first.
               </caption>
+              <colgroup>
+                {[9, 13, 15, 33, 12, 18].map((width, index) => (
+                  <col key={index} style={{ width: `${width}%` }} />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Call</th>
