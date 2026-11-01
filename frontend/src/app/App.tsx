@@ -1,5 +1,8 @@
 import type { CallApi } from '../types/callReview'
-import type { ApprovedKnowledgeApi } from '../types/knowledge'
+import type {
+  ApprovedKnowledgeApi,
+  KnowledgeReviewApi,
+} from '../types/knowledge'
 import { useEffect, useState } from 'react'
 import type { Viewer, ViewerApi } from '../types/viewer'
 import { Button, Panel } from '../components/controls'
@@ -19,12 +22,14 @@ export default function App({
   callApi = null,
   knowledgeApi = null,
   teamReviewApi = null,
+  knowledgeReviewApi = null,
 }: {
   viewerApi: ViewerApi | null
   conversationsApi?: ConversationsApi | null
   callApi?: CallApi | null
   knowledgeApi?: ApprovedKnowledgeApi | null
   teamReviewApi?: TeamReviewApi | null
+  knowledgeReviewApi?: KnowledgeReviewApi | null
 }) {
   const [state, setState] = useState<ViewerState>(
     viewerApi ? { status: 'loading' } : { status: 'unavailable' },
@@ -61,6 +66,7 @@ export default function App({
         callApi={callApi}
         knowledgeApi={knowledgeApi}
         teamReviewApi={teamReviewApi}
+        knowledgeReviewApi={knowledgeReviewApi}
       />
     )
 

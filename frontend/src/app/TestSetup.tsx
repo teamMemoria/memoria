@@ -7,6 +7,7 @@ import { agent, callFixture, deferred } from '../lib/callReview.test-data'
 import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
 import { createDevCallApi } from '../lib/devCallApi'
 import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
+import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
 import type { Viewer } from '../types/viewer'
 import App from './App'
 
@@ -48,16 +49,18 @@ export function openApp({
   ...overrides
 }: Partial<ComponentProps<typeof App>> & { path?: string } = {}) {
   const callApi = createDevCallApi()
+  const knowledgeReviewApi = createDevKnowledgeReviewApi()
   const router = createMemoryRouter([
     {
       path: '*',
       element: (
         <App
           viewerApi={{ getViewer: async () => agent }}
-          conversationsApi={createDevConversationsApi()}
+          conversationsApi={createDevConversationsApi(callApi)}
           callApi={callApi}
-          knowledgeApi={createDevApprovedKnowledgeApi()}
+          knowledgeApi={createDevApprovedKnowledgeApi(knowledgeReviewApi)}
           teamReviewApi={createDevTeamReviewApi(callApi)}
+          knowledgeReviewApi={knowledgeReviewApi}
           {...overrides}
         />
       ),

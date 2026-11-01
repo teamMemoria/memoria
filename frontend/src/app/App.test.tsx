@@ -46,6 +46,20 @@ describe('workspace access and navigation', () => {
     expect(screen.queryByText('Refund handling')).toBeNull()
   })
 
+  it('shares saved reviews and approvals across the development workspace APIs', async () => {
+    const apis = createDependencies()
+    await apis.callApi!.requestReview(agent.id, 'C1042', 'procedure-order', 'Please check the order log.')
+    await apis.teamReviewApi!.saveDecision(manager.id, 'C1042', 'procedure-order', {
+      outcome: 'cannot-assess', reason: 'Order log unavailable.', feedback: 'No error established.',
+    })
+    expect((await apis.callApi!.getCallForAgent(agent.id, 'C1042'))?.decision?.outcome).toBe('cannot-assess')
+    expect((await apis.conversationsApi!.listForAgent(agent.id)).find((call) => call.id === 'C1042')?.reviewStatus)
+      .toBe('review-complete')
+    const detail = await apis.knowledgeReviewApi!.getForManager(manager.id, 'KD-103')
+    await apis.knowledgeReviewApi!.approve(manager.id, 'KD-103', detail!.entry.verificationReference!.url)
+    expect((await apis.knowledgeApi!.getForAgent(agent.id, 'KD-103'))?.status).toBe('approved')
+  })
+
   it('keeps Manager navigation and selection consistent through direct links and history', async () => {
     const { router } = openApp({ path: '/manager/knowledge', viewerApi: { getViewer: async () => manager } })
     await screen.findByRole('heading', { name: 'Knowledge drafts' })

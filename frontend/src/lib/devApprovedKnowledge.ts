@@ -1,5 +1,6 @@
 import type { ApprovedKnowledgeApi, KnowledgeEntry } from '../types/knowledge'
 import { canReadKnowledge } from '../types/knowledge'
+import type { DevKnowledgeReviewApi } from './devKnowledgeReview'
 
 export const refundProcedure: KnowledgeEntry = {
   id: 'RP-01',
@@ -33,18 +34,23 @@ export const refundProcedure: KnowledgeEntry = {
   ],
 }
 
-export function createDevApprovedKnowledgeApi(): ApprovedKnowledgeApi {
+// Pass the review API to include entries approved in this session.
+export function createDevApprovedKnowledgeApi(
+  review?: Pick<DevKnowledgeReviewApi, 'listApproved'>,
+): ApprovedKnowledgeApi {
+  async function readable(agentId: string) {
+    const entries = review
+      ? await review.listApproved()
+      : [structuredClone(refundProcedure)]
+    return entries.filter((entry) => canReadKnowledge(entry, agentId))
+  }
+
   return {
     async listForAgent(agentId) {
-      return canReadKnowledge(refundProcedure, agentId)
-        ? [structuredClone(refundProcedure)]
-        : []
+      return readable(agentId)
     },
     async getForAgent(agentId, entryId) {
-      return refundProcedure.id === entryId &&
-        canReadKnowledge(refundProcedure, agentId)
-        ? structuredClone(refundProcedure)
-        : null
+      return (await readable(agentId)).find((entry) => entry.id === entryId) ?? null
     },
   }
 }
