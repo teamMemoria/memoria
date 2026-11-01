@@ -114,7 +114,7 @@ def _context(as_of, scope):
 
 def reference_issues(reference: dict, *, as_of: str, scope: str) -> list[str]:
     """Fail closed when approval, currentness, scope or integrity is unknown."""
-    assessment_day = _context(as_of, scope)
+    _context(as_of, scope)
     if (
         not isinstance(reference, dict)
         or reference.keys() - OPTIONAL_CONTENT_FIELDS != RECORD_FIELDS
@@ -146,6 +146,32 @@ def reference_issues(reference: dict, *, as_of: str, scope: str) -> list[str]:
             issues.append("Reference version does not match its content.")
     except ValueError:
         issues.append("Reference content is not valid JSON.")
+    return issues + review_issues(reference, as_of=as_of, scope=scope)
+
+
+def review_issues(reference: dict, *, as_of: str, scope: str) -> list[str]:
+    """Check review metadata; callers must also validate content and provenance."""
+    assessment_day = _context(as_of, scope)
+    fields = {
+        "version",
+        "status",
+        "approved_by",
+        "approved_version",
+        "approved_at",
+        "verified_at",
+        "review_due",
+        "scope",
+        "exclusions",
+        "safety_flags",
+    }
+    if not isinstance(reference, dict) or not fields <= reference.keys():
+        return ["Review metadata is missing."]
+    if any(
+        not _text_list(reference[field])
+        for field in ("scope", "exclusions", "safety_flags")
+    ):
+        return ["Review scope and flags must be text lists."]
+    issues = []
     if reference["status"] != "approved":
         issues.append("Reference is not approved.")
     if reference["approved_version"] != reference["version"]:
