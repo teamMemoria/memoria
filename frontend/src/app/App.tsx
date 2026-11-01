@@ -8,6 +8,7 @@ import type { Viewer, ViewerApi } from '../types/viewer'
 import { Button, Panel } from '../components/controls'
 import { AppRoutes } from './routes'
 import type { ConversationsApi } from '../features/conversations/conversations'
+import type { TeamReviewApi } from '../features/review-queue/teamQueue'
 
 type ViewerState =
   | { status: 'loading' }
@@ -20,12 +21,14 @@ export default function App({
   conversationsApi = null,
   callApi = null,
   knowledgeApi = null,
+  teamReviewApi = null,
   knowledgeReviewApi = null,
 }: {
   viewerApi: ViewerApi | null
   conversationsApi?: ConversationsApi | null
   callApi?: CallApi | null
   knowledgeApi?: ApprovedKnowledgeApi | null
+  teamReviewApi?: TeamReviewApi | null
   knowledgeReviewApi?: KnowledgeReviewApi | null
 }) {
   const [state, setState] = useState<ViewerState>(
@@ -62,6 +65,7 @@ export default function App({
         conversationsApi={conversationsApi}
         callApi={callApi}
         knowledgeApi={knowledgeApi}
+        teamReviewApi={teamReviewApi}
         knowledgeReviewApi={knowledgeReviewApi}
       />
     )
