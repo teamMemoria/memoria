@@ -32,7 +32,10 @@ const decidedAtFormatter = new Intl.DateTimeFormat('en-US', {
 function SavedDecision({ decision }: { decision: ManagerDecision }) {
   return (
     <>
-      <StatusLabel tone={decision.outcome === 'confirmed' ? 'attention' : 'positive'}>
+      <StatusLabel tone={
+        decision.outcome === 'cannot-assess' ? 'neutral'
+          : decision.outcome === 'confirmed' ? 'attention' : 'positive'
+      }>
         {decisionOutcomes[decision.outcome].label}
       </StatusLabel>
       <div className="finding-review-field">

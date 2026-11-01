@@ -55,6 +55,10 @@ describe('Manager decisions on flagged feedback', () => {
     expect(save().disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Feedback for the agent'), { target: { value: 'No action needed.' } })
     expect(save().disabled).toBe(false)
+    fireEvent.click(save())
+    await within(decisionPanel()).findByText('Maya Chen')
+    const outcome = within(decisionPanel()).getByText('Cannot assess')
+    expect(outcome.classList.contains('status-label--neutral')).toBe(true)
   })
 
   it('saves a decision that survives navigation, completes the review and keeps the original assessment', async () => {
