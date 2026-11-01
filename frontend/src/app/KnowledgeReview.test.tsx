@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
 import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
 import type { KnowledgeReviewApi } from '../types/knowledge'
-import { agent, manager, openApp } from './TestSetup'
+import { agent, deferred, manager, openApp } from './TestSetup'
 
 const asManager = { getViewer: async () => manager }
 const reviewPath = (id: string) => `/manager/knowledge/${id}`
@@ -38,6 +38,34 @@ describe('Manager knowledge verification and approval', () => {
     expect(approve().disabled).toBe(true)
     fireEvent.click(checkbox())
     expect(approve().disabled).toBe(false)
+  })
+
+  it('requires fresh verification when navigating directly to another draft', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const response = deferred<Awaited<ReturnType<KnowledgeReviewApi['getForManager']>>>()
+    const { router } = openReview('KD-103', {
+      ...api,
+      getForManager: (managerId, id) => id === 'KD-102'
+        ? response.promise : api.getForManager(managerId, id),
+    })
+    await screen.findByRole('region', { name: 'Decision' })
+    openReference()
+    fireEvent.click(checkbox())
+    expect(approve().disabled).toBe(false)
+    await act(() => router.navigate(reviewPath('KD-102')))
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe('Loading knowledge entry…')
+    await act(async () => response.resolve(await api.getForManager(manager.id, 'KD-102')))
+    expect(checkbox().checked).toBe(false)
+    expect(checkbox().disabled).toBe(true)
+    expect(approve().disabled).toBe(true)
+    openReference()
+    expect(approve().disabled).toBe(true)
+    fireEvent.click(checkbox())
+    fireEvent.click(approve())
+    await within(screen.getByRole('region', { name: 'Decision' })).findByText('Approved')
+    expect((await api.getForManager(manager.id, 'KD-102'))?.entry.status).toBe('approved')
+    expect((await api.getForManager(manager.id, 'KD-103'))?.entry.status).toBe('draft')
   })
 
   it('does not treat repeated answers as verification when no reference exists', async () => {

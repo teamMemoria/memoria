@@ -191,6 +191,7 @@ function DecisionPanel({
     <Panel title="Decision" className="knowledge-review-decision">
       {canDecide ? (
         <DecisionForm
+          key={`${entry.id}:${entry.version}:${entry.verificationReference?.url}`}
           api={api}
           managerId={managerId}
           entry={entry}
@@ -252,7 +253,7 @@ export function KnowledgeReview({
     </Link>
   )
 
-  if (!api || state.status !== 'ready') {
+  if (!api || state.status !== 'ready' || state.entry.id !== entryId) {
     return (
       <div className="knowledge-drafts">
         {back}
@@ -261,7 +262,7 @@ export function KnowledgeReview({
           <Panel title="Knowledge review unavailable">
             <p>Knowledge review is not connected.</p>
           </Panel>
-        ) : state.status === 'loading' ? (
+        ) : state.status === 'loading' || state.status === 'ready' ? (
           <p role="status">Loading knowledge entry…</p>
         ) : state.status === 'error' ? (
           <Panel title="Unable to load knowledge entry">
