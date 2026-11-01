@@ -131,12 +131,13 @@ function ConversationTimeline({
           '4:00',
           '4:32',
         ].map((time, index) => {
-          const left = index === 9 ? 1335 : 99 + index * 136.32
+          // Positions are a share of the 1366px design so the timeline fills the width.
+          const left = `${((index === 9 ? 1335 : 99 + index * 136.32) / 1366) * 100}%`
           return (
             <span key={time} aria-hidden="true">
               <span
                 className="evidence-timeline-grid"
-                style={{ left: left - 1 }}
+                style={{ left, marginLeft: -1 }}
               />
               <span className="evidence-timeline-time" style={{ left }}>
                 {time}
