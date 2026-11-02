@@ -1,0 +1,77 @@
+from datetime import date
+from enum import StrEnum
+
+from sqlalchemy import Date, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from backend.core.database import Base
+from backend.models.columns import str_enum
+
+
+class Speaker(StrEnum):
+    AGENT = "agent"
+    CUSTOMER = "customer"
+    SYSTEM_ACTION = "system_action"
+
+
+class Agent(Base):
+    __tablename__ = "agents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # ID from the source dataset, e.g. "hvb-speaker-17".
+    external_id: Mapped[str] = mapped_column(String(100), unique=True)
+    name: Mapped[str | None] = mapped_column(String(200))
+
+    conversations: Mapped[list["Conversation"]] = relationship(back_populates="agent")
+
+
+class Topic(Base):
+    __tablename__ = "topics"
+    # Topics belong to one dataset (company) so knowledge never mixes across them.
+    __table_args__ = (UniqueConstraint("source_dataset", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_dataset: Mapped[str] = mapped_column(String(50))
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str | None] = mapped_column(Text)
+
+    conversations: Mapped[list["Conversation"]] = relationship(back_populates="topic")
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    __table_args__ = (UniqueConstraint("source_dataset", "original_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_dataset: Mapped[str] = mapped_column(String(50))
+    original_id: Mapped[str] = mapped_column(String(100))
+    channel: Mapped[str] = mapped_column(String(20))
+    # Real date from the source, when the source has one.
+    conversation_date: Mapped[date | None] = mapped_column(Date)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
+    topic_id: Mapped[int | None] = mapped_column(ForeignKey("topics.id"), index=True)
+
+    agent: Mapped[Agent] = relationship(back_populates="conversations")
+    topic: Mapped[Topic | None] = relationship(back_populates="conversations")
+    turns: Mapped[list["Turn"]] = relationship(
+        back_populates="conversation",
+        order_by="Turn.line_number",
+        cascade="all, delete-orphan",
+    )
+
+
+class Turn(Base):
+    __tablename__ = "turns"
+    __table_args__ = (UniqueConstraint("conversation_id", "line_number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE")
+    )
+    # The source's turn number. Kept as-is (it can have gaps) so evidence
+    # references match the original transcript.
+    line_number: Mapped[int]
+    speaker: Mapped[Speaker] = mapped_column(str_enum(Speaker, "speaker"))
+    text: Mapped[str] = mapped_column(Text)
+
+    conversation: Mapped[Conversation] = relationship(back_populates="turns")
