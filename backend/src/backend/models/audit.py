@@ -69,6 +69,8 @@ class Audit(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # The report's plain-language summary, when the analysis produced one.
+    summary: Mapped[str | None] = mapped_column(Text)
 
     conversation: Mapped[Conversation] = relationship()
     evaluation_form_version: Mapped["EvaluationFormVersion"] = relationship()
@@ -90,6 +92,8 @@ class Finding(Base):
         str_enum(FindingResult, "finding_result")
     )
     feedback: Mapped[str] = mapped_column(Text)
+    # What the agent could do differently; only needs-work findings have one.
+    suggestion: Mapped[str | None] = mapped_column(Text)
     # The approved entry this finding was checked against, if any.
     knowledge_entry_id: Mapped[int | None] = mapped_column(
         ForeignKey("knowledge_entries.id", ondelete="SET NULL"), index=True

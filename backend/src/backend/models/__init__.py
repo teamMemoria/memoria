@@ -1,3 +1,8 @@
+from backend.models.analysis import (
+    ACTIVE_RUN_STATUSES,
+    AnalysisRun,
+    AnalysisRunStatus,
+)
 from backend.models.audit import (
     Audit,
     FeedbackFlag,
@@ -32,8 +37,11 @@ from backend.models.organization import (
 )
 
 __all__ = [
+    "ACTIVE_RUN_STATUSES",
     "EMBEDDING_DIM",
     "Agent",
+    "AnalysisRun",
+    "AnalysisRunStatus",
     "Audit",
     "Conversation",
     "DraftStatus",

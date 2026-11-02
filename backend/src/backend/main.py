@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api import analysis as analysis_api
 from backend.api import calls, conversations, knowledge, viewer
 from backend.core.config import Settings
 from backend.db import session as db_session
@@ -19,6 +20,7 @@ from backend.providers import (
     create_fixture_providers,
 )
 from backend.providers.database import create_database_providers
+from backend.services.analysis import AnalysisService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app(
-    providers: Providers | None = None, settings: Settings | None = None
+    providers: Providers | None = None,
+    settings: Settings | None = None,
+    analysis: AnalysisService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Call Assist", lifespan=lifespan)
     settings = settings or Settings()
@@ -43,6 +47,8 @@ def create_app(
         )
     app.state.providers = providers
     app.state.settings = settings
+    # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
+    app.state.analysis = analysis or AnalysisService(db_session.async_session_factory)
 
     @app.exception_handler(ProviderUnavailableError)
     async def provider_unavailable(request: Request, exc: ProviderUnavailableError):
@@ -75,6 +81,7 @@ def create_app(
     app.include_router(conversations.router)
     app.include_router(calls.router)
     app.include_router(knowledge.router)
+    app.include_router(analysis_api.router)
     return app
 
 

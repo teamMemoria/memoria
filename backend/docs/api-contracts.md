@@ -252,6 +252,59 @@ assigned to. The frontend's `canReadKnowledge` check still passes.
 
 The full records are in `backend/src/backend/providers/fixture_data.py`.
 
+## Post-call analysis
+
+`backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result
+as the conversation's audit. Each attempt is an `analysis_runs` row, so processing status and
+technical failures are recorded apart from any audit.
+
+| Method and path | Permission | Response |
+|---|---|---|
+| `GET /api/manager/conversations/{conversationId}/analysis` | `feedback:review` | `AnalysisStatus`: the latest status (`not-started`, `queued`, `running`, `succeeded`, `failed`) and every run, newest first |
+| `POST /api/manager/conversations/{conversationId}/analysis` | `feedback:review` | `202` with a new queued run, or `200` with the run already queued or running |
+
+Body for `POST`: optional `{"retry": true}`.
+
+| Status | When |
+|---|---|
+| `404` | The conversation does not exist or is in another organization |
+| `409` `Conversation already analysed` | It has an audit. Audits are never replaced, so earlier results cannot be lost |
+| `409` `The last run failed; retry explicitly` | The latest run failed and `retry` was not `true` |
+
+### The adapter
+
+The run calls an `AnalysisAdapter` with an `AnalysisRequest`, following the input and output of
+`run_feedback_report` in `ml/report.py`:
+
+- `conversation`: `{id, transcript_version, events}`. Each event has the original turn number as
+  `turn_id`, `kind` (`message` or `action`), `speaker` and `text`. `transcript_version` is a SHA-256
+  of the events, so a report can be matched to exactly this evidence.
+- `references`: the organization's approved entries for the conversation's topic (all approved
+  entries if it has none), each with `id`, `section_id`, `version`, `title` and `text`.
+- `criteria`: the active evaluation form version's criteria, with `evaluation_form_version` stored
+  on the audit.
+
+The report is accepted only if `parse_report` finds `processing_status: "complete"`, the same
+`conversation_id` and `transcript_version`, all four categories completed, and every citation
+pointing at a supplied turn (with a matching quote) or a supplied reference version. A
+`needs-review` finding must cite at least one turn. Anything else fails the run with an error code
+(`report-<code>`, `invalid-citation`, `missing-evidence`, `evidence-mismatch`, `invalid-report`,
+`analysis-error`, `analysis-unavailable`, `no-evaluation-form`, `no-transcript`) and saves nothing.
+A failure is never stored as `cannot-assess`; the agent keeps seeing `processing`.
+
+The audit model has one finding per category. When a report has several findings in one category,
+their explanations, suggestions and evidence turns are combined, and the first cited reference is
+linked.
+
+No adapter is configured by default, so runs fail with `analysis-unavailable` until one is passed to
+`create_app(analysis=AnalysisService(sessions, adapter))`. `run_feedback_report` currently accepts
+only prepared ABCD evidence, so connecting it needs an adapter that prepares stored conversations
+the same way.
+
+Runs execute as background tasks in the API process. If the process stops mid-run, that run stays
+`running` and blocks new runs for the conversation; clearing such runs needs a worker with a
+timeout, which is not built yet.
+
 ## Providers
 
 Routes read data through the interfaces in `backend/src/backend/providers/base.py`
@@ -301,8 +354,9 @@ Documented here rather than filled with invented data. Each needs agreement with
    the knowledge routes and `CallReview.references` trim it to `[requesterId]`. The field could be
    dropped from the frontend type entirely once the frontend stops relying on it.
 4. **No technical-failure state.** `CallReview.status` is only `ready | processing` and
-   `AutomatedResult` has no `failed`. #76 requires failures to stay distinct from `cannot-assess`,
-   so a new value will be needed.
+   `AutomatedResult` has no `failed`. A failed analysis run therefore still shows as `processing`
+   to the agent; the failure and its error code are visible to Managers in the analysis status
+   route. A `failed` value would let the frontend show it.
 5. **Preformatted strings.** `duration` and `TranscriptTurn.time` are display strings like `4:32`
    with no defined format for calls over an hour.
 6. **Dates and durations can be unknown.** Source datasets do not always record a call date or length, so

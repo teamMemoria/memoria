@@ -255,8 +255,7 @@ def assessment(
 
 
 def finding_suggestion(finding: Finding) -> str:
-    # The audit model stores one feedback text per finding and no separate suggestion yet.
-    return ""
+    return finding.suggestion or ""
 
 
 def overall_result(criteria: list[AuditCriterion]) -> AutomatedResult:
@@ -444,7 +443,7 @@ def call_review(
     )
     return CallReview(
         **common,
-        summary="",
+        summary=audit.summary or "",
         status="ready",
         criteria=criteria,
         findings=findings,
