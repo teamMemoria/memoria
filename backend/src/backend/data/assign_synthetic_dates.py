@@ -19,7 +19,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.database import SessionLocal
+from backend.db.session import async_session_factory
 from backend.models import Agent, Conversation
 
 DEFAULT_START = date(2026, 1, 5)  # a Monday
@@ -74,7 +74,7 @@ async def assign_synthetic_dates(
 
 
 async def run(start: date, weeks: int, seed: int) -> None:
-    async with SessionLocal() as session:
+    async with async_session_factory() as session:
         async with session.begin():
             await assign_synthetic_dates(session, start, weeks, seed)
         rows = await session.execute(
