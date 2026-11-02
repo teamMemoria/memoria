@@ -9,19 +9,24 @@ from backend.models import (
     Agent,
     Audit,
     Conversation,
+    EvaluationForm,
+    EvaluationFormVersion,
     FeedbackFlag,
     Finding,
     FindingCategory,
     FindingResult,
     ManagerReview,
     ManagerReviewOutcome,
+    Organization,
 )
 
 
 @pytest.fixture
 async def finding(session):
-    agent = Agent(external_id="hvb-speaker-review")
+    organization = Organization(slug="northwind", name="Northwind Support")
+    agent = Agent(organization=organization, external_id="hvb-speaker-review")
     conversation = Conversation(
+        organization=organization,
         source_dataset="HarperValleyBank",
         original_id="review-1",
         channel="voice",
@@ -32,7 +37,16 @@ async def finding(session):
         result=FindingResult.NEEDS_WORK,
         feedback="Check identity before discussing the account.",
     )
-    session.add(Audit(conversation=conversation, findings=[finding]))
+    form_version = EvaluationFormVersion(
+        form=EvaluationForm(name="Review test form"), version_number=1
+    )
+    session.add(
+        Audit(
+            conversation=conversation,
+            evaluation_form_version=form_version,
+            findings=[finding],
+        )
+    )
     await session.flush()
     return finding
 

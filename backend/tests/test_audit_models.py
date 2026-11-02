@@ -15,20 +15,33 @@ from backend.models import (
     KnowledgeDraft,
     KnowledgeEntry,
     KnowledgeReview,
+    Organization,
+    OrganizationMembership,
     ReviewAction,
     Speaker,
     Topic,
     Turn,
+    User,
+    UserRole,
 )
 
 
 @pytest.fixture
-async def conversation(session):
+async def organization(session):
+    value = Organization(slug="northwind", name="Northwind Support")
+    session.add(value)
+    await session.flush()
+    return value
+
+
+@pytest.fixture
+async def conversation(session, organization):
     c = Conversation(
+        organization=organization,
         source_dataset="HarperValleyBank",
         original_id="abc",
         channel="voice",
-        agent=Agent(external_id="hvb-speaker-1"),
+        agent=Agent(organization=organization, external_id="hvb-speaker-1"),
         turns=[
             Turn(line_number=n, speaker=Speaker.AGENT, text=f"line {n}")
             for n in range(1, 6)
@@ -51,14 +64,29 @@ async def evaluation_version(session):
     return version
 
 
-async def make_entry(session) -> KnowledgeEntry:
-    topic = Topic(source_dataset="HarperValleyBank", name="Card replacement")
-    draft = KnowledgeDraft(topic=topic, answer_text="5 to 7 business days")
+async def make_entry(session, organization) -> KnowledgeEntry:
+    topic = Topic(
+        organization=organization,
+        source_dataset="HarperValleyBank",
+        name="Card replacement",
+    )
+    draft = KnowledgeDraft(
+        organization=organization, topic=topic, answer_text="5 to 7 business days"
+    )
+    reviewer = OrganizationMembership(
+        organization=organization,
+        user=User(external_id="manager-alex", display_name="Alex"),
+        role=UserRole.MANAGER,
+    )
     entry = KnowledgeEntry(
+        organization=organization,
         topic=topic,
         answer_text=draft.answer_text,
         approved_review=KnowledgeReview(
-            draft=draft, action=ReviewAction.APPROVED, reviewer="alex"
+            organization=organization,
+            draft=draft,
+            action=ReviewAction.APPROVED,
+            reviewer_membership=reviewer,
         ),
     )
     session.add(entry)
@@ -67,9 +95,9 @@ async def make_entry(session) -> KnowledgeEntry:
 
 
 async def test_audit_with_four_findings_and_evidence_round_trips(
-    session, conversation, evaluation_version
+    session, organization, conversation, evaluation_version
 ):
-    entry = await make_entry(session)
+    entry = await make_entry(session, organization)
     turns = {t.line_number: t for t in conversation.turns}
     audit = Audit(
         conversation=conversation,

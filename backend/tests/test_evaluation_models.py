@@ -13,6 +13,7 @@ from backend.models import (
     EvaluationForm,
     EvaluationFormVersion,
     FindingCategory,
+    Organization,
 )
 
 
@@ -140,11 +141,13 @@ async def test_audit_retains_the_form_version_used_for_scoring(session):
             EvaluationFormVersion(version_number=2),
         ],
     )
+    organization = Organization(slug="northwind", name="Northwind Support")
     conversation = Conversation(
+        organization=organization,
         source_dataset="HarperValleyBank",
         original_id="historical-audit",
         channel="voice",
-        agent=Agent(external_id="historical-agent"),
+        agent=Agent(organization=organization, external_id="historical-agent"),
     )
     audit = Audit(
         conversation=conversation,
