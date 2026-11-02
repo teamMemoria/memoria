@@ -1,24 +1,22 @@
 import asyncio
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
-
 import backend.models  # noqa: F401  (registers models for autogenerate)
+from alembic import context
+from backend.core.config import get_settings
 from backend.core.database import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option(
-    "sqlalchemy.url",
-    os.getenv("DATABASE_URL", "postgresql+psycopg://app:app@localhost:5432/callassist"),
-)
+# The URL comes from the same settings the app uses (DATABASE_URL, or .env).
+# "%" is doubled because Alembic's config treats it as interpolation.
+config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
