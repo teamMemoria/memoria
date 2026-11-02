@@ -3,9 +3,11 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     String,
     Table,
     Text,
@@ -129,6 +131,39 @@ class FeedbackFlag(Base):
     agent: Mapped[Agent] = relationship()
     manager_review: Mapped["ManagerReview | None"] = relationship(
         back_populates="feedback_flag", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class AgentContext(Base):
+    """An agent's own note on one of their calls.
+
+    Kept apart from FeedbackFlag on purpose: saving context never requests a
+    Manager review. A flag copies the context as it was when the flag was raised.
+    """
+
+    __tablename__ = "agent_contexts"
+    __table_args__ = (
+        CheckConstraint("length(btrim(text)) > 0", name="ck_agent_context_text"),
+        ForeignKeyConstraint(
+            ["organization_id", "conversation_id"],
+            ["conversations.organization_id", "conversations.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "agent_id"],
+            ["agents.organization_id", "agents.id"],
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE")
+    )
+    conversation_id: Mapped[int] = mapped_column(unique=True)
+    agent_id: Mapped[int]
+    text: Mapped[str] = mapped_column(Text)
+    saved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 

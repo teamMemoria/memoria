@@ -377,6 +377,8 @@ CALLS = {
                 "unavailableReason": None,
             },
             "references": [REFUND_PROCEDURE],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": None,
         },
         {
@@ -427,6 +429,8 @@ CALLS = {
                 "unavailableReason": None,
             },
             "references": [ADDRESS_CHANGE],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": {
                 "outcome": "confirmed",
                 "reason": "The address was read back before saving.",
@@ -462,6 +466,8 @@ CALLS = {
             "findings": [],
             "transcript": None,
             "references": [],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": None,
         },
         {
@@ -477,6 +483,8 @@ CALLS = {
             "findings": [],
             "transcript": None,
             "references": [],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": None,
         },
         {
@@ -545,6 +553,8 @@ CALLS = {
                 "unavailableReason": "The recording ended before the call finished.",
             },
             "references": [REFUND_PROCEDURE_V0],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": None,
         },
         # C1046 is intentionally missing: it appears in the list but its call record is unavailable.
@@ -600,6 +610,8 @@ CALLS = {
                 "unavailableReason": None,
             },
             "references": [],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": None,
         },
     ],
@@ -617,6 +629,8 @@ CALLS = {
             "findings": [],
             "transcript": None,
             "references": [],
+            "agentContext": None,
+            "reviewRequest": None,
             "decision": None,
         },
     ],

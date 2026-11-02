@@ -4,6 +4,7 @@ from backend.models.analysis import (
     AnalysisRunStatus,
 )
 from backend.models.audit import (
+    AgentContext,
     Audit,
     FeedbackFlag,
     Finding,
@@ -40,6 +41,7 @@ __all__ = [
     "ACTIVE_RUN_STATUSES",
     "EMBEDDING_DIM",
     "Agent",
+    "AgentContext",
     "AnalysisRun",
     "AnalysisRunStatus",
     "Audit",

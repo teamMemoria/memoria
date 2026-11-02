@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import CurrentUser, permissions_for_membership
+from backend.models import AgentContext as AgentContextRecord
 from backend.models import (
     Audit,
     Conversation,
@@ -42,10 +43,12 @@ from backend.models import (
 )
 from backend.providers.base import Providers, ProviderUnavailableError
 from backend.schemas import (
+    AgentContext,
     AuditCriterion,
     CallFinding,
     CallReview,
     ManagerDecision,
+    ReviewRequest,
     Transcript,
     TranscriptTurn,
     Viewer,
@@ -421,8 +424,40 @@ def conversation_summary(
     )
 
 
+def agent_context_schema(context: AgentContextRecord | None) -> AgentContext | None:
+    if context is None:
+        return None
+    return AgentContext(text=context.text, saved_at=iso_timestamp(context.saved_at))
+
+
+def review_request_schema(flag: FeedbackFlag) -> ReviewRequest:
+    return ReviewRequest(
+        finding_id=str(flag.finding_id),
+        reason=flag.reason,
+        requested_at=iso_timestamp(flag.flagged_at),
+        status="requested" if flag.manager_review is None else "complete",
+    )
+
+
+def current_review_request(
+    audit: Audit | None, finding_ids: set[str]
+) -> ReviewRequest | None:
+    """The call's review request: the newest open one, else the newest completed one."""
+    flags = [flag for flag in flags_of(audit) if str(flag.finding_id) in finding_ids]
+    if not flags:
+        return None
+    flag = max(
+        flags,
+        key=lambda flag: (flag.manager_review is None, flag.flagged_at, flag.id),
+    )
+    return review_request_schema(flag)
+
+
 def call_review(
-    conversation: Conversation, audit: Audit | None, agent: AgentIdentity
+    conversation: Conversation,
+    audit: Audit | None,
+    agent: AgentIdentity,
+    context: AgentContextRecord | None = None,
 ) -> CallReview:
     common = {
         "id": str(conversation.id),
@@ -432,6 +467,7 @@ def call_review(
         "date": iso_date(conversation.conversation_date),
         "duration": None,
         "transcript": transcript_of(conversation),
+        "agent_context": agent_context_schema(context),
     }
     if audit is None:
         return CallReview(
@@ -441,6 +477,7 @@ def call_review(
             criteria=[],
             findings=[],
             references=[],
+            review_request=None,
             decision=None,
         )
     criteria, findings, entries = assessment(
@@ -454,6 +491,9 @@ def call_review(
         findings=findings,
         # The versions this call was assessed against, even if since replaced.
         references=[knowledge_entry_schema(entry, [agent.id]) for entry in entries],
+        review_request=current_review_request(
+            audit, {finding.id for finding in findings}
+        ),
         decision=latest_decision(audit),
     )
 
@@ -575,7 +615,12 @@ class DatabaseCallReviewProvider:
             if conversation is None:
                 return None
             audit = (await audits_by_conversation(session, [key])).get(key)
-        return call_review(conversation, audit, agent_identity(membership))
+            context = await session.scalar(
+                select(AgentContextRecord).where(
+                    AgentContextRecord.conversation_id == key
+                )
+            )
+        return call_review(conversation, audit, agent_identity(membership), context)
 
 
 class DatabaseKnowledgeProvider:
@@ -612,10 +657,14 @@ class DatabaseKnowledgeProvider:
 
 
 def create_database_providers(sessions: SessionFactory) -> Providers:
+    # Imported here because the write providers build on the helpers above.
+    from backend.providers.feedback import DatabaseFeedbackProvider
+
     return Providers(
         viewers=DatabaseViewerProvider(sessions),
         conversations=DatabaseConversationProvider(sessions),
         calls=DatabaseCallReviewProvider(sessions),
         knowledge=DatabaseKnowledgeProvider(sessions),
         identities=DatabaseIdentityProvider(sessions),
+        feedback=DatabaseFeedbackProvider(sessions),
     )

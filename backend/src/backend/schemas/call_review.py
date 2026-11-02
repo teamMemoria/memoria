@@ -67,6 +67,22 @@ class CallFinding(ApiModel):
     procedure_steps: list[ProcedureStep]
 
 
+class AgentContext(ApiModel):
+    """The agent's own note on the call. Saving it never requests a review."""
+
+    text: str
+    saved_at: str
+
+
+class ReviewRequest(ApiModel):
+    """An agent's request for a Manager to review one finding."""
+
+    finding_id: str
+    reason: str
+    requested_at: str
+    status: Literal["requested", "complete"]
+
+
 class ManagerDecision(ApiModel):
     outcome: Literal["confirmed", "corrected", "dismissed", "cannot-assess"]
     reason: str
@@ -89,13 +105,15 @@ class CallReview(ApiModel):
     findings: list[CallFinding]
     transcript: Transcript | None
     references: list[KnowledgeEntry]
+    agent_context: AgentContext | None
+    review_request: ReviewRequest | None
     # The Manager decision lives beside the automated assessment, never inside it.
     decision: ManagerDecision | None
 
     @model_validator(mode="after")
     def check_assessment_shape(self) -> Self:
         if self.status == "processing":
-            if self.criteria or self.findings or self.decision:
+            if self.criteria or self.findings or self.decision or self.review_request:
                 raise ValueError("a processing call has no assessment or decision yet")
             return self
 
@@ -146,6 +164,14 @@ class CallReview(ApiModel):
                 raise ValueError(
                     f"{where} cites unknown finding {criterion.finding_id!r}"
                 )
+
+        if (
+            self.review_request is not None
+            and self.review_request.finding_id not in finding_ids
+        ):
+            raise ValueError(
+                f"review request cites unknown finding {self.review_request.finding_id!r}"
+            )
 
         for finding in self.findings:
             where = f"finding {finding.id!r}"

@@ -252,6 +252,31 @@ assigned to. The frontend's `canReadKnowledge` check still passes.
 
 The full records are in `backend/src/backend/providers/fixture_data.py`.
 
+## Agent context and review requests
+
+Both routes need `conversations:read-own` and apply the same ownership rule as the reads. A call
+that is not the requester's gets `404`. They need the database: with fixtures they answer `503`.
+
+| Method and path | Body | Response |
+|---|---|---|
+| `PUT /api/agent/conversations/{conversationId}/context` | `{"text": "..."}` | `200` `AgentContext` `{text, savedAt}` |
+| `POST /api/agent/conversations/{conversationId}/review-requests` | `{"findingId": "...", "reason": "..."}` | `201` `ReviewRequest` `{findingId, reason, requestedAt, status}`, or `200` with the existing one |
+
+- **Saving context never requests a review.** The note is stored in `agent_contexts`, one per call,
+  and saving again replaces it. It can be saved while a call is still processing. Text is trimmed and
+  must be 1–4000 characters; anything else is `422`.
+- **One review request per finding.** A request is a `FeedbackFlag` row; the automated finding is not
+  touched. Asking again for the same finding returns the existing request with `200` and changes
+  nothing, even with a different reason. The flag stores a copy of the agent's context as it was at
+  that moment, so the Manager sees what the agent had written when they asked.
+- **Only findings shown in the call view can be flagged**, that is the `findings[].id` values of a
+  ready call. Anything else is `404` `Finding not found`.
+- A failed save is a `503`, never a success.
+
+`CallReview` gains `agentContext` and `reviewRequest`, matching `frontend/src/types/callReview.ts`.
+`reviewRequest` is the call's open request if there is one, otherwise its most recent completed one;
+`status` is `complete` once a Manager has decided.
+
 ## Post-call analysis
 
 `backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result
