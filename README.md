@@ -83,3 +83,22 @@ The login in `docker-compose.yml` is for local development only.
 ## A note on data
 
 This will eventually handle real call transcripts, so keep the repo private and don't commit any real call data. Use made-up examples for tests.
+## Database setup
+
+Start Postgres (with pgvector):
+
+    docker compose up -d
+
+Check that pgvector is enabled:
+
+    docker compose exec db psql -U app -d callassist -c "\dx"
+
+## Migrations
+
+From the `backend/` folder, with the database running:
+
+    uv run alembic upgrade head
+
+After changing models, create a new migration:
+
+    uv run alembic revision --autogenerate -m "describe the change"
