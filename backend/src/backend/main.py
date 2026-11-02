@@ -18,6 +18,7 @@ from backend.providers import (
     ProviderUnavailableError,
     create_fixture_providers,
 )
+from backend.providers.database import create_database_providers
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,15 @@ def create_app(
     providers: Providers | None = None, settings: Settings | None = None
 ) -> FastAPI:
     app = FastAPI(title="Call Assist", lifespan=lifespan)
-    # Fixture providers until the database providers (#75) are ready.
-    app.state.providers = providers or create_fixture_providers()
-    app.state.settings = settings or Settings()
+    settings = settings or Settings()
+    if providers is None:
+        providers = (
+            create_database_providers(db_session.async_session_factory)
+            if settings.data_source == "database"
+            else create_fixture_providers()
+        )
+    app.state.providers = providers
+    app.state.settings = settings
 
     @app.exception_handler(ProviderUnavailableError)
     async def provider_unavailable(request: Request, exc: ProviderUnavailableError):

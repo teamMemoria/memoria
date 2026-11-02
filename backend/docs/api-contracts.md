@@ -50,6 +50,43 @@ header:
 | `agent-riley-chen` | `org-harbor` | `conversations:read-own`, `knowledge:read` |
 
 `MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every request gets `401`.
+
+### How an identity enters the request context
+
+1. **Authentication** decides *who* is asking. A future login system will verify the user and hand
+   the backend their user ID. Until then, in development and test only, `X-Dev-User` stands in for
+   that verified ID. Nothing else in a request is treated as proof of identity.
+2. **Authorization** decides *what they may do*, and always comes from the server. `get_current_user`
+   passes the user ID to the identity provider (`Providers.identities`), which returns the
+   `CurrentUser`:
+   - With fixtures (`MEMORIA_DATA_SOURCE=fixtures`, the default) it is the matching entry in
+     `DEV_IDENTITIES`.
+   - With the database (`MEMORIA_DATA_SOURCE=database`) it is built from the user's stored
+     `OrganizationMembership`: `organization_id` is the organization's `slug`, and permissions come
+     from `permissions_for_membership` in `backend/core/auth.py`.
+
+   | Membership | Permissions |
+   |---|---|
+   | role `agent` | `conversations:read-own`, `knowledge:read` |
+   | `can_review_feedback` | adds `feedback:review` |
+   | `can_approve_knowledge` | adds `knowledge:approve` |
+
+   Today both capabilities belong to the `manager` role, so a stored Manager can do both. They map
+   to separate permissions, so splitting the role later needs no change here.
+3. **Ownership** of calls goes through `OrganizationMembership.agent_id`, the link from a person to
+   the agent record (`agents` row) in the source data. An agent sees only conversations whose
+   `agent_id` matches their link, in their own organization. An agent with no link sees no calls.
+
+Choosing a role in the frontend is a display choice, not authentication: the backend never reads a
+role, organization or permission from the request. A user who belongs to several organizations
+picks one with the `X-Organization` header (an organization slug); it only selects among memberships
+they already hold, and without it such a user gets `401`.
+
+To run on the database:
+
+```bash
+MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database .venv/bin/uvicorn backend.main:app --reload
+```
 To run locally:
 
 ```bash
@@ -220,9 +257,37 @@ The full records are in `backend/src/backend/providers/fixture_data.py`.
 Routes read data through the interfaces in `backend/src/backend/providers/base.py`
 (`ViewerProvider`, `ConversationProvider`, `CallReviewProvider`, `KnowledgeProvider`).
 Every method takes an `organization_id` and returns `None` for records that are missing
-or not visible to that agent. The app starts with the fixture providers; #75 adds
-PostgreSQL implementations of the same interfaces. Tests can pass their own `Providers`
-to `create_app()`.
+or not visible to that agent. `MEMORIA_DATA_SOURCE` picks the fixture providers or the
+PostgreSQL ones in `backend/src/backend/providers/database.py`; tests can pass their own
+`Providers` to `create_app()`. `tests/test_database_providers.py` runs the same checks against
+both, so they cannot drift apart.
+
+### Database mapping
+
+| Stored | API |
+|---|---|
+| `Conversation.id` | `id` (as a string) |
+| `FindingResult` `pass` / `needs_work` / `cannot_assess` | `meets-criteria` / `needs-review` / `cannot-assess` |
+| `FindingCategory` `procedure` / `answer_support` / `completeness` / `communication` | `procedure` / `answer-support` / `completeness` / `communication-style` |
+| `ManagerReviewOutcome` `cannot_assess` | `cannot-assess` (others unchanged) |
+| `Turn.line_number` | `TranscriptTurn.number` and every evidence number, gaps kept |
+| `Finding.knowledge_entry` | a `references` entry; each approval creates a new entry row, so `version` is `review-<approving review id>` |
+| No audit yet | `status: "processing"`, `automatedResult: "processing"` |
+| Flags with no Manager review / all reviewed / none | `review-requested` / `review-complete` / `feedback-ready` |
+
+Rules the mapping applies, each covered by a test:
+
+- System-action turns are not part of the frontend transcript, so they are left out of
+  `transcript` and of evidence numbers.
+- A category with no stored finding is `cannot-assess` with the explanation
+  "No result was stored for this criterion."
+- A stored `needs_work` finding whose evidence is not in the transcript is shown as `cannot-assess`,
+  never as a failure without evidence.
+- A conversation without a topic shows `Unassigned`.
+- Approved guidance is assigned to every agent in the organization; Managers are assigned none.
+- Fields the database does not store stay empty: `duration`, `TranscriptTurn.time`,
+  `KnowledgeEntry.effectiveAt`, `owner`, `source` and `steps`. A conversation with no source date has
+  `date: null` and is listed after the dated ones.
 
 ## Gaps in the current frontend types
 
@@ -240,9 +305,13 @@ Documented here rather than filled with invented data. Each needs agreement with
    so a new value will be needed.
 5. **Preformatted strings.** `duration` and `TranscriptTurn.time` are display strings like `4:32`
    with no defined format for calls over an hour.
-6. **Date formats are implicit.** `Conversation.date` and knowledge dates are `YYYY-MM-DD`;
+6. **Dates and durations can be unknown.** Source datasets do not always record a call date or length, so
+   `Conversation.date`, `CallReview.date` and `CallReview.duration` are nullable rather than guessed.
+   The frontend types still say `string`; `getAgentConversations` sorts with `localeCompare`, which
+   needs a null check before it reads database records.
+7. **Date formats are implicit.** `Conversation.date` and knowledge dates are `YYYY-MM-DD`;
    `decision.decidedAt` is an ISO 8601 timestamp. No timezone is stated for date-only values.
-7. **One decision per call.** `CallReview.decision` holds a single Manager decision, with no history
+8. **One decision per call.** `CallReview.decision` holds a single Manager decision, with no history
    and no link to which finding was reviewed.
-8. **A listed conversation can have no call record.** The list has no way to mark that the detail
+9. **A listed conversation can have no call record.** The list has no way to mark that the detail
    is unavailable; the detail route returns `404` (fixture `C1046`).

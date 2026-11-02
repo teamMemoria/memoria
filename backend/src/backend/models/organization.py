@@ -1,10 +1,20 @@
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    ForeignKeyConstraint,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
 from backend.models.columns import str_enum
+
+if TYPE_CHECKING:
+    from backend.models.conversation import Agent
 
 
 class UserRole(StrEnum):
@@ -43,6 +53,18 @@ class OrganizationMembership(Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "user_id"),
         UniqueConstraint("organization_id", "id"),
+        UniqueConstraint(
+            "organization_id", "agent_id", name="uq_organization_memberships_agent"
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "agent_id"],
+            ["agents.organization_id", "agents.id"],
+            name="fk_organization_memberships_agent",
+        ),
+        CheckConstraint(
+            "agent_id IS NULL OR role = 'agent'",
+            name="ck_organization_memberships_agent_link_role",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -53,9 +75,19 @@ class OrganizationMembership(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     role: Mapped[UserRole] = mapped_column(str_enum(UserRole, "user_role"))
+    # The agent record (from the source data) whose calls this person handled.
+    # Ownership checks go through this link; only agent memberships have one.
+    agent_id: Mapped[int | None] = mapped_column()
 
     organization: Mapped[Organization] = relationship(back_populates="memberships")
     user: Mapped[User] = relationship(back_populates="memberships")
+    # Only agent_id is written through this relationship. The organization is
+    # matched in the join and enforced by the composite foreign key, so
+    # clearing the link never clears the membership's organization.
+    agent: Mapped["Agent | None"] = relationship(
+        primaryjoin="and_(Agent.id == foreign(OrganizationMembership.agent_id), "
+        "Agent.organization_id == OrganizationMembership.organization_id)",
+    )
 
     @property
     def can_review_feedback(self) -> bool:

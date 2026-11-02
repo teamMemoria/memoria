@@ -57,8 +57,14 @@ class FixtureConversationProvider:
             if conversation.agent_id == agent_id
         ]
         # Newest first, same order as getAgentConversations in the frontend.
+        # Undated conversations go last.
         return sorted(
-            conversations, key=lambda conversation: conversation.date, reverse=True
+            conversations,
+            key=lambda conversation: (
+                conversation.date is not None,
+                conversation.date or "",
+            ),
+            reverse=True,
         )
 
 

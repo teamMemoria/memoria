@@ -17,6 +17,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MEMORIA_APP_ENV", "app_env"),
     )
 
+    # MEMORIA_DATA_SOURCE. "fixtures" serves the fictional records in
+    # backend.providers.fixture_data; "database" reads PostgreSQL. Identities
+    # follow the same choice (see docs/api-contracts.md, "Identity and permissions").
+    data_source: Literal["fixtures", "database"] = Field(
+        default="fixtures",
+        validation_alias=AliasChoices("MEMORIA_DATA_SOURCE", "data_source"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

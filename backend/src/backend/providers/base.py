@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
+from backend.core.auth import DEV_IDENTITIES, CurrentUser
 from backend.schemas import CallReview, Conversation, KnowledgeEntry, Viewer
 
 
@@ -11,6 +12,29 @@ class ProviderUnavailableError(Exception):
 # Every read is scoped to one organization. Methods mirror the frontend's
 # ViewerApi, ConversationsApi, CallApi and ApprovedKnowledgeApi, and return None
 # when the record does not exist or is not visible to that agent.
+
+
+class IdentityProvider(Protocol):
+    async def resolve(
+        self, subject: str, organization_id: str | None = None
+    ) -> CurrentUser | None:
+        """The requester's organization and permissions, or None if unknown.
+
+        ``subject`` is a user ID that has already been authenticated; this only
+        looks up what that user may do. ``organization_id`` picks one of the
+        user's own memberships when they belong to more than one organization.
+        """
+        ...
+
+
+class FixtureIdentityProvider:
+    """The fixed development identities in backend.core.auth."""
+
+    async def resolve(self, subject, organization_id=None):
+        user = DEV_IDENTITIES.get(subject)
+        if user is None or organization_id not in (None, user.organization_id):
+            return None
+        return user
 
 
 class ViewerProvider(Protocol):
@@ -45,3 +69,4 @@ class Providers:
     conversations: ConversationProvider
     calls: CallReviewProvider
     knowledge: KnowledgeProvider
+    identities: IdentityProvider = field(default_factory=FixtureIdentityProvider)
