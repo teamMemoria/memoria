@@ -7,6 +7,8 @@ from backend.models import (
     Agent,
     Audit,
     Conversation,
+    EvaluationForm,
+    EvaluationFormVersion,
     Finding,
     FindingCategory,
     FindingResult,
@@ -37,6 +39,18 @@ async def conversation(session):
     return c
 
 
+@pytest.fixture
+async def evaluation_version(session):
+    version = EvaluationFormVersion(
+        form=EvaluationForm(name="Default quality form"),
+        version_number=1,
+        is_active=True,
+    )
+    session.add(version)
+    await session.flush()
+    return version
+
+
 async def make_entry(session) -> KnowledgeEntry:
     topic = Topic(source_dataset="HarperValleyBank", name="Card replacement")
     draft = KnowledgeDraft(topic=topic, answer_text="5 to 7 business days")
@@ -52,11 +66,14 @@ async def make_entry(session) -> KnowledgeEntry:
     return entry
 
 
-async def test_audit_with_four_findings_and_evidence_round_trips(session, conversation):
+async def test_audit_with_four_findings_and_evidence_round_trips(
+    session, conversation, evaluation_version
+):
     entry = await make_entry(session)
     turns = {t.line_number: t for t in conversation.turns}
     audit = Audit(
         conversation=conversation,
+        evaluation_form_version=evaluation_version,
         findings=[
             Finding(
                 category=FindingCategory.PROCEDURE,
@@ -109,10 +126,11 @@ async def test_audit_with_four_findings_and_evidence_round_trips(session, conver
 
 
 async def test_cannot_assess_is_stored_separately_from_needs_work(
-    session, conversation
+    session, conversation, evaluation_version
 ):
     audit = Audit(
         conversation=conversation,
+        evaluation_form_version=evaluation_version,
         findings=[
             Finding(
                 category=FindingCategory.PROCEDURE,
@@ -144,18 +162,30 @@ async def test_cannot_assess_is_stored_separately_from_needs_work(
     assert [f.category for f in failures] == [FindingCategory.PROCEDURE]
 
 
-async def test_one_audit_per_conversation(session, conversation):
+async def test_one_audit_per_conversation(session, conversation, evaluation_version):
     session.add_all(
-        [Audit(conversation=conversation), Audit(conversation=conversation)]
+        [
+            Audit(
+                conversation=conversation,
+                evaluation_form_version=evaluation_version,
+            ),
+            Audit(
+                conversation=conversation,
+                evaluation_form_version=evaluation_version,
+            ),
+        ]
     )
     with pytest.raises(IntegrityError):
         await session.flush()
 
 
-async def test_one_finding_per_category_per_audit(session, conversation):
+async def test_one_finding_per_category_per_audit(
+    session, conversation, evaluation_version
+):
     session.add(
         Audit(
             conversation=conversation,
+            evaluation_form_version=evaluation_version,
             findings=[
                 Finding(
                     category=FindingCategory.PROCEDURE,
@@ -174,8 +204,8 @@ async def test_one_finding_per_category_per_audit(session, conversation):
         await session.flush()
 
 
-async def test_unknown_result_is_rejected(session, conversation):
-    audit = Audit(conversation=conversation)
+async def test_unknown_result_is_rejected(session, conversation, evaluation_version):
+    audit = Audit(conversation=conversation, evaluation_form_version=evaluation_version)
     session.add(audit)
     await session.flush()
     with pytest.raises(IntegrityError):

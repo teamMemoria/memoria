@@ -6,6 +6,11 @@ from backend.models.audit import (
     finding_evidence,
 )
 from backend.models.conversation import Agent, Conversation, Speaker, Topic, Turn
+from backend.models.evaluation import (
+    EvaluationCriterion,
+    EvaluationForm,
+    EvaluationFormVersion,
+)
 from backend.models.knowledge import (
     EMBEDDING_DIM,
     DraftStatus,
@@ -24,6 +29,9 @@ __all__ = [
     "Conversation",
     "DraftStatus",
     "EntryStatus",
+    "EvaluationCriterion",
+    "EvaluationForm",
+    "EvaluationFormVersion",
     "Finding",
     "FindingCategory",
     "FindingResult",
