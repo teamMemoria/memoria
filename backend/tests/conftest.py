@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import psycopg
@@ -8,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-ADMIN_URL = "postgresql://app:app@localhost:5432/callassist"
+ADMIN_URL = os.getenv(
+    "TEST_ADMIN_URL", "postgresql://app:app@localhost:5432/callassist"
+)
 TEST_DB = "callassist_test"
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL", f"postgresql+psycopg://app:app@localhost:5432/{TEST_DB}"
@@ -26,7 +29,7 @@ def migrated_database():
     ) as conn:
         conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
     subprocess.run(
-        ["alembic", "upgrade", "head"],
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND_DIR,
         env={**os.environ, "DATABASE_URL": TEST_DATABASE_URL},
         check=True,

@@ -13,8 +13,12 @@ from backend.models import (
     KnowledgeDraft,
     KnowledgeEntry,
     KnowledgeReview,
+    Organization,
+    OrganizationMembership,
     ReviewAction,
     Topic,
+    User,
+    UserRole,
 )
 
 
@@ -25,21 +29,51 @@ def one_hot(i: int) -> list[float]:
 
 
 @pytest.fixture
-async def topic(session):
-    t = Topic(source_dataset="HarperValleyBank", name="Card replacement")
+async def organization(session):
+    value = Organization(slug="northwind", name="Northwind Support")
+    session.add(value)
+    await session.flush()
+    return value
+
+
+@pytest.fixture
+async def topic(session, organization):
+    t = Topic(
+        organization=organization,
+        source_dataset="HarperValleyBank",
+        name="Card replacement",
+    )
     session.add(t)
     await session.flush()
     return t
 
 
+@pytest.fixture
+async def manager_membership(session, organization):
+    membership = OrganizationMembership(
+        organization=organization,
+        user=User(external_id="manager-maya", display_name="Maya Chen"),
+        role=UserRole.MANAGER,
+    )
+    session.add(membership)
+    await session.flush()
+    return membership
+
+
 async def approve(
-    session, draft: KnowledgeDraft, reviewer: str = "manager@example.com"
+    session,
+    draft: KnowledgeDraft,
+    reviewer_membership: OrganizationMembership,
 ):
     review = KnowledgeReview(
-        draft=draft, action=ReviewAction.APPROVED, reviewer=reviewer
+        organization=draft.organization,
+        draft=draft,
+        action=ReviewAction.APPROVED,
+        reviewer_membership=reviewer_membership,
     )
     draft.status = DraftStatus.APPROVED
     entry = KnowledgeEntry(
+        organization=draft.organization,
         topic=draft.topic,
         answer_text=draft.answer_text,
         embedding=draft.embedding,
@@ -51,9 +85,10 @@ async def approve(
 
 
 async def test_draft_keeps_its_supporting_conversations(session, topic):
-    agent = Agent(external_id="hvb-speaker-1")
+    agent = Agent(organization=topic.organization, external_id="hvb-speaker-1")
     conversations = [
         Conversation(
+            organization=topic.organization,
             source_dataset="HarperValleyBank",
             original_id=str(i),
             channel="voice",
@@ -62,6 +97,7 @@ async def test_draft_keeps_its_supporting_conversations(session, topic):
         for i in range(3)
     ]
     draft = KnowledgeDraft(
+        organization=topic.organization,
         topic=topic,
         answer_text="New cards arrive in 5 to 7 business days.",
         supporting_conversations=conversations,
@@ -79,11 +115,21 @@ async def test_draft_keeps_its_supporting_conversations(session, topic):
     assert sorted(r[0] for r in rows) == sorted(c.id for c in conversations)
 
 
-async def test_drafts_and_entries_cannot_be_confused(session, topic):
-    session.add(KnowledgeDraft(topic=topic, answer_text="Unapproved draft"))
-    approved_draft = KnowledgeDraft(topic=topic, answer_text="Approved answer")
+async def test_drafts_and_entries_cannot_be_confused(
+    session, topic, manager_membership
+):
+    session.add(
+        KnowledgeDraft(
+            organization=topic.organization,
+            topic=topic,
+            answer_text="Unapproved draft",
+        )
+    )
+    approved_draft = KnowledgeDraft(
+        organization=topic.organization, topic=topic, answer_text="Approved answer"
+    )
     session.add(approved_draft)
-    await approve(session, approved_draft)
+    await approve(session, approved_draft, manager_membership)
 
     entries = (await session.scalars(select(KnowledgeEntry))).all()
     assert [e.answer_text for e in entries] == ["Approved answer"]
@@ -97,37 +143,61 @@ async def test_drafts_and_entries_cannot_be_confused(session, topic):
             )
 
 
-async def test_every_approval_records_reviewer_and_timestamp(session, topic):
-    draft = KnowledgeDraft(topic=topic, answer_text="Branch opens at 9am.")
+async def test_every_approval_records_reviewer_and_timestamp(
+    session, topic, manager_membership
+):
+    draft = KnowledgeDraft(
+        organization=topic.organization,
+        topic=topic,
+        answer_text="Branch opens at 9am.",
+    )
     session.add(draft)
-    entry = await approve(session, draft, reviewer="alex")
+    entry = await approve(session, draft, manager_membership)
     await session.refresh(entry.approved_review)
 
     assert entry.status == EntryStatus.APPROVED
-    assert entry.approved_review.reviewer == "alex"
+    assert entry.approved_review.reviewer_membership_id == manager_membership.id
     assert isinstance(entry.approved_review.reviewed_at, datetime)
 
 
 async def test_entry_without_an_approval_is_rejected(session, topic):
-    session.add(KnowledgeEntry(topic=topic, answer_text="No review"))
-    with pytest.raises(IntegrityError):
-        await session.flush()
-
-
-async def test_review_requires_a_reviewer(session, topic):
-    draft = KnowledgeDraft(topic=topic, answer_text="x")
     session.add(
-        KnowledgeReview(draft=draft, action=ReviewAction.REJECTED, reviewer=None)
+        KnowledgeEntry(
+            organization=topic.organization, topic=topic, answer_text="No review"
+        )
     )
     with pytest.raises(IntegrityError):
         await session.flush()
 
 
-async def test_nearest_neighbour_search_returns_closest_entry(session, topic):
+async def test_review_requires_a_reviewer(session, topic):
+    draft = KnowledgeDraft(
+        organization=topic.organization, topic=topic, answer_text="x"
+    )
+    session.add(
+        KnowledgeReview(
+            organization=topic.organization,
+            draft=draft,
+            action=ReviewAction.REJECTED,
+            reviewer_membership=None,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await session.flush()
+
+
+async def test_nearest_neighbour_search_returns_closest_entry(
+    session, topic, manager_membership
+):
     for i, answer in enumerate(["alpha", "beta", "gamma"]):
-        draft = KnowledgeDraft(topic=topic, answer_text=answer, embedding=one_hot(i))
+        draft = KnowledgeDraft(
+            organization=topic.organization,
+            topic=topic,
+            answer_text=answer,
+            embedding=one_hot(i),
+        )
         session.add(draft)
-        await approve(session, draft)
+        await approve(session, draft, manager_membership)
 
     query = [0.0] * EMBEDDING_DIM
     query[1], query[2] = 0.9, 0.1
