@@ -20,7 +20,7 @@ from pathlib import Path
 
 from sqlalchemy import func, select
 
-from backend.core.database import SessionLocal
+from backend.db.session import async_session_factory
 from backend.models import Agent, Conversation, FindingCategory, Topic, Turn
 
 DEFAULT_OUT = Path("evaluation/scoring_template.csv")
@@ -87,7 +87,7 @@ def write_template(selection: list[Candidate], out: Path) -> None:
 
 
 async def load_candidates() -> list[Candidate]:
-    async with SessionLocal() as session:
+    async with async_session_factory() as session:
         rows = await session.execute(
             select(
                 Conversation.curated_id,
