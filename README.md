@@ -92,3 +92,13 @@ Start Postgres (with pgvector):
 Check that pgvector is enabled:
 
     docker compose exec db psql -U app -d callassist -c "\dx"
+
+## Migrations
+
+From the `backend/` folder, with the database running:
+
+    uv run alembic upgrade head
+
+After changing models, create a new migration:
+
+    uv run alembic revision --autogenerate -m "describe the change"
