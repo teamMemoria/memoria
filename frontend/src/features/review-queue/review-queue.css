@@ -1,0 +1,121 @@
+.review-queue {
+  display: grid;
+  gap: 32px;
+  min-width: 0;
+}
+.review-queue-summary {
+  margin: 0;
+}
+.review-queue-flag {
+  display: grid;
+  gap: 4px;
+}
+.review-queue-muted {
+  color: var(--color-muted);
+}
+.review-queue-table td {
+  height: auto;
+  padding-block: 16px;
+  vertical-align: middle;
+}
+.review-queue-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: start;
+}
+
+.finding-review-header {
+  display: grid;
+  gap: 8px;
+}
+.finding-review-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 24px;
+  align-items: start;
+}
+.finding-review-main,
+.finding-review-side,
+.finding-review-evidence {
+  display: grid;
+  gap: 24px;
+}
+.finding-review-evidence section {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--control-radius);
+}
+/* Subheadings sit close to the text they label. */
+.finding-review-field {
+  display: grid;
+  gap: 4px;
+}
+.finding-review h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.finding-review-turns {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.finding-review-turns li {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--control-radius);
+}
+.finding-review-turns li[data-evidence='true'] {
+  border-color: var(--color-link);
+}
+.finding-review-form {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+.finding-review-form .field,
+.finding-review-form fieldset {
+  width: 100%;
+}
+.finding-review-form fieldset {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.finding-review-form legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.finding-review-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.finding-review-option > span {
+  display: grid;
+  gap: 2px;
+}
+.finding-review-option input {
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+}
+@media (max-width: 960px) {
+  .finding-review-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,10 +1,28 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { BrowserRouter } from 'react-router'
+import App from './app/App'
+import { createDependencies } from './app/dependencies'
+import './styles/tokens.css'
+import './styles/global.css'
+import './styles/controls.css'
+
+const {
+  viewerApi, conversationsApi, callApi, knowledgeApi, teamReviewApi,
+  knowledgeReviewApi,
+} = createDependencies()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <BrowserRouter>
+      <App
+        viewerApi={viewerApi}
+        conversationsApi={conversationsApi}
+        callApi={callApi}
+        knowledgeApi={knowledgeApi}
+        teamReviewApi={teamReviewApi}
+        knowledgeReviewApi={knowledgeReviewApi}
+      />
+    </BrowserRouter>
   </StrictMode>,
 )
