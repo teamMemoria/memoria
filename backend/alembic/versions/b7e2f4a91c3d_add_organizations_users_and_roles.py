@@ -1,0 +1,526 @@
+"""add organizations users and roles
+
+Revision ID: b7e2f4a91c3d
+Revises: f6a134ee063a
+Create Date: 2026-11-01 23:30:00
+
+"""
+
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+
+from alembic import op
+
+revision: str = "b7e2f4a91c3d"
+down_revision: str | Sequence[str] | None = "f6a134ee063a"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "organizations",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("slug", sa.String(length=100), nullable=False),
+        sa.Column("name", sa.String(length=200), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("slug"),
+    )
+    op.create_table(
+        "users",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("external_id", sa.String(length=100), nullable=False),
+        sa.Column("display_name", sa.String(length=200), nullable=False),
+        sa.Column("email", sa.String(length=320), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("email"),
+        sa.UniqueConstraint("external_id"),
+    )
+    op.create_table(
+        "organization_memberships",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("organization_id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "role",
+            sa.Enum(
+                "agent",
+                "manager",
+                name="user_role",
+                native_enum=False,
+                create_constraint=True,
+                length=20,
+            ),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["organization_id"], ["organizations.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("organization_id", "id"),
+        sa.UniqueConstraint("organization_id", "user_id"),
+    )
+    op.create_index(
+        op.f("ix_organization_memberships_organization_id"),
+        "organization_memberships",
+        ["organization_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_organization_memberships_user_id"),
+        "organization_memberships",
+        ["user_id"],
+        unique=False,
+    )
+
+    op.add_column("agents", sa.Column("organization_id", sa.Integer(), nullable=False))
+    op.create_foreign_key(
+        "fk_agents_organization_id",
+        "agents",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.drop_constraint("agents_external_id_key", "agents", type_="unique")
+    op.create_unique_constraint(
+        "uq_agents_organization_external_id",
+        "agents",
+        ["organization_id", "external_id"],
+    )
+    op.create_unique_constraint(
+        "uq_agents_organization_id", "agents", ["organization_id", "id"]
+    )
+    op.create_index(
+        op.f("ix_agents_organization_id"), "agents", ["organization_id"], unique=False
+    )
+
+    op.add_column("topics", sa.Column("organization_id", sa.Integer(), nullable=False))
+    op.create_foreign_key(
+        "fk_topics_organization_id",
+        "topics",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.drop_constraint("topics_source_dataset_name_key", "topics", type_="unique")
+    op.create_unique_constraint(
+        "uq_topics_organization_source_name",
+        "topics",
+        ["organization_id", "source_dataset", "name"],
+    )
+    op.create_unique_constraint(
+        "uq_topics_organization_id", "topics", ["organization_id", "id"]
+    )
+    op.create_index(
+        op.f("ix_topics_organization_id"), "topics", ["organization_id"], unique=False
+    )
+
+    op.add_column(
+        "conversations", sa.Column("organization_id", sa.Integer(), nullable=False)
+    )
+    op.drop_constraint(
+        "conversations_source_dataset_original_id_key",
+        "conversations",
+        type_="unique",
+    )
+    op.drop_constraint(
+        "conversations_agent_id_fkey", "conversations", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "conversations_topic_id_fkey", "conversations", type_="foreignkey"
+    )
+    op.create_foreign_key(
+        "fk_conversations_organization_id",
+        "conversations",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_conversations_organization_agent",
+        "conversations",
+        "agents",
+        ["organization_id", "agent_id"],
+        ["organization_id", "id"],
+    )
+    op.create_foreign_key(
+        "fk_conversations_organization_topic",
+        "conversations",
+        "topics",
+        ["organization_id", "topic_id"],
+        ["organization_id", "id"],
+    )
+    op.create_unique_constraint(
+        "uq_conversations_organization_source_original",
+        "conversations",
+        ["organization_id", "source_dataset", "original_id"],
+    )
+    op.create_unique_constraint(
+        "uq_conversations_organization_id",
+        "conversations",
+        ["organization_id", "id"],
+    )
+    op.create_index(
+        op.f("ix_conversations_organization_id"),
+        "conversations",
+        ["organization_id"],
+        unique=False,
+    )
+
+    op.add_column(
+        "knowledge_drafts", sa.Column("organization_id", sa.Integer(), nullable=False)
+    )
+    op.drop_constraint(
+        "knowledge_drafts_topic_id_fkey", "knowledge_drafts", type_="foreignkey"
+    )
+    op.create_foreign_key(
+        "fk_knowledge_drafts_organization_id",
+        "knowledge_drafts",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_knowledge_drafts_organization_topic",
+        "knowledge_drafts",
+        "topics",
+        ["organization_id", "topic_id"],
+        ["organization_id", "id"],
+    )
+    op.create_unique_constraint(
+        "uq_knowledge_drafts_organization_id",
+        "knowledge_drafts",
+        ["organization_id", "id"],
+    )
+    op.create_index(
+        op.f("ix_knowledge_drafts_organization_id"),
+        "knowledge_drafts",
+        ["organization_id"],
+        unique=False,
+    )
+
+    op.add_column(
+        "knowledge_draft_conversations",
+        sa.Column("organization_id", sa.Integer(), nullable=False),
+    )
+    op.drop_constraint(
+        "knowledge_draft_conversations_pkey",
+        "knowledge_draft_conversations",
+        type_="primary",
+    )
+    op.drop_constraint(
+        "knowledge_draft_conversations_draft_id_fkey",
+        "knowledge_draft_conversations",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "knowledge_draft_conversations_conversation_id_fkey",
+        "knowledge_draft_conversations",
+        type_="foreignkey",
+    )
+    op.create_primary_key(
+        "knowledge_draft_conversations_pkey",
+        "knowledge_draft_conversations",
+        ["organization_id", "draft_id", "conversation_id"],
+    )
+    op.create_foreign_key(
+        "fk_draft_conversations_organization_draft",
+        "knowledge_draft_conversations",
+        "knowledge_drafts",
+        ["organization_id", "draft_id"],
+        ["organization_id", "id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_draft_conversations_organization_conversation",
+        "knowledge_draft_conversations",
+        "conversations",
+        ["organization_id", "conversation_id"],
+        ["organization_id", "id"],
+        ondelete="CASCADE",
+    )
+
+    op.add_column(
+        "knowledge_reviews", sa.Column("organization_id", sa.Integer(), nullable=False)
+    )
+    op.add_column(
+        "knowledge_reviews",
+        sa.Column("reviewer_membership_id", sa.Integer(), nullable=False),
+    )
+    op.drop_column("knowledge_reviews", "reviewer")
+    op.drop_constraint(
+        "knowledge_reviews_draft_id_fkey", "knowledge_reviews", type_="foreignkey"
+    )
+    op.create_foreign_key(
+        "fk_knowledge_reviews_organization_id",
+        "knowledge_reviews",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_knowledge_reviews_organization_draft",
+        "knowledge_reviews",
+        "knowledge_drafts",
+        ["organization_id", "draft_id"],
+        ["organization_id", "id"],
+    )
+    op.create_foreign_key(
+        "fk_knowledge_reviews_organization_membership",
+        "knowledge_reviews",
+        "organization_memberships",
+        ["organization_id", "reviewer_membership_id"],
+        ["organization_id", "id"],
+    )
+    op.create_unique_constraint(
+        "uq_knowledge_reviews_organization_id",
+        "knowledge_reviews",
+        ["organization_id", "id"],
+    )
+    op.create_index(
+        op.f("ix_knowledge_reviews_organization_id"),
+        "knowledge_reviews",
+        ["organization_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_knowledge_reviews_reviewer_membership_id"),
+        "knowledge_reviews",
+        ["reviewer_membership_id"],
+        unique=False,
+    )
+
+    op.add_column(
+        "knowledge_entries", sa.Column("organization_id", sa.Integer(), nullable=False)
+    )
+    op.drop_constraint(
+        "knowledge_entries_approved_review_id_key",
+        "knowledge_entries",
+        type_="unique",
+    )
+    op.drop_constraint(
+        "knowledge_entries_topic_id_fkey", "knowledge_entries", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "knowledge_entries_approved_review_id_fkey",
+        "knowledge_entries",
+        type_="foreignkey",
+    )
+    op.create_foreign_key(
+        "fk_knowledge_entries_organization_id",
+        "knowledge_entries",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_knowledge_entries_organization_topic",
+        "knowledge_entries",
+        "topics",
+        ["organization_id", "topic_id"],
+        ["organization_id", "id"],
+    )
+    op.create_foreign_key(
+        "fk_knowledge_entries_organization_review",
+        "knowledge_entries",
+        "knowledge_reviews",
+        ["organization_id", "approved_review_id"],
+        ["organization_id", "id"],
+    )
+    op.create_unique_constraint(
+        "uq_knowledge_entries_organization_id",
+        "knowledge_entries",
+        ["organization_id", "id"],
+    )
+    op.create_unique_constraint(
+        "uq_knowledge_entries_organization_review",
+        "knowledge_entries",
+        ["organization_id", "approved_review_id"],
+    )
+    op.create_index(
+        op.f("ix_knowledge_entries_organization_id"),
+        "knowledge_entries",
+        ["organization_id"],
+        unique=False,
+    )
+
+
+def downgrade() -> None:
+    op.drop_index(
+        op.f("ix_knowledge_entries_organization_id"), table_name="knowledge_entries"
+    )
+    op.drop_constraint(
+        "uq_knowledge_entries_organization_review", "knowledge_entries", type_="unique"
+    )
+    op.drop_constraint(
+        "uq_knowledge_entries_organization_id", "knowledge_entries", type_="unique"
+    )
+    op.drop_constraint(
+        "fk_knowledge_entries_organization_review",
+        "knowledge_entries",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "fk_knowledge_entries_organization_topic",
+        "knowledge_entries",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "fk_knowledge_entries_organization_id", "knowledge_entries", type_="foreignkey"
+    )
+    op.create_foreign_key(
+        None, "knowledge_entries", "knowledge_reviews", ["approved_review_id"], ["id"]
+    )
+    op.create_foreign_key(None, "knowledge_entries", "topics", ["topic_id"], ["id"])
+    op.create_unique_constraint(None, "knowledge_entries", ["approved_review_id"])
+    op.drop_column("knowledge_entries", "organization_id")
+
+    op.drop_index(
+        op.f("ix_knowledge_reviews_reviewer_membership_id"),
+        table_name="knowledge_reviews",
+    )
+    op.drop_index(
+        op.f("ix_knowledge_reviews_organization_id"), table_name="knowledge_reviews"
+    )
+    op.drop_constraint(
+        "uq_knowledge_reviews_organization_id", "knowledge_reviews", type_="unique"
+    )
+    op.drop_constraint(
+        "fk_knowledge_reviews_organization_membership",
+        "knowledge_reviews",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "fk_knowledge_reviews_organization_draft",
+        "knowledge_reviews",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "fk_knowledge_reviews_organization_id", "knowledge_reviews", type_="foreignkey"
+    )
+    op.add_column(
+        "knowledge_reviews", sa.Column("reviewer", sa.String(length=200), nullable=True)
+    )
+    op.execute(
+        """
+        UPDATE knowledge_reviews AS kr
+        SET reviewer = u.display_name
+        FROM organization_memberships AS om
+        JOIN users AS u ON u.id = om.user_id
+        WHERE kr.reviewer_membership_id = om.id
+        """
+    )
+    op.alter_column("knowledge_reviews", "reviewer", nullable=False)
+    op.drop_column("knowledge_reviews", "reviewer_membership_id")
+    op.drop_column("knowledge_reviews", "organization_id")
+    op.create_foreign_key(
+        None, "knowledge_reviews", "knowledge_drafts", ["draft_id"], ["id"]
+    )
+
+    op.drop_constraint(
+        "fk_draft_conversations_organization_conversation",
+        "knowledge_draft_conversations",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "fk_draft_conversations_organization_draft",
+        "knowledge_draft_conversations",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "knowledge_draft_conversations_pkey",
+        "knowledge_draft_conversations",
+        type_="primary",
+    )
+    op.create_primary_key(
+        None, "knowledge_draft_conversations", ["draft_id", "conversation_id"]
+    )
+    op.create_foreign_key(
+        None,
+        "knowledge_draft_conversations",
+        "knowledge_drafts",
+        ["draft_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        None,
+        "knowledge_draft_conversations",
+        "conversations",
+        ["conversation_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.drop_column("knowledge_draft_conversations", "organization_id")
+
+    op.drop_index(
+        op.f("ix_knowledge_drafts_organization_id"), table_name="knowledge_drafts"
+    )
+    op.drop_constraint(
+        "uq_knowledge_drafts_organization_id", "knowledge_drafts", type_="unique"
+    )
+    op.drop_constraint(
+        "fk_knowledge_drafts_organization_topic", "knowledge_drafts", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "fk_knowledge_drafts_organization_id", "knowledge_drafts", type_="foreignkey"
+    )
+    op.create_foreign_key(None, "knowledge_drafts", "topics", ["topic_id"], ["id"])
+    op.drop_column("knowledge_drafts", "organization_id")
+
+    op.drop_index(op.f("ix_conversations_organization_id"), table_name="conversations")
+    op.drop_constraint(
+        "uq_conversations_organization_id", "conversations", type_="unique"
+    )
+    op.drop_constraint(
+        "uq_conversations_organization_source_original", "conversations", type_="unique"
+    )
+    op.drop_constraint(
+        "fk_conversations_organization_topic", "conversations", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "fk_conversations_organization_agent", "conversations", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "fk_conversations_organization_id", "conversations", type_="foreignkey"
+    )
+    op.create_foreign_key(None, "conversations", "agents", ["agent_id"], ["id"])
+    op.create_foreign_key(None, "conversations", "topics", ["topic_id"], ["id"])
+    op.create_unique_constraint(
+        None, "conversations", ["source_dataset", "original_id"]
+    )
+    op.drop_column("conversations", "organization_id")
+
+    op.drop_index(op.f("ix_topics_organization_id"), table_name="topics")
+    op.drop_constraint("uq_topics_organization_id", "topics", type_="unique")
+    op.drop_constraint("uq_topics_organization_source_name", "topics", type_="unique")
+    op.drop_constraint("fk_topics_organization_id", "topics", type_="foreignkey")
+    op.create_unique_constraint(None, "topics", ["source_dataset", "name"])
+    op.drop_column("topics", "organization_id")
+
+    op.drop_index(op.f("ix_agents_organization_id"), table_name="agents")
+    op.drop_constraint("uq_agents_organization_id", "agents", type_="unique")
+    op.drop_constraint("uq_agents_organization_external_id", "agents", type_="unique")
+    op.drop_constraint("fk_agents_organization_id", "agents", type_="foreignkey")
+    op.create_unique_constraint(None, "agents", ["external_id"])
+    op.drop_column("agents", "organization_id")
+
+    op.drop_index(
+        op.f("ix_organization_memberships_user_id"),
+        table_name="organization_memberships",
+    )
+    op.drop_index(
+        op.f("ix_organization_memberships_organization_id"),
+        table_name="organization_memberships",
+    )
+    op.drop_table("organization_memberships")
+    op.drop_table("users")
+    op.drop_table("organizations")
