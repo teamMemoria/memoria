@@ -1,0 +1,22 @@
+:root {
+  --color-canvas: #fefefe;
+  --color-nav: #1b3058;
+  --color-nav-hover: #243e67;
+  --color-nav-selected: #294775;
+  --color-heading: #081c70;
+  --color-text: #122873;
+  --color-muted: #596c92;
+  --color-link: #2452cc;
+  --color-border: #c4cfeb;
+  --color-accent: #ff5a24;
+  --color-accent-hover: #e94717;
+  --color-positive: #18794e;
+  --color-attention: #c63d16;
+  --color-evidence: #fdeee9;
+  --color-disabled: #d8dbe6;
+  --font-family: 'Inter', system-ui, sans-serif;
+  --sidebar-width: 88px;
+  --sidebar-expanded-width: 288px;
+  --control-height: 56px;
+  --control-radius: 6px;
+}
