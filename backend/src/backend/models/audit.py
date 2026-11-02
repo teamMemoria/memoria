@@ -179,7 +179,15 @@ class ManagerReview(Base):
     outcome: Mapped[ManagerReviewOutcome] = mapped_column(
         str_enum(ManagerReviewOutcome, "manager_review_outcome")
     )
+    # The reviewer's name as shown to the agent, and the membership that decided.
     reviewer: Mapped[str] = mapped_column(String(200))
+    reviewer_membership_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "organization_memberships.id",
+            ondelete="SET NULL",
+            name="fk_manager_reviews_reviewer_membership",
+        )
+    )
     reason: Mapped[str] = mapped_column(Text)
     feedback: Mapped[str] = mapped_column(Text)
     reviewed_at: Mapped[datetime] = mapped_column(

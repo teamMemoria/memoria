@@ -277,6 +277,37 @@ that is not the requester's gets `404`. They need the database: with fixtures th
 `reviewRequest` is the call's open request if there is one, otherwise its most recent completed one;
 `status` is `complete` once a Manager has decided.
 
+## Manager feedback review
+
+Every route needs `feedback:review`. Managers see every conversation in their own organization:
+there is no team model yet, so the organization is the review scope. Another organization's call is
+`404`. The routes need the database; with fixtures they answer `503`. Shapes match `TeamReviewApi` in
+`frontend/src/features/review-queue/teamQueue.ts`.
+
+| Method and path | Response |
+|---|---|
+| `GET /api/manager/conversations?status=&q=` | `TeamConversation[]`: a `Conversation` plus `flag` (the review request and `findingTitle`) |
+| `GET /api/manager/conversations/{conversationId}` | `FindingReviewDetail` `{call, canDecide}`: findings, evidence turns, `agentContext`, `reviewRequest`, `decision` |
+| `POST /api/manager/conversations/{conversationId}/findings/{findingId}/decision` | `201` `ManagerDecision`, `200` if the identical decision is already stored, `409` if a different one is |
+
+- **Filters.** `status` is `all` (the default), `feedback-ready`, `review-requested`, `review-complete` or
+  `processing`, as in the frontend status menu. `q` searches the call ID, topic, agent name, request reason
+  and finding title, case-insensitively. Results are newest request first, then newest call.
+- **Decision body.** `{"outcome": "confirmed" | "corrected" | "dismissed" | "cannot-assess", "reason", "feedback"}`.
+  `reason` and `feedback` are required and must not be blank (`422` otherwise).
+- **Separate storage.** A decision is a `ManagerReview` on the agent's `FeedbackFlag`. It records the
+  reviewer's name, their membership (`reviewer_membership_id`) and the time. The automated finding is
+  never changed. The agent sees the decision in `CallReview.decision`, and the request's `status` becomes
+  `complete`.
+- **Only requested reviews can be decided.** A finding with no review request is `404`
+  `Review request not found`.
+- **Duplicates and conflicts are explicit.** A request is decided once. If two Managers submit at the
+  same moment, the first decision stands and the second gets `200` or `409` by the rule above.
+- A failed save is a `503`, never a success.
+
+The queue is filtered in the API process after loading the organization's conversations. That is fine
+at the current data size; paging and filtering in SQL is the next step when it is not.
+
 ## Post-call analysis
 
 `backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result

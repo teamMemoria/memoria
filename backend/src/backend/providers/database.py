@@ -439,18 +439,25 @@ def review_request_schema(flag: FeedbackFlag) -> ReviewRequest:
     )
 
 
-def current_review_request(
-    audit: Audit | None, finding_ids: set[str]
-) -> ReviewRequest | None:
-    """The call's review request: the newest open one, else the newest completed one."""
+def current_flag(audit: Audit | None, finding_ids: set[str]) -> FeedbackFlag | None:
+    """The call's review request: the newest open one, else the newest completed one.
+
+    Only flags on findings shown in the call view count.
+    """
     flags = [flag for flag in flags_of(audit) if str(flag.finding_id) in finding_ids]
     if not flags:
         return None
-    flag = max(
+    return max(
         flags,
         key=lambda flag: (flag.manager_review is None, flag.flagged_at, flag.id),
     )
-    return review_request_schema(flag)
+
+
+def current_review_request(
+    audit: Audit | None, finding_ids: set[str]
+) -> ReviewRequest | None:
+    flag = current_flag(audit, finding_ids)
+    return review_request_schema(flag) if flag is not None else None
 
 
 def call_review(
@@ -659,6 +666,7 @@ class DatabaseKnowledgeProvider:
 def create_database_providers(sessions: SessionFactory) -> Providers:
     # Imported here because the write providers build on the helpers above.
     from backend.providers.feedback import DatabaseFeedbackProvider
+    from backend.providers.reviews import DatabaseReviewProvider
 
     return Providers(
         viewers=DatabaseViewerProvider(sessions),
@@ -667,4 +675,5 @@ def create_database_providers(sessions: SessionFactory) -> Providers:
         knowledge=DatabaseKnowledgeProvider(sessions),
         identities=DatabaseIdentityProvider(sessions),
         feedback=DatabaseFeedbackProvider(sessions),
+        reviews=DatabaseReviewProvider(sessions),
     )

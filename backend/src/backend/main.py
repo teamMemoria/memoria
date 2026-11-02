@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api import analysis as analysis_api
-from backend.api import calls, conversations, knowledge, viewer
+from backend.api import calls, conversations, knowledge, reviews, viewer
 from backend.core.config import Settings
 from backend.db import session as db_session
 from backend.db.session import get_db_session
@@ -82,6 +82,7 @@ def create_app(
     app.include_router(calls.router)
     app.include_router(knowledge.router)
     app.include_router(analysis_api.router)
+    app.include_router(reviews.router)
     return app
 
 
