@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Column,
@@ -16,6 +17,9 @@ from backend.core.database import Base
 from backend.models.columns import str_enum
 from backend.models.conversation import Conversation, Turn
 from backend.models.knowledge import KnowledgeEntry
+
+if TYPE_CHECKING:
+    from backend.models.evaluation import EvaluationFormVersion
 
 
 class FindingCategory(StrEnum):
@@ -51,11 +55,15 @@ class Audit(Base):
     conversation_id: Mapped[int] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), unique=True
     )
+    evaluation_form_version_id: Mapped[int] = mapped_column(
+        ForeignKey("evaluation_form_versions.id", ondelete="RESTRICT"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     conversation: Mapped[Conversation] = relationship()
+    evaluation_form_version: Mapped["EvaluationFormVersion"] = relationship()
     findings: Mapped[list["Finding"]] = relationship(
         back_populates="audit", cascade="all, delete-orphan", order_by="Finding.id"
     )
