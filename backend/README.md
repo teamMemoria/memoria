@@ -18,3 +18,8 @@ migrated:
 
 It is safe to run again; existing conversations and turns are updated in place.
 Don't copy the dataset files into this repo.
+
+Then give every conversation a topic. The label-to-topic mapping is in
+`src/backend/data/topic_mapping.toml`; edit it and re-run to change topics:
+
+    uv run assign-topics
