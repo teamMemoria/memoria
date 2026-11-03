@@ -42,3 +42,11 @@ Then give every conversation a topic. The label-to-topic mapping is in
 `src/backend/data/topic_mapping.toml`; edit it and re-run to change topics:
 
     uv run assign-topics
+
+## Provenance manifests
+
+Generated artifacts store their provenance in a JSON sidecar beside the
+artifact. The sidecar name is `<artifact filename>.provenance.json`; for
+example, `evaluation.csv` uses `evaluation.csv.provenance.json`. Call
+`write_manifest(artifact_path, manifest)` from `backend.data.provenance` to
+apply this convention and write deterministic JSON.
