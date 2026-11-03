@@ -25,3 +25,11 @@ and migrated at the start of each run, so they never touch your local data. With
 the database running:
 
     uv run pytest
+
+## Provenance manifests
+
+Generated artifacts store their provenance in a JSON sidecar beside the
+artifact. The sidecar name is `<artifact filename>.provenance.json`; for
+example, `evaluation.csv` uses `evaluation.csv.provenance.json`. Call
+`write_manifest(artifact_path, manifest)` from `backend.data.provenance` to
+apply this convention and write deterministic JSON.
