@@ -23,6 +23,17 @@
   padding: 0;
   margin: 0;
   list-style: none;
+  border: 1px solid var(--color-table-border);
+  border-radius: var(--panel-radius);
+}
+.approved-knowledge-list > li:first-child > a {
+  border-start-start-radius: calc(var(--panel-radius) - 1px);
+  border-start-end-radius: calc(var(--panel-radius) - 1px);
+}
+.approved-knowledge-list > li:last-child > a {
+  border-bottom: 0;
+  border-end-start-radius: calc(var(--panel-radius) - 1px);
+  border-end-end-radius: calc(var(--panel-radius) - 1px);
 }
 .approved-knowledge-row {
   display: grid;
@@ -33,7 +44,7 @@
   gap: 0;
   min-height: 64px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-table-border);
   color: var(--color-text);
   text-decoration: none;
   overflow-wrap: anywhere;
