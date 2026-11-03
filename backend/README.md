@@ -43,9 +43,23 @@ Then give every conversation a topic. The label-to-topic mapping is in
 
     uv run assign-topics
 
+Finally, spread the conversations over an 8-week timeline. These times are
+generated (fixed seed, so always the same) and stored in
+`synthetic_started_at`, separate from any real source date:
+
+    uv run assign-synthetic-dates
+
 ## Hand-scored evaluation set
 
 `evaluation/` holds the scoring rubric and the score sheet for the
 hand-scored evaluation set. The conversations in the sheet were picked with:
 
     uv run select-eval-set
+
+## Provenance manifests
+
+Generated artifacts store their provenance in a JSON sidecar beside the
+artifact. The sidecar name is `<artifact filename>.provenance.json`; for
+example, `evaluation.csv` uses `evaluation.csv.provenance.json`. Call
+`write_manifest(artifact_path, manifest)` from `backend.data.provenance` to
+apply this convention and write deterministic JSON.
