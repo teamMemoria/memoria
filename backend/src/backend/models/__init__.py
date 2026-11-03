@@ -5,7 +5,14 @@ from backend.models.audit import (
     FindingResult,
     finding_evidence,
 )
-from backend.models.conversation import Agent, Conversation, Speaker, Topic, Turn
+from backend.models.conversation import (
+    Agent,
+    Conversation,
+    ConversationMetric,
+    Speaker,
+    Topic,
+    Turn,
+)
 from backend.models.knowledge import (
     EMBEDDING_DIM,
     DraftStatus,
@@ -22,6 +29,7 @@ __all__ = [
     "Agent",
     "Audit",
     "Conversation",
+    "ConversationMetric",
     "DraftStatus",
     "EntryStatus",
     "Finding",

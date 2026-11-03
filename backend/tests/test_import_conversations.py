@@ -18,8 +18,22 @@ HVB = {
     "agent_id": "hvb-speaker-1",
     "customer_record": {"customer_name": "Test Person"},
     "turns": [
-        {"n": 1, "speaker": "agent", "text": "how can i help", "start_ms": 10},
-        {"n": 3, "speaker": "customer", "text": "i lost my card"},
+        {
+            "n": 1,
+            "speaker": "agent",
+            "text": "how can i help",
+            "asr_text": "how can i help",
+            "start_ms": 10,
+            "duration_ms": 90,
+        },
+        {
+            "n": 3,
+            "speaker": "customer",
+            "text": "i lost my card",
+            "asr_text": "i lost my cart",
+            "start_ms": 120,
+            "duration_ms": 180,
+        },
     ],
     "source_fields": {"task_assigned": ["replace card"]},
 }
@@ -34,7 +48,11 @@ ABCD = {
         {"n": 1, "speaker": "agent", "text": "Hello"},
         {"n": 2, "speaker": "system_action", "text": "Account has been pulled up."},
     ],
-    "source_fields": {"flow": "account_access", "subflow": "reset_2fa"},
+    "source_fields": {
+        "flow": "account_access",
+        "subflow": "reset_2fa",
+        "actions_taken": ["pull-up-account"],
+    },
 }
 
 
@@ -67,7 +85,7 @@ async def test_imports_conversations_turns_and_agents(session, data_dir):
     hvb = await session.scalar(
         select(Conversation).where(Conversation.curated_id == "HVB-0001")
     )
-    await session.refresh(hvb, ["agent", "turns"])
+    await session.refresh(hvb, ["agent", "turns", "metrics"])
     assert hvb.source_dataset == "HarperValleyBank"
     assert hvb.original_id == "hvb-a"
     assert hvb.channel == "voice"
@@ -78,13 +96,21 @@ async def test_imports_conversations_turns_and_agents(session, data_dir):
         (1, Speaker.AGENT),
         (3, Speaker.CUSTOMER),
     ]
+    assert hvb.metrics.turn_count == 2
+    assert hvb.metrics.call_elapsed_ms == 290
+    assert hvb.metrics.agent_speaking_ms == 90
+    assert hvb.metrics.customer_speaking_ms == 180
+    assert hvb.metrics.asr_word_error_rate == pytest.approx(1 / 8)
 
     abcd = await session.scalar(
         select(Conversation).where(Conversation.curated_id == "ABCD-0001")
     )
-    await session.refresh(abcd, ["agent", "turns"])
+    await session.refresh(abcd, ["agent", "turns", "metrics"])
     assert abcd.agent.external_id == "abcd-unknown-agent"
     assert abcd.turns[1].speaker == Speaker.SYSTEM_ACTION
+    assert abcd.metrics.system_action_count == 1
+    assert abcd.metrics.documented_action_count == 1
+    assert abcd.metrics.call_elapsed_ms is None
 
     assert await dataset_counts(session) == {
         "ABCD": (1, 2, 1),
@@ -124,6 +150,30 @@ async def test_reimport_keeps_assigned_topic_and_applies_source_changes(
     await session.refresh(convo, ["topic", "turns"])
     assert convo.topic.name == "Card replacement"
     assert [(t.line_number, t.text) for t in convo.turns] == [(1, "hi there")]
+
+
+async def test_reimport_recomputes_metrics_without_duplicating_them(
+    session, data_dir, tmp_path
+):
+    await import_conversations(session, load_directory(data_dir))
+    changed = {
+        **HVB,
+        "turns": [{"n": 1, "speaker": "agent", "text": "hi there"}],
+    }
+    (tmp_path / "HVB-0001.json").write_text(json.dumps(changed))
+
+    await import_conversations(session, load_directory(data_dir))
+    session.expire_all()
+    convo = await session.scalar(
+        select(Conversation).where(Conversation.curated_id == "HVB-0001")
+    )
+    await session.refresh(convo, ["metrics"])
+
+    assert convo.metrics.turn_count == 1
+    assert convo.metrics.agent_word_count == 2
+    assert convo.metrics.customer_word_count == 0
+    assert convo.metrics.agent_text_share == 1
+    assert convo.metrics.call_elapsed_ms is None
 
 
 def test_missing_required_key_names_the_file(tmp_path):
