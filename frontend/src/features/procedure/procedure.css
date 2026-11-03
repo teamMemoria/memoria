@@ -358,11 +358,6 @@
   border: 0;
   background: transparent;
   color: var(--color-link);
-  text-underline-offset: 4px;
-}
-
-.evidence-reference-links > button:hover {
-  text-decoration: underline;
 }
 
 .evidence-suggestion {

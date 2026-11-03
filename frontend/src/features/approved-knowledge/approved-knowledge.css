@@ -97,9 +97,6 @@
 .approved-knowledge-breadcrumb > a {
   text-decoration: none;
 }
-.approved-knowledge-breadcrumb > a:hover {
-  text-decoration: underline;
-}
 .knowledge-article {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 31%);
