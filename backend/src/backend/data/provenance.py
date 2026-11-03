@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from pathlib import Path
 
 
 class ValueOrigin(StrEnum):
@@ -90,7 +90,20 @@ def create_manifest(
     )
 
 
-def parse_manifest(value: Mapping[str, Any]) -> ArtifactManifest:
+def parse_manifest(value: object) -> ArtifactManifest:
+    if not isinstance(value, Mapping):
+        raise TypeError("manifest must be an object")
+    known_keys = {
+        "artifact_id",
+        "field_origins",
+        "generated_at",
+        "sources",
+        "transformation_version",
+    }
+    unknown_keys = sorted(set(value) - known_keys)
+    if unknown_keys:
+        raise ValueError(f"unknown manifest keys: {', '.join(unknown_keys)}")
+
     try:
         raw_sources = value["sources"]
         raw_origins = value["field_origins"]
@@ -151,3 +164,10 @@ def serialize_manifest(manifest: ArtifactManifest) -> str:
         json.dumps(manifest.as_dict(), indent=2, sort_keys=True, ensure_ascii=False)
         + "\n"
     )
+
+
+def write_manifest(artifact_path: str | Path, manifest: ArtifactManifest) -> Path:
+    artifact_path = Path(artifact_path)
+    manifest_path = artifact_path.with_name(f"{artifact_path.name}.provenance.json")
+    manifest_path.write_text(serialize_manifest(manifest), encoding="utf-8")
+    return manifest_path

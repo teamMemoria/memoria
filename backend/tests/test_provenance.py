@@ -9,6 +9,7 @@ from backend.data.provenance import (
     create_manifest,
     parse_manifest,
     serialize_manifest,
+    write_manifest,
 )
 
 GENERATED_AT = datetime(2026, 11, 2, 15, 30, tzinfo=UTC)
@@ -108,3 +109,25 @@ def test_rejects_a_generation_time_without_timezone():
 
     with pytest.raises(ValueError, match="must include a timezone"):
         parse_manifest(value)
+
+
+def test_rejects_a_non_object_manifest_with_a_clear_error():
+    with pytest.raises(TypeError, match="^manifest must be an object$"):
+        parse_manifest([])
+
+
+def test_rejects_unknown_manifest_keys():
+    value = manifest().as_dict()
+    value["extra"] = True
+
+    with pytest.raises(ValueError, match="^unknown manifest keys: extra$"):
+        parse_manifest(value)
+
+
+def test_writes_a_provenance_sidecar_next_to_the_artifact(tmp_path):
+    artifact_path = tmp_path / "evaluation.csv"
+
+    sidecar_path = write_manifest(artifact_path, manifest())
+
+    assert sidecar_path == tmp_path / "evaluation.csv.provenance.json"
+    assert sidecar_path.read_text(encoding="utf-8") == serialize_manifest(manifest())
