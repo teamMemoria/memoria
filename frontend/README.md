@@ -1,32 +1,54 @@
-# React + TypeScript + Vite
+# Memoria Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript with Vite.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+cd frontend
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Open [localhost:5173](http://localhost:5173). Defaults to Agent.
+To run as Manager instead:
+
+```sh
+VITE_DEV_ROLE=manager npm run dev
+```
+
+Development users are not real sign-in.
+
+## Checks
+
+```sh
+npm test
+npm run lint
+npm run build
+```
+
+## Folder structure
+
+```text
+frontend/
+├── public/
+│   ├── brand/        # Memoria logos and animation files
+│   ├── fonts/        # Inter font and licence
+│   └── licenses/     # Icon licence
+└── src/
+    ├── main.tsx      # Starts the app
+    ├── app/          # Startup, routes, and dependency selection
+    │   └── layout/   # Sidebar, logo animation, and page layout
+    ├── components/   # Shared controls and icons
+    ├── lib/          # Development user provider
+    ├── types/        # Shared data types
+    └── styles/       # Colours, typography, and shared CSS
+```
+
+Tests sit beside the code they check.
+
+## Assets and licences
+
+- Memoria branding: `public/brand/`.
+- Inter font: `public/fonts/LICENSE.txt`.
+- [Microsoft Codicons](https://github.com/microsoft/vscode-codicons/tree/6b53088f5c55bce7107fb579765364f59cd4ad5d), CC BY 4.0: `public/licenses/codicons-LICENSE.txt`.
