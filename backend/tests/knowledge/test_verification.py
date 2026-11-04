@@ -149,7 +149,7 @@ def test_ml_never_decides(references):
     assert item["decision"] is None
     assert item["ml_recommendation"] == "supported_by_references"
     assert item["requirements_remaining"][-1] == HUMAN_STEP
-    text = json.dumps(result)
+    text = json.dumps(result, ensure_ascii=False)
     for forbidden in (
         '"approved": true',
         '"verified_at"',

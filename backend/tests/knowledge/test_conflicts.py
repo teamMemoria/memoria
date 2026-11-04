@@ -140,7 +140,7 @@ def test_ml_never_changes_entry_or_draft_state():
     before = copy.deepcopy((drafts, entry))
     result = find_conflicts(drafts, COMPANY, existing_entries=[entry])
     assert (drafts, entry) == before
-    text = json.dumps(result)
+    text = json.dumps(result, ensure_ascii=False)
     for forbidden in (
         '"disputed"',
         '"replaced_by"',

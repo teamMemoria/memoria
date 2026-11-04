@@ -38,9 +38,8 @@ def chat(cid, answer, question="Can I return this?", record=None, flow=SCOPE):
             {"n": 2, "speaker": "agent", "text": answer},
         ],
         "source_fields": {**flow, "actions_taken": []},
+        "customer_record": record or {},
     }
-    if record:
-        out["customer_record"] = record
     return out
 
 
@@ -108,7 +107,7 @@ def test_model_text_is_redacted_and_made_up_ids_are_not_echoed():
     result = extract_drafts(
         record, COMPANY, extractor=ModelExtractor(FakeModelClient([bad_ids]))
     )
-    assert "Joseph" not in json.dumps(result.to_dict())
+    assert "Joseph" not in json.dumps(result.to_dict(), ensure_ascii=False)
 
 
 @pytest.mark.parametrize(

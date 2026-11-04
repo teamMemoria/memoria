@@ -235,7 +235,7 @@ def test_personal_information_never_reaches_the_output(references):
         "references": references,
     }
     output = run_pipeline(payload)
-    text = json.dumps(output)
+    text = json.dumps(output, ensure_ascii=False)
     for value in (
         "Marguerite",
         "4111 1111",

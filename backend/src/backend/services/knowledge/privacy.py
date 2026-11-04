@@ -53,6 +53,17 @@ SHARED_CODE = re.compile(
 # A bare all-caps code on its own ("ZHYTQ You can use that ..."), unless the
 # whole text is shouted.
 CAPS_CODE = re.compile(r"(?<![\w\[])[A-Z][A-Z0-9]{4,7}(?![\w\]])")
+# A bare 3-4 digit number ("change this to 7873", "the card ending in 4821") is
+# most often part of an address or an account. Prices, percentages, years and
+# numbers with a unit ("100 days", "250 points") keep their meaning and stay.
+SHORT_NUMBER = re.compile(
+    r"(?<![\w$£€.,:/#-])(?!(?:19|20)\d\d\b)\d{3,4}(?![\w%]|[.,:/-]\d|\s*(?:%|percent\b|dollars?\b"
+    r"|cents?\b|days?\b|hours?\b|hrs?\b|minutes?\b|mins?\b|seconds?\b|weeks?\b|months?\b|years?\b"
+    r"|points?\b|items?\b|pieces?\b|units?\b|times?\b|miles?\b|km\b|kg\b|lbs?\b|gb\b|mb\b))",
+    re.IGNORECASE,
+)
+# Words that, said right before a capitalised word, make it a form of address.
+_GREETING = r"(?:hi|hello|hey|thanks|thank you|dear|bye|goodbye|sorry|welcome|morning|afternoon|evening)"
 ORDINAL = re.compile(r"^\d+(?:st|nd|rd|th)$", re.IGNORECASE)
 UNIT_TOKEN = re.compile(
     r"^\d+(?:am|pm|gb|mb|kg|lbs?|oz|ft|in|cm|mm|hrs?|mins?|days?|x)$", re.IGNORECASE
@@ -112,14 +123,20 @@ class Redactor:
         self._literals.sort(key=lambda item: -len(item[1]))
         name = record.get("customer_name")
         name = nfc(name) if isinstance(name, str) else None
-        self._name_parts = sorted(
-            {
-                part
-                for part in re.split(r"\s+", name.strip())
-                if len(part) >= 2 and part.lower() not in PROTECTED_WORDS
-            }
+        parts = (
+            {p for p in re.split(r"\s+", name.strip()) if len(p) >= 2}
             if name
-            else set(),
+            else set()
+        )
+        self._name_parts = sorted(
+            {p for p in parts if p.lower() not in PROTECTED_WORDS},
+            key=lambda part: -len(part),
+        )
+        # A name that is also an ordinary word ("Will", "May", "Bill") is only
+        # replaced where it is used as a name: capitalised and addressed
+        # ("Will, ...", "Thanks Will"), or next to another part of the name.
+        self._protected_parts = sorted(
+            {p for p in parts if p.lower() in PROTECTED_WORDS},
             key=lambda part: -len(part),
         )
         self._full_name = name.strip() if name and name.strip() else None
@@ -163,7 +180,10 @@ class Redactor:
                 out,
                 counts,
             )
+        for part in self._protected_parts:
+            out = self._redact_addressed(part, out, counts)
         out = self._fuzzy_names(out, counts)
+        out = self._addressed_names(out, counts)
         out = self._sub(PHONE, "PHONE", out, counts)
         out = self._sub(STREET, "ADDRESS", out, counts)
         out = self._sub(NUMERIC_DATE, "DATE", out, counts)
@@ -198,7 +218,71 @@ class Redactor:
 
         out = MIXED_CODE.sub(mixed_repl, out)
         out = self._sub(LONG_NUMBER, "NUMBER", out, counts)
+        out = self._sub(SHORT_NUMBER, "NUMBER", out, counts)
         return Redaction(out, counts)
+
+    @staticmethod
+    def _address_pattern(part: str) -> re.Pattern[str]:
+        """``part`` used as a name: capitalised, and addressed or set off by punctuation.
+
+        The name itself is the ``name`` group; the rest of the match is context.
+        """
+        word = re.escape(part[0].upper() + part[1:].lower())
+        return re.compile(
+            rf"(?i:\b{_GREETING})[ ,]+(?P<name>{word})\b"
+            rf"|(?:^|(?<=[.!?] ))(?P<lead>{word})(?=,)"
+            rf"|(?<=\[CUSTOMER_NAME\] )(?P<after>{word})\b"
+            rf"|\b(?P<before>{word})(?= \[CUSTOMER_NAME\])"
+            rf"|(?<=[a-z,] )(?P<tail>{word})(?=[,.!?]|$)"
+        )
+
+    def _redact_addressed(self, part: str, text: str, counts: Counter[str]) -> str:
+        def repl(match: re.Match[str]) -> str:
+            group = next(
+                g for g in ("name", "lead", "after", "before", "tail") if match.group(g)
+            )
+            counts["CUSTOMER_NAME"] += 1
+            start, end = (
+                match.start(group) - match.start(0),
+                match.end(group) - match.start(0),
+            )
+            whole = match.group(0)
+            return whole[:start] + "[CUSTOMER_NAME]" + whole[end:]
+
+        return self._address_pattern(part).sub(repl, text)
+
+    def _addressed_names(self, text: str, counts: Counter[str]) -> str:
+        """A short form of the customer's name used to address them ("Thanks Joe")."""
+        parts = [p.lower() for p in (*self._name_parts, *self._protected_parts)]
+        if not parts:
+            return text
+
+        def repl(match: re.Match[str]) -> str:
+            word = match.group("word")
+            lowered = word.lower()
+            if lowered in _COMMON_WORDS or lowered in PROTECTED_WORDS:
+                return match.group(0)
+            # A short form: same opening letters, no longer than the name.
+            if any(
+                len(part) >= 4
+                and lowered != part
+                and lowered[:2] == part[:2]
+                and len(lowered) <= len(part)
+                for part in parts
+            ):
+                counts["CUSTOMER_NAME"] += 1
+                return match.group(0)[: match.start("word") - match.start(0)] + (
+                    "[CUSTOMER_NAME]"
+                )
+            return match.group(0)
+
+        text = re.sub(
+            rf"(?i:\b{_GREETING}),?\s+(?:(?i:it'?s|this is|i'?m|i am)\s+)?(?P<word>[A-Z][a-z]{{2,}})\b",
+            repl,
+            text,
+        )
+        # Opening a sentence and set off by a comma: "Joe, promo codes ...".
+        return re.sub(r"(?:^|(?<=[.!?] ))(?P<word>[A-Z][a-z]{2,})(?=,)", repl, text)
 
     def _fuzzy_names(self, text: str, counts: Counter[str]) -> str:
         """Catch misspelled name parts ("Zhange" for "Zhang", "Ming" for "Minh").
@@ -252,8 +336,16 @@ class Redactor:
             found.append("CUSTOMER_NAME")
         if any(len(part) >= 3 and present(part) for part in self._name_parts):
             found.append("CUSTOMER_NAME")
-        if len(self._phone_digits) >= 7 and self._phone_digits[-7:] in _digits(text):
-            found.append("PHONE")
+        if any(
+            self._address_pattern(part).search(text) for part in self._protected_parts
+        ):
+            found.append("CUSTOMER_NAME")
+        if len(self._phone_digits) >= 7:
+            # The number written with up to three separators between digits,
+            # never digits gathered from unrelated places in the text.
+            spaced = r"\D{0,3}".join(re.escape(d) for d in self._phone_digits[-7:])
+            if re.search(spaced, text):
+                found.append("PHONE")
         if EMAIL.search(text):
             found.append("EMAIL")
         if CARD.search(text):
@@ -290,3 +382,22 @@ def placeholder_share(text: str) -> float:
     if not words:
         return 1.0
     return sum(1 for w in words if PLACEHOLDER.search(w)) / len(words)
+
+
+# Patterns for personal details whatever the customer record says. The release
+# check runs these on its own, so a missing or wrong record cannot hide a leak.
+_LEAK_PATTERNS = {
+    "EMAIL": EMAIL,
+    "CARD_NUMBER": CARD,
+    "PHONE": PHONE,
+    "ADDRESS": STREET,
+    "NUMBER": LONG_NUMBER,
+}
+
+
+def pattern_leaks(text: str) -> list[str]:
+    """Labels of personal-detail patterns found in ``text``, with no record needed."""
+    text = PLACEHOLDER.sub(" ", nfc(text))
+    return sorted(
+        label for label, pattern in _LEAK_PATTERNS.items() if pattern.search(text)
+    )

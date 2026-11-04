@@ -131,6 +131,14 @@ def _check_company(company_id: Any) -> str:
 def _check_sizes(turns: Sequence[tuple[str, str]], prefix: str) -> None:
     if not turns:
         raise invalid(prefix, "must contain at least one turn")
+    for index, (_, text) in enumerate(turns):
+        try:
+            text.encode("utf-8")
+        except UnicodeEncodeError as error:
+            # A lone surrogate cannot be written out as JSON text later on.
+            raise invalid(
+                f"{prefix}[{index}].text", "is not valid Unicode text"
+            ) from error
     if len(turns) > MAX_TURNS:
         raise oversized(prefix, f"has {len(turns)} turns; the limit is {MAX_TURNS}")
     total = 0
@@ -242,7 +250,7 @@ def _read_curated(record: Mapping[str, Any], company_id: str) -> Conversation:
     modifications = record.get("modifications", [])
     if not isinstance(modifications, list):
         raise invalid("modifications", "must be an array")
-    customer = record.get("customer_record", {})
+    customer = _customer_record(record)
     return Conversation(
         conversation_id=conversation_id,
         company_id=company_id,
@@ -269,8 +277,65 @@ def _read_curated(record: Mapping[str, Any], company_id: str) -> Conversation:
         turns=turns,
         actions=actions,
         coverage=_coverage(turns, actions, aligned, len(raw_turns)),
-        customer_record=dict(customer) if isinstance(customer, Mapping) else {},
+        customer_record=customer,
     )
+
+
+# The customer-record fields the redactor knows. Anything else is refused, so a
+# renamed field ("name", "phone_number") cannot slip past redaction unnoticed.
+CUSTOMER_FIELDS = {
+    "customer_name",
+    "member_level",
+    "phone",
+    "email",
+    "username",
+    "account_id",
+    "address",
+    "order",
+}
+_NESTED_FIELDS = {
+    "address": {"street", "city", "state", "zip_code", "full_address"},
+    "order": {
+        "order_id",
+        "purchase_date",
+        "num_products",
+        "products",
+        "payment_method",
+        "packaging",
+    },
+}
+
+
+def _customer_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    """The record's customer details, checked so that redaction can rely on them.
+
+    Without a record nothing could be redacted, so a missing one is an error
+    rather than an empty record. A conversation with no personal details says
+    so with an empty object.
+    """
+    if "customer_record" not in record:
+        raise invalid("customer_record", "is required (use {} when there is none)")
+    customer = record["customer_record"]
+    if not isinstance(customer, Mapping):
+        raise invalid("customer_record", "must be an object")
+    unknown = sorted(set(customer) - CUSTOMER_FIELDS)
+    if unknown:
+        raise invalid("customer_record", f"has unknown fields: {', '.join(unknown)}")
+    for key, value in customer.items():
+        if key in _NESTED_FIELDS:
+            if value is None:
+                continue
+            if not isinstance(value, Mapping):
+                raise invalid(f"customer_record.{key}", "must be an object")
+            unknown = sorted(set(value) - _NESTED_FIELDS[key])
+            if unknown:
+                raise invalid(
+                    f"customer_record.{key}",
+                    f"has unknown fields: {', '.join(unknown)}",
+                )
+        elif value is not None and not isinstance(value, str):
+            raise invalid(f"customer_record.{key}", "must be a string")
+    return dict(customer)
 
 
 def _raw_customer(scenario: Mapping[str, Any]) -> dict[str, Any]:
@@ -288,7 +353,10 @@ def _raw_customer(scenario: Mapping[str, Any]) -> dict[str, Any]:
         "zip_code": order.get("zip_code"),
         "full_address": order.get("full_address"),
     }
-    record["order"] = {"order_id": order.get("order_id")}
+    record["order"] = {
+        "order_id": order.get("order_id"),
+        "purchase_date": order.get("purchase_date"),
+    }
     return record
 
 
