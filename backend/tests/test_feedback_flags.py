@@ -299,3 +299,37 @@ async def test_writes_need_the_database_when_running_on_fixtures():
             headers=as_user(ALEX),
         )
     assert response.status_code == 503
+
+
+async def test_a_nul_character_is_rejected_not_a_database_error(session, data):
+    async with client_for(session) as client:
+        response = await client.put(
+            f"/api/agent/conversations/{data.id(data.assessed)}/context",
+            json={"text": "a\u0000b"},
+            headers=as_user(ALEX),
+        )
+    assert response.status_code == 422
+
+
+async def test_concurrent_flags_create_one_request(committed_sessions):
+    import asyncio
+
+    async with committed_sessions() as session:
+        data = await seed(session)
+    provider = DatabaseFeedbackProvider(committed_sessions, now=lambda: NOW)
+    results = await asyncio.gather(
+        *[
+            provider.request_review(
+                "org-northwind",
+                ALEX,
+                data.id(data.assessed),
+                data.id(data.procedure_finding),
+                f"Reason {number}",
+            )
+            for number in range(8)
+        ]
+    )
+    assert sum(created for _, created in results) == 1
+    assert len({request.reason for request, _ in results}) == 1
+    async with committed_sessions() as session:
+        assert await session.scalar(select(func.count()).select_from(FeedbackFlag)) == 2

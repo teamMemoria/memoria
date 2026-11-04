@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.models import AgentContext as AgentContextRecord
 from backend.models import Conversation, FeedbackFlag
@@ -125,8 +126,10 @@ class DatabaseFeedbackProvider:
                     AgentContextRecord.conversation_id == conversation.id
                 )
             )
+            # A plain value, because a rollback below expires loaded objects.
+            finding_key = finding.id
             flag = FeedbackFlag(
-                finding_id=finding.id,
+                finding_id=finding_key,
                 agent_id=conversation.agent_id,
                 reason=reason,
                 # The context as it was when the review was asked for.
@@ -140,11 +143,12 @@ class DatabaseFeedbackProvider:
                 # The same finding was flagged by a concurrent request.
                 await session.rollback()
                 existing = await session.scalar(
-                    select(FeedbackFlag).where(FeedbackFlag.finding_id == finding.id)
+                    select(FeedbackFlag)
+                    .where(FeedbackFlag.finding_id == finding_key)
+                    .options(selectinload(FeedbackFlag.manager_review))
                 )
                 if existing is None:
                     raise
-                await session.refresh(existing, ["manager_review"])
                 return review_request_schema(existing), False
             await session.refresh(flag, ["manager_review"])
             return review_request_schema(flag), True
