@@ -666,6 +666,7 @@ class DatabaseKnowledgeProvider:
 def create_database_providers(sessions: SessionFactory) -> Providers:
     # Imported here because the write providers build on the helpers above.
     from backend.providers.feedback import DatabaseFeedbackProvider
+    from backend.providers.knowledge_review import DatabaseKnowledgeReviewProvider
     from backend.providers.reviews import DatabaseReviewProvider
 
     return Providers(
@@ -676,4 +677,5 @@ def create_database_providers(sessions: SessionFactory) -> Providers:
         identities=DatabaseIdentityProvider(sessions),
         feedback=DatabaseFeedbackProvider(sessions),
         reviews=DatabaseReviewProvider(sessions),
+        knowledge_review=DatabaseKnowledgeReviewProvider(sessions),
     )

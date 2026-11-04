@@ -1,0 +1,494 @@
+{
+  "schema": "knowledge-pipeline/1",
+  "status": "ok",
+  "company_id": "org-northwind",
+  "counts": {
+    "conversations": 5,
+    "technical_failures": 0,
+    "no_draft": 0,
+    "drafts": 5,
+    "groups": 2,
+    "possible_conflicts": 2,
+    "unresolved_conflicts": 1
+  },
+  "extraction": [],
+  "technical_failures": [],
+  "drafts": [
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_refund_assessed",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "org-northwind",
+      "scope": {
+        "company_id": "org-northwind",
+        "flow": "refunds",
+        "subflow": "damaged_item"
+      },
+      "topic": "refunds/damaged_item",
+      "question": "My jacket arrived torn and I would like a refund.",
+      "answer": "I can refund that to your original card.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "assessed",
+          "source_key": "Synthetic:assessed",
+          "turn_id": "assessed#t1",
+          "speaker": "customer",
+          "span": [
+            0,
+            49
+          ],
+          "quote": "My jacket arrived torn and I would like a refund.",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "assessed",
+          "source_key": "Synthetic:assessed",
+          "turn_id": "assessed#t2",
+          "speaker": "agent",
+          "span": [
+            0,
+            40
+          ],
+          "quote": "I can refund that to your original card.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [
+        {
+          "text": "order lookup",
+          "basis": "recorded_action",
+          "passage": {
+            "conversation_id": "assessed",
+            "source_key": "Synthetic:assessed",
+            "turn_id": "assessed#t5",
+            "speaker": "system_action",
+            "span": [
+              0,
+              12
+            ],
+            "quote": "order lookup",
+            "source_version": "authored"
+          }
+        }
+      ],
+      "procedure": [],
+      "source": {
+        "conversation_id": "assessed",
+        "source_key": "Synthetic:assessed",
+        "dataset": "Synthetic",
+        "original_id": "assessed",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "fixture"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    },
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_refund_sam",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "org-northwind",
+      "scope": {
+        "company_id": "org-northwind",
+        "flow": "refunds",
+        "subflow": "damaged_item"
+      },
+      "topic": "refunds/damaged_item",
+      "question": "My jacket arrived torn and I would like a refund.",
+      "answer": "I can refund that to your original card.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "sam",
+          "source_key": "Synthetic:sam",
+          "turn_id": "sam#t1",
+          "speaker": "customer",
+          "span": [
+            0,
+            49
+          ],
+          "quote": "My jacket arrived torn and I would like a refund.",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "sam",
+          "source_key": "Synthetic:sam",
+          "turn_id": "sam#t2",
+          "speaker": "agent",
+          "span": [
+            0,
+            40
+          ],
+          "quote": "I can refund that to your original card.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [],
+      "procedure": [],
+      "source": {
+        "conversation_id": "sam",
+        "source_key": "Synthetic:sam",
+        "dataset": "Synthetic",
+        "original_id": "sam",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "fixture"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    },
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_checked_reviewed",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "org-northwind",
+      "scope": {
+        "company_id": "org-northwind",
+        "flow": "refunds",
+        "subflow": "damaged_item"
+      },
+      "topic": "refunds/damaged_item",
+      "question": "My jacket arrived torn and I would like a refund.",
+      "answer": "I have checked the order and the refund is on its way.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "reviewed",
+          "source_key": "Synthetic:reviewed",
+          "turn_id": "reviewed#t1",
+          "speaker": "customer",
+          "span": [
+            0,
+            49
+          ],
+          "quote": "My jacket arrived torn and I would like a refund.",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "reviewed",
+          "source_key": "Synthetic:reviewed",
+          "turn_id": "reviewed#t7",
+          "speaker": "agent",
+          "span": [
+            0,
+            54
+          ],
+          "quote": "I have checked the order and the refund is on its way.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [],
+      "procedure": [],
+      "source": {
+        "conversation_id": "reviewed",
+        "source_key": "Synthetic:reviewed",
+        "dataset": "Synthetic",
+        "original_id": "reviewed",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "fixture"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    },
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_not_stored",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "org-northwind",
+      "scope": {
+        "company_id": "org-northwind",
+        "flow": "refunds",
+        "subflow": "damaged_item"
+      },
+      "topic": "refunds/damaged_item",
+      "question": "My jacket arrived torn and I would like a refund.",
+      "answer": "I can refund that to your original card.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "not-stored",
+          "source_key": "Synthetic:not-stored",
+          "turn_id": "not-stored#t1",
+          "speaker": "customer",
+          "span": [
+            0,
+            49
+          ],
+          "quote": "My jacket arrived torn and I would like a refund.",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "not-stored",
+          "source_key": "Synthetic:not-stored",
+          "turn_id": "not-stored#t2",
+          "speaker": "agent",
+          "span": [
+            0,
+            40
+          ],
+          "quote": "I can refund that to your original card.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [],
+      "procedure": [],
+      "source": {
+        "conversation_id": "not-stored",
+        "source_key": "Synthetic:not-stored",
+        "dataset": "Synthetic",
+        "original_id": "not-stored",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "fixture"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    },
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_misquoted",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "org-northwind",
+      "scope": {
+        "company_id": "org-northwind",
+        "flow": "refunds",
+        "subflow": "damaged_item"
+      },
+      "topic": "refunds/damaged_item",
+      "question": "My jacket arrived torn and I would like a refund.",
+      "answer": "We never refund jackets.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "undated",
+          "source_key": "Synthetic:undated",
+          "turn_id": "undated#t1",
+          "speaker": "customer",
+          "span": [
+            0,
+            49
+          ],
+          "quote": "My jacket arrived torn and I would like a refund.",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "undated",
+          "source_key": "Synthetic:undated",
+          "turn_id": "undated#t2",
+          "speaker": "agent",
+          "span": [
+            0,
+            24
+          ],
+          "quote": "We never refund jackets.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [],
+      "procedure": [],
+      "source": {
+        "conversation_id": "undated",
+        "source_key": "Synthetic:undated",
+        "dataset": "Synthetic",
+        "original_id": "undated",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "fixture"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    }
+  ],
+  "groups": {
+    "schema": "knowledge-groups/1",
+    "status": "ok",
+    "company_id": "org-northwind",
+    "groups": [
+      {
+        "group_id": "group_refund_original_card",
+        "company_id": "org-northwind",
+        "scope_key": "refunds/damaged_item",
+        "status": "draft",
+        "member_draft_ids": [
+          "draft_refund_assessed",
+          "draft_refund_sam",
+          "draft_not_stored"
+        ],
+        "representative_draft_id": "draft_refund_assessed",
+        "draft_count": 3,
+        "distinct_conversation_count": 3,
+        "duplicates": [
+          {
+            "draft_id": "draft_refund_sam",
+            "duplicate_of": "draft_refund_assessed",
+            "similarity": 1.0,
+            "kind": "near",
+            "same_conversation": false
+          }
+        ],
+        "existing_matches": [
+          {
+            "entry_id": "{approved_entry}",
+            "entry_status": "approved",
+            "entry_version": "1",
+            "similarity": 0.9,
+            "kind": "equivalent",
+            "condition_difference": null
+          }
+        ]
+      },
+      {
+        "group_id": "group_order_checked",
+        "company_id": "org-northwind",
+        "scope_key": "refunds/damaged_item",
+        "status": "draft",
+        "member_draft_ids": [
+          "draft_checked_reviewed"
+        ],
+        "representative_draft_id": "draft_checked_reviewed",
+        "draft_count": 1,
+        "distinct_conversation_count": 1,
+        "duplicates": [],
+        "existing_matches": []
+      }
+    ]
+  },
+  "conflicts": {
+    "schema": "knowledge-conflicts/1",
+    "status": "ok",
+    "company_id": "org-northwind",
+    "possible_conflicts": [
+      {
+        "conflict_id": "conflict_checked_vs_entry",
+        "company_id": "org-northwind",
+        "kind": "timing",
+        "status": "possible_conflict",
+        "explanation": "One says the refund is already on its way; the other gives 5 to 7 business days.",
+        "a": {
+          "type": "draft",
+          "draft_id": "draft_checked_reviewed",
+          "status": "draft"
+        },
+        "b": {
+          "type": "existing_entry",
+          "entry_id": "{approved_entry}",
+          "status": "approved",
+          "version": "1"
+        }
+      },
+      {
+        "conflict_id": "conflict_card_vs_checked",
+        "company_id": "org-northwind",
+        "kind": "procedure",
+        "status": "unresolved",
+        "explanation": "The drafts disagree on whether the order is checked before the refund.",
+        "a": {
+          "type": "draft",
+          "draft_id": "draft_refund_assessed",
+          "status": "draft"
+        },
+        "b": {
+          "type": "draft",
+          "draft_id": "draft_checked_reviewed",
+          "status": "draft"
+        }
+      },
+      {
+        "conflict_id": "conflict_with_missing_draft",
+        "company_id": "org-northwind",
+        "kind": "amount",
+        "status": "possible_conflict",
+        "explanation": "Different amounts.",
+        "a": {
+          "type": "draft",
+          "draft_id": "draft_not_stored",
+          "status": "draft"
+        },
+        "b": {
+          "type": "draft",
+          "draft_id": "draft_refund_sam",
+          "status": "draft"
+        }
+      }
+    ],
+    "explained_differences": []
+  },
+  "verification": {
+    "schema": "knowledge-verification/1",
+    "status": "ok",
+    "company_id": "org-northwind",
+    "results": [
+      {
+        "draft_id": "draft_refund_assessed",
+        "verification_status": "supported",
+        "decision": null
+      },
+      {
+        "draft_id": "draft_checked_reviewed",
+        "verification_status": "unverifiable",
+        "decision": null
+      }
+    ]
+  },
+  "model_usage": {
+    "model": null,
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "note": "Unapproved drafts and findings for an authorized reviewer. The pipeline never approves, rejects, disputes or replaces knowledge and never changes a backend status.",
+  "release_checks": {
+    "release_allowed": true,
+    "checks": [
+      {
+        "check": "ml_approves_nothing",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      }
+    ]
+  }
+}

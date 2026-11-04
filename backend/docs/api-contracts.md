@@ -311,6 +311,70 @@ there is no team model yet, so the organization is the review scope. Another org
 The queue is filtered in the API process after loading the organization's conversations. That is fine
 at the current data size; paging and filtering in SQL is the next step when it is not.
 
+## Knowledge drafts from the pipeline
+
+`backend/src/backend/services/knowledge_import.py` stores the knowledge pipeline's output
+(`knowledge-pipeline/1`) for an authorized reviewer, and the routes below read it back. Every route
+needs `knowledge:approve` and is scoped to the requester's organization. Reads need the database;
+with fixtures they answer `503`.
+
+| Method and path | Response |
+|---|---|
+| `POST /api/manager/knowledge/imports` | Runs the configured pipeline and stores its output: `{created, updated, unchanged, skipped, conflictsStored}` |
+| `GET /api/manager/knowledge/drafts?status=&q=&possibleConflicts=` | `KnowledgeDraft[]`, newest first |
+| `GET /api/manager/knowledge/drafts/counts` | `{total, draft, approved, rejected, withPossibleConflicts}` |
+| `GET /api/manager/knowledge/drafts/{draftId}` | `KnowledgeReviewDetail` `{entry, canDecide}` |
+
+`KnowledgeDraft` matches `frontend/src/types/knowledge.ts`. It adds the pipeline evidence:
+`question`, `distinctConversationCount`, `duplicateOfId`, `possibleConflicts`, `existingMatches`,
+`mlVerification`, and the role, source key and source version of each passage.
+
+What an import guarantees, each covered by `tests/test_knowledge_import.py`:
+
+- **Nothing is approved.**
+  - The output is refused whole (`422`) unless:
+    - the status is `ok` or `completed_with_failures`;
+    - `company_id` is the requester's organization;
+    - `release_checks.release_allowed` is `true`;
+    - every draft is an untrusted `draft`.
+  - New drafts are stored `pending`.
+  - `knowledge_entries` and `knowledge_reviews` are never written, so no entry is approved, renewed
+    (`last_confirmed_at`) or replaced, and drafts never reach the agent knowledge routes.
+- **Reviewed drafts are left alone.** A draft a reviewer has approved or rejected keeps its content
+  when the pipeline sends it again.
+- **Evidence is checked and kept.**
+  - Each passage must quote a stored turn (same turn number and speaker) of a stored conversation.
+    The conversation is found by `source_key`, which is `<source_dataset>:<original_id>`.
+  - Each passage is stored with its role, span, source key and source version.
+  - Drafts that fail these checks are skipped and listed in `skipped` with the reason.
+- **Reprocessing is idempotent.**
+  - Drafts are keyed by the pipeline's `draft_id` and conflicts by `conflict_id`.
+  - Importing the same output again reports every draft as `unchanged` and adds no rows.
+  - `distinctConversationCount` is counted from the stored conversations behind the draft's group,
+    so it cannot be inflated by repeats. It also leaves out conversations that are not stored.
+- **Possible conflicts are not disputes.**
+  - They are stored in `knowledge_conflicts` with the pipeline's status (`possible_conflict` or
+    `unresolved`).
+  - They never change an approved entry's status. Only a reviewer marks an entry `disputed`.
+- **Each import is the pipeline's complete current view.**
+  - Group membership, duplicate links and matches to approved entries are reset for every pending
+    pipeline draft, including drafts the new output no longer mentions, then set from the output.
+  - Conflicts the output no longer reports are removed.
+  - Drafts themselves are never removed, so earlier evidence stays available to reviewers.
+- **Bad values never become a 503 or a 500.**
+  - A malformed draft (wrong types, over-long source keys or versions) is skipped and reported.
+  - A wrongly typed section of the output refuses the whole import with `422`.
+  - A pipeline that crashes is a `503` naming the error type.
+- **One import at a time per organization.**
+  - Imports take a transaction-level advisory lock, so concurrent runs cannot insert the same draft
+    twice.
+  - Each pending draft row is locked while it is updated, so a reviewer's decision cannot slip in
+    between the "still pending" check and the write.
+
+No pipeline is configured by default, so the import route answers `503` until one is passed to
+`create_app(knowledge_import=KnowledgeImportService(sessions, adapter))`. Approving and rejecting
+drafts are not part of this change.
+
 ## Post-call analysis
 
 `backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result
