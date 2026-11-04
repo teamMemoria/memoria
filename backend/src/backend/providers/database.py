@@ -106,11 +106,16 @@ def unavailable_on_database_error[**P, T](
     return wrapper
 
 
+# Primary keys are PostgreSQL integers; a larger number cannot name a record.
+MAX_ID = 2**31 - 1
+
+
 def parse_id(value: str) -> int | None:
     """Public IDs are database keys as strings. Anything else matches nothing."""
-    if not value.isascii() or not value.isdigit() or len(value) > 18:
+    if not value.isascii() or not value.isdigit() or len(value) > 10:
         return None
-    return int(value)
+    number = int(value)
+    return number if 0 < number <= MAX_ID else None
 
 
 def iso_date(value: date | datetime | None) -> str | None:
