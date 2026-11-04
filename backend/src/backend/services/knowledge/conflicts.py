@@ -38,7 +38,9 @@ ALL_LEVELS = MEMBER_LEVELS | {"guest"}
 
 _HEDGE = re.compile(
     r"\b(i think|i believe|i'?m not (completely |totally |entirely )?sure|not sure|might|maybe|perhaps|possibly"
-    r"|probably|usually|typically|generally|normally|sometimes|often|around|about|roughly|approximately)\b",
+    r"|probably|usually|typically|generally|normally|sometimes|often)\b"
+    # "about" and "around" only hedge a figure ("about 5 days"), not "sorry about that".
+    r"|\b(around|about|roughly|approximately)\s+(\$|£|€)?\d",
     re.IGNORECASE,
 )
 _TIME_BOUND = re.compile(
@@ -497,23 +499,30 @@ def _conditions(claim: _Claim) -> dict[str, Any]:
     }
 
 
+def _side_key(claim: _Claim) -> list[str]:
+    """What identifies one side: its owner, the version and the exact claim text.
+
+    Entry passages have no turn id, so the version and a hash of the text are
+    what tell two versions of one entry apart.
+    """
+    return [
+        claim.owner.owner_id,
+        str(claim.owner.info.get("version")),
+        json.dumps([claim.passage.get("turn_id"), claim.passage.get("span")]),
+        hashlib.sha256(claim.text.encode("utf-8")).hexdigest()[:16],
+    ]
+
+
 def _conflict_id(company_id: str, a: _Claim, b: _Claim) -> str:
-    key = sorted(
-        [
-            [
-                a.owner.owner_id,
-                json.dumps([a.passage.get("turn_id"), a.passage.get("span")]),
-            ],
-            [
-                b.owner.owner_id,
-                json.dumps([b.passage.get("turn_id"), b.passage.get("span")]),
-            ],
-        ]
-    )
+    key = sorted([_side_key(a), _side_key(b)])
     return (
         "conflict_"
         + hashlib.sha256(json.dumps([company_id, key]).encode()).hexdigest()[:20]
     )
+
+
+def _said(claim: _Claim) -> str:
+    return " ".join(claim.text.lower().split())
 
 
 def find_conflicts(
@@ -546,11 +555,19 @@ def find_conflicts(
     for index, draft in enumerate(drafts):
         owner = _draft_owner(draft, index, company_id)
         owners.setdefault(owner.owner_id, owner)
-    entries = [
-        o
-        for i, e in enumerate(existing_entries)
-        if (o := _entry_owner(e, i, company_id))
-    ]
+    entries: list[_Owner] = []
+    seen_entries: set[tuple[str, str]] = set()
+    for index, entry in enumerate(existing_entries):
+        owner = _entry_owner(entry, index, company_id)
+        # The same entry version sent twice is one entry, compared once.
+        if (
+            owner is None
+            or (key := (owner.owner_id, str(owner.info.get("version")))) in seen_entries
+        ):
+            continue
+        seen_entries.add(key)
+        entries.append(owner)
+    entries.sort(key=lambda o: (o.owner_id, str(o.info.get("version"))))
     group_of: dict[str, str] = {}
     if groups is not None:
         if not isinstance(groups, Mapping) or not isinstance(
@@ -573,6 +590,9 @@ def find_conflicts(
 
     conflicts: list[dict[str, Any]] = []
     explained: list[dict[str, Any]] = []
+    # Many drafts saying exactly the same two things are one disagreement, not
+    # one per pair: the first pair is kept and the others are counted.
+    by_statement: dict[tuple[str, ...], dict[str, Any]] = {}
     for key in sorted(buckets):
         members = buckets[key]
         for i, first in enumerate(members):
@@ -590,8 +610,16 @@ def find_conflicts(
                     and first.info["source_key"] == second.info["source_key"]
                 ):
                     continue  # one conversation read twice does not disagree with itself
+                # A claim that the other side also states itself is not a point
+                # they disagree on: identical drafts never "conflict" with each other.
+                first_says = {_said(c) for c in first.claims}
+                second_says = {_said(c) for c in second.claims}
                 for a in first.claims:
+                    if _said(a) in second_says:
+                        continue
                     for b in second.claims:
+                        if _said(b) in first_says:
+                            continue
                         finding = _compare(a, b, config)
                         if finding is None:
                             continue
@@ -615,7 +643,17 @@ def find_conflicts(
                                 "b": _conditions(b),
                             },
                             "subject_overlap": round(_overlap(a, b), 4),
+                            "repeated_pairs": 0,
                         }
+                        statement = (
+                            finding.status,
+                            finding.kind,
+                            *sorted([_said(a), _said(b)]),
+                        )
+                        if statement in by_statement:
+                            by_statement[statement]["repeated_pairs"] += 1
+                            continue
+                        by_statement[statement] = record
                         (
                             explained if finding.status == "explained" else conflicts
                         ).append(record)
