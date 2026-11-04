@@ -21,7 +21,7 @@ import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
 from sqlalchemy import func, select
@@ -53,6 +53,8 @@ from backend.providers.database import (
 from backend.schemas.call_review import CRITERION_IDS
 
 logger = logging.getLogger(__name__)
+
+STALE_RUN_AFTER = timedelta(minutes=15)
 
 REPORT_SCHEMA_VERSION = 1
 RESULTS = {
@@ -190,7 +192,20 @@ def _check_citation(
 
 
 def parse_report(request: AnalysisRequest, report: Any) -> ParsedReport:
-    """Check a report against the request and turn it into category results."""
+    """Check a report against the request and turn it into category results.
+
+    Any malformed value, including one of the wrong type, rejects the report;
+    nothing from it is saved.
+    """
+    try:
+        return _parse_report(request, report)
+    except (TypeError, KeyError, AttributeError, ValueError):
+        raise ReportRejectedError(
+            "invalid-report", "The report has a value of the wrong type."
+        ) from None
+
+
+def _parse_report(request: AnalysisRequest, report: Any) -> ParsedReport:
     if not isinstance(report, dict) or report.get("schema_version") != (
         REPORT_SCHEMA_VERSION
     ):
@@ -303,10 +318,14 @@ def parse_report(request: AnalysisRequest, report: Any) -> ParsedReport:
     ]
     versions = report.get("versions")
     report_version = versions.get("report") if isinstance(versions, dict) else None
+    if report_version is not None and (
+        not isinstance(report_version, str) or len(report_version) > 100
+    ):
+        _reject("invalid-report", "The report version is not a short text.")
     return ParsedReport(
         categories=categories,
         summary=" ".join(texts) or None,
-        report_version=report_version if isinstance(report_version, str) else None,
+        report_version=report_version,
     )
 
 
@@ -340,6 +359,8 @@ class AnalysisService:
     sessions: SessionFactory
     adapter: AnalysisAdapter = field(default_factory=UnconfiguredAnalysisAdapter)
     now: Callable[[], datetime] = utc_now
+    # How long a queued or running run may go before a retry may replace it.
+    stale_after: timedelta = STALE_RUN_AFTER
 
     async def _conversation(
         self, session: AsyncSession, organization_id: str, conversation_id: str
@@ -381,25 +402,40 @@ class AnalysisService:
         requested_by: str | None,
         retry: bool = False,
     ) -> StartResult:
-        """Queue a run, or return the one already queued or running."""
+        """Queue a run, or return the one already queued or running.
+
+        A run that has been queued or running for longer than ``stale_after``
+        is treated as lost (the process running it stopped). With
+        ``retry=True`` it is marked failed and a new run is queued.
+        """
         async with self.sessions() as session:
             conversation = await self._conversation(
                 session, organization_id, conversation_id
             )
             if conversation is None:
                 raise ConversationNotFoundError
+            # Plain values, because a rollback below expires loaded objects.
+            conversation_key = conversation.id
+            organization_key = conversation.organization_id
             latest = await session.scalar(
                 select(AnalysisRun)
-                .where(AnalysisRun.conversation_id == conversation.id)
+                .where(AnalysisRun.conversation_id == conversation_key)
                 .order_by(AnalysisRun.attempt.desc())
                 .limit(1)
             )
             if latest is not None and latest.status in ACTIVE_RUN_STATUSES:
-                return StartResult(latest, created=False)
+                if not (retry and self._is_stale(latest)):
+                    return StartResult(latest, created=False)
+                self._mark_failed(
+                    latest,
+                    "timed-out",
+                    "The run did not finish and was replaced by a retry.",
+                )
+                await session.flush()
             has_audit = await session.scalar(
                 select(func.count())
                 .select_from(Audit)
-                .where(Audit.conversation_id == conversation.id)
+                .where(Audit.conversation_id == conversation_key)
             )
             if has_audit:
                 raise AlreadyAnalysedError
@@ -411,11 +447,12 @@ class AnalysisService:
                 raise RetryRequiredError
 
             run = AnalysisRun(
-                organization_id=conversation.organization_id,
-                conversation_id=conversation.id,
+                organization_id=organization_key,
+                conversation_id=conversation_key,
                 status=AnalysisRunStatus.QUEUED,
                 attempt=(latest.attempt + 1) if latest else 1,
                 requested_by=requested_by,
+                created_at=self.now(),
             )
             session.add(run)
             try:
@@ -425,7 +462,7 @@ class AnalysisService:
                 await session.rollback()
                 active = await session.scalar(
                     select(AnalysisRun).where(
-                        AnalysisRun.conversation_id == conversation.id,
+                        AnalysisRun.conversation_id == conversation_key,
                         AnalysisRun.status.in_(ACTIVE_RUN_STATUSES),
                     )
                 )
@@ -434,17 +471,47 @@ class AnalysisService:
                 return StartResult(active, created=False)
             return StartResult(run, created=True)
 
+    def _is_stale(self, run: AnalysisRun) -> bool:
+        return self.now() - (run.started_at or run.created_at) > self.stale_after
+
+    def _mark_failed(self, run: AnalysisRun, code: str, message: str) -> None:
+        run.status = AnalysisRunStatus.FAILED
+        run.error_code = code[:50]
+        run.error_message = message
+        run.finished_at = self.now()
+
     async def execute(self, run_id: int) -> AnalysisRun | None:
         """Run a queued attempt to completion. Every failure is recorded on the run.
 
-        Called as a background task, so a database failure is logged here
-        rather than raised. The run then stays queued or running and is
-        visible as such in the status endpoint.
+        Called as a background task, so nothing is raised. Any error, whether
+        from the adapter, its output or saving, ends the run as failed with an
+        error code, so a run is never left running by a problem it hit. Only if
+        the database itself cannot record the failure does the run stay
+        running; a later retry replaces it once it is stale.
         """
         try:
             return await self._execute(run_id)
+        except Exception:
+            logger.exception("Analysis run %s failed unexpectedly", run_id)
+            return await self._record_failure(
+                run_id, "internal-error", "The run stopped on an unexpected error."
+            )
+
+    async def _record_failure(
+        self, run_id: int, code: str, message: str
+    ) -> AnalysisRun | None:
+        """Mark a run failed in a fresh session, after the first one went wrong."""
+        try:
+            async with self.sessions() as session:
+                await session.rollback()
+                run = await session.get(AnalysisRun, run_id)
+                if run is None or run.status not in ACTIVE_RUN_STATUSES:
+                    return run
+                self._mark_failed(run, code, message)
+                await session.commit()
+                return run
         except (SQLAlchemyError, OSError):
-            logger.exception("Analysis run %s could not be recorded", run_id)
+            logger.exception("Analysis run %s could not be marked failed", run_id)
             return None
 
     async def _execute(self, run_id: int) -> AnalysisRun | None:
@@ -461,6 +528,7 @@ class AnalysisService:
             except ReportRejectedError as error:
                 return await self._fail(session, run, error.code, error.message)
             run.transcript_version = request.conversation["transcript_version"]
+            form_version_id = form_version.id
             await session.commit()
 
             try:
@@ -483,34 +551,30 @@ class AnalysisService:
                 return await self._fail(session, run, error.code, error.message)
 
             try:
-                audit = await self._save(session, run, form_version, parsed)
+                audit = await self._save(session, run, form_version_id, parsed)
+                run.status = AnalysisRunStatus.SUCCEEDED
+                run.audit_id = audit.id
+                run.report_version = parsed.report_version
+                run.finished_at = self.now()
+                await session.commit()
             except AlreadyAnalysedError:
-                return await self._fail(
-                    session,
-                    run,
+                await session.rollback()
+                return await self._record_failure(
+                    run_id,
                     "already-analysed",
                     "The conversation was analysed while this run was in progress.",
                 )
-            except IntegrityError:
+            except SQLAlchemyError:
                 await session.rollback()
-                run = await session.get(AnalysisRun, run_id)
-                return await self._fail(
-                    session, run, "save-failed", "The audit could not be saved."
+                return await self._record_failure(
+                    run_id, "save-failed", "The audit could not be saved."
                 )
-            run.status = AnalysisRunStatus.SUCCEEDED
-            run.audit_id = audit.id
-            run.report_version = parsed.report_version
-            run.finished_at = self.now()
-            await session.commit()
             return run
 
     async def _fail(
         self, session: AsyncSession, run: AnalysisRun, code: str, message: str
     ) -> AnalysisRun:
-        run.status = AnalysisRunStatus.FAILED
-        run.error_code = code[:50]
-        run.error_message = message
-        run.finished_at = self.now()
+        self._mark_failed(run, code, message)
         await session.commit()
         return run
 
@@ -608,7 +672,7 @@ class AnalysisService:
         self,
         session: AsyncSession,
         run: AnalysisRun,
-        form_version: EvaluationFormVersion,
+        form_version_id: int,
         parsed: ParsedReport,
     ) -> Audit:
         conversation = await session.scalar(
@@ -638,7 +702,7 @@ class AnalysisService:
         }
         audit = Audit(
             conversation_id=conversation.id,
-            evaluation_form_version_id=form_version.id,
+            evaluation_form_version_id=form_version_id,
             summary=parsed.summary,
             findings=[
                 Finding(

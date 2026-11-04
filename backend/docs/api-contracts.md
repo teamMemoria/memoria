@@ -271,6 +271,8 @@ Body for `POST`: optional `{"retry": true}`.
 | `409` `Conversation already analysed` | It has an audit. Audits are never replaced, so earlier results cannot be lost |
 | `409` `The last run failed; retry explicitly` | The latest run failed and `retry` was not `true` |
 
+Concurrent starts for one conversation queue a single run: every request gets that run back.
+
 ### The adapter
 
 The run calls an `AnalysisAdapter` with an `AnalysisRequest`, following the input and output of
@@ -301,9 +303,12 @@ No adapter is configured by default, so runs fail with `analysis-unavailable` un
 only prepared ABCD evidence, so connecting it needs an adapter that prepares stored conversations
 the same way.
 
-Runs execute as background tasks in the API process. If the process stops mid-run, that run stays
-`running` and blocks new runs for the conversation; clearing such runs needs a worker with a
-timeout, which is not built yet.
+Runs execute as background tasks in the API process. Any error during a run, including a report
+with values of the wrong type or a failed save, ends it as `failed` with an error code
+(`invalid-report`, `save-failed`, `internal-error`). If the process itself stops mid-run, the run
+stays `queued` or `running`. Once it is older than 15 minutes, a `POST` with `{"retry": true}`
+marks it failed with `timed-out` and starts a new attempt. A run is never replaced without that
+retry flag.
 
 ## Providers
 

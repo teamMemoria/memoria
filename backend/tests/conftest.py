@@ -49,3 +49,28 @@ async def session():
             yield s
         await trans.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def committed_sessions():
+    """A session factory whose sessions really commit, for concurrency tests.
+
+    Each session gets its own connection, as in the running app. Everything is
+    truncated afterwards, so later tests still start from an empty database.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    engine = create_async_engine(TEST_DATABASE_URL)
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as conn:
+        tables = (
+            await conn.execute(
+                text(
+                    "SELECT string_agg(quote_ident(tablename), ', ') FROM pg_tables "
+                    "WHERE schemaname = 'public' AND tablename <> 'alembic_version'"
+                )
+            )
+        ).scalar_one()
+        await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+    await engine.dispose()

@@ -479,3 +479,103 @@ async def test_analysis_needs_feedback_review_in_the_same_organization(session, 
             headers={"X-Dev-User": MAYA},
         )
         assert other_org.status_code == 404
+
+
+# --- concurrency and stuck runs ----------------------------------------------------------
+
+
+async def test_concurrent_starts_queue_one_run(committed_sessions):
+    import asyncio
+
+    async with committed_sessions() as session:
+        data = await seed(session)
+    service = AnalysisService(committed_sessions, ScriptedAdapter(), now=lambda: NOW)
+    results = await asyncio.gather(
+        *[
+            service.start(NORTHWIND, data.id(data.processing), requested_by=MAYA)
+            for _ in range(8)
+        ]
+    )
+    assert sum(result.created for result in results) == 1
+    assert len({result.run.id for result in results}) == 1
+    async with committed_sessions() as session:
+        assert await session.scalar(select(func.count()).select_from(AnalysisRun)) == 1
+
+
+def wrong_type(request):
+    report = complete_report(request)
+    report["categories"][1]["result"]["result"] = ["meets-criteria"]
+    return report
+
+
+def long_version(request):
+    report = complete_report(request)
+    report["versions"]["report"] = "v" * 101
+    return report
+
+
+@pytest.mark.parametrize("build", [wrong_type, long_version])
+async def test_malformed_values_fail_the_run_instead_of_leaving_it_running(
+    session, data, build
+):
+    run = await run_once(session, data, ScriptedAdapter(build))
+    assert (run.status, run.error_code) == (AnalysisRunStatus.FAILED, "invalid-report")
+
+
+async def test_a_failed_save_fails_the_run(session, data, monkeypatch):
+    from sqlalchemy.exc import DataError
+
+    service = service_for(session, ScriptedAdapter())
+
+    async def broken_save(*args):
+        raise DataError("INSERT", {}, ValueError("value too long"))
+
+    monkeypatch.setattr(service, "_save", broken_save)
+    started = await service.start(
+        NORTHWIND, data.id(data.processing), requested_by=MAYA
+    )
+    run = await service.execute(started.run.id)
+    assert (run.status, run.error_code) == (AnalysisRunStatus.FAILED, "save-failed")
+    assert (await agent_call(session, data)).status == "processing"
+
+
+async def test_an_unexpected_error_still_fails_the_run(session, data, monkeypatch):
+    service = service_for(session, ScriptedAdapter())
+
+    async def broken_request(*args):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(service, "_request", broken_request)
+    started = await service.start(
+        NORTHWIND, data.id(data.processing), requested_by=MAYA
+    )
+    run = await service.execute(started.run.id)
+    assert (run.status, run.error_code) == (AnalysisRunStatus.FAILED, "internal-error")
+
+
+async def test_a_stale_run_is_replaced_only_by_an_explicit_retry(session, data):
+    clock = {"now": NOW}
+    service = AnalysisService(
+        sessions_for(session), ScriptedAdapter(), now=lambda: clock["now"]
+    )
+    stuck = await service.start(NORTHWIND, data.id(data.processing), requested_by=MAYA)
+    # Pretend the process running it stopped: it is never executed.
+    clock["now"] = NOW + service.stale_after + service.stale_after
+    again = await service.start(NORTHWIND, data.id(data.processing), requested_by=MAYA)
+    assert (again.created, again.run.id) == (False, stuck.run.id)
+
+    retried = await service.start(
+        NORTHWIND, data.id(data.processing), requested_by=MAYA, retry=True
+    )
+    assert retried.created and retried.run.attempt == 2
+    old = await session.get(AnalysisRun, stuck.run.id)
+    assert (old.status, old.error_code) == (AnalysisRunStatus.FAILED, "timed-out")
+
+
+async def test_a_recent_run_is_not_replaced_by_a_retry(session, data):
+    service = service_for(session, ScriptedAdapter())
+    first = await service.start(NORTHWIND, data.id(data.processing), requested_by=MAYA)
+    again = await service.start(
+        NORTHWIND, data.id(data.processing), requested_by=MAYA, retry=True
+    )
+    assert (again.created, again.run.id) == (False, first.run.id)
