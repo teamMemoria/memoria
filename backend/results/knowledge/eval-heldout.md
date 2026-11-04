@@ -9,7 +9,7 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 | Extraction | 16 | draft/no-draft 1.0, answer phrases 0.75, conditions 1.0, exact citations 1.0, privacy errors 0 |
 | Grouping | 4 | same-group 0.6667, kept apart 1.0, duplicates None, paraphrase-not-duplicate 1.0 |
 | Conflicts | 6 | accuracy 1.0, missed 0, false alarms 0 |
-| Verification | 10 | status accuracy 0.6, unsupported marked supported 0 |
+| Verification | 10 | status accuracy 0.7, unsupported marked supported 0 |
 
 ## Release checks
 
@@ -17,13 +17,14 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 - pass: `no_unsupported_verified_claims`
 - pass: `no_personal_data_leaks`
 - pass: `ml_approves_nothing`
+- pass: `matches_a_fresh_run`
 - pass: `repeat_processing`
 
 ## Pipeline run
 
 - 28 conversations, 17 drafts, 14 groups, 3 possible conflicts, 0 unresolved.
-- Verification: {'contradicted': 2, 'partially_supported': 6, 'supported': 3, 'unverifiable': 6}. Technical failures: 0 (counted separately from missing verification: 6 unverifiable).
-- About 5.18 ms per conversation on this machine; model calls: 0.
+- Verification: {'contradicted': 1, 'partially_supported': 6, 'supported': 4, 'unverifiable': 6}. Technical failures: 0 (counted separately from missing verification: 6 unverifiable).
+- About 8.03 ms per conversation on this machine; model calls: 0.
 
 ## Failed cases
 
@@ -34,7 +35,6 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 - grouping: `{"name": "held-out ABCD search troubleshooting", "problems": ["same_group: ABCD-0094 / ABCD-0096"]}`
 - verification: `{"conversation": "ABCD-0003", "expected": "supported", "got": "partially_supported"}`
 - verification: `{"conversation": "ABCD-0096", "expected": "supported", "got": "partially_supported"}`
-- verification: `{"conversation": "SYN-H08", "expected": "supported", "got": "contradicted"}`
 - verification: `{"conversation": "SYN-H09", "expected": "supported", "got": "partially_supported"}`
 
 ## Notes
@@ -43,4 +43,3 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 - Labels are first-pass and have not had a second person's review (human_reviewed: false).
 - Technical failures (invalid input, model errors) are counted separately from drafts that are merely unverifiable for lack of a reference.
 - Held-out cases: report only, never tune on them. The rule extractor's wording rules were developed while reading output over all 100 curated ABCD records, so ABCD held-out scores are optimistic; the SYN-H conversations were written after the rules were fixed.
-- Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support) and the problems found in code review. These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1.

@@ -24,7 +24,7 @@
       "drafts": [
         {
           "schema": "knowledge-draft/1",
-          "draft_id": "draft_9945d80e8b3d860c6c7d",
+          "draft_id": "draft_d38af4dc259890b6b90a",
           "kind": "knowledge_draft",
           "status": "draft",
           "trusted": false,
@@ -228,7 +228,7 @@
       "drafts": [
         {
           "schema": "knowledge-draft/1",
-          "draft_id": "draft_f37d2ae30b7026614eea",
+          "draft_id": "draft_3b076c43b2a4a602f272",
           "kind": "knowledge_draft",
           "status": "draft",
           "trusted": false,
@@ -377,7 +377,7 @@
       "drafts": [
         {
           "schema": "knowledge-draft/1",
-          "draft_id": "draft_e7354d11cbfbea2a4470",
+          "draft_id": "draft_251b6b40404a12573aae",
           "kind": "knowledge_draft",
           "status": "draft",
           "trusted": false,
@@ -539,7 +539,7 @@
   "drafts": [
     {
       "schema": "knowledge-draft/1",
-      "draft_id": "draft_9945d80e8b3d860c6c7d",
+      "draft_id": "draft_d38af4dc259890b6b90a",
       "kind": "knowledge_draft",
       "status": "draft",
       "trusted": false,
@@ -733,7 +733,7 @@
     },
     {
       "schema": "knowledge-draft/1",
-      "draft_id": "draft_f37d2ae30b7026614eea",
+      "draft_id": "draft_3b076c43b2a4a602f272",
       "kind": "knowledge_draft",
       "status": "draft",
       "trusted": false,
@@ -872,7 +872,7 @@
     },
     {
       "schema": "knowledge-draft/1",
-      "draft_id": "draft_e7354d11cbfbea2a4470",
+      "draft_id": "draft_251b6b40404a12573aae",
       "kind": "knowledge_draft",
       "status": "draft",
       "trusted": false,
@@ -1041,7 +1041,7 @@
     "duplicate_input_drafts": 0,
     "groups": [
       {
-        "group_id": "group_1aa54600571c985ac65b",
+        "group_id": "group_1be9ee524798e80d5cb5",
         "company_id": "acme",
         "scope": {
           "flow": "purchase_dispute",
@@ -1050,11 +1050,104 @@
         "scope_key": "purchase_dispute/promo_code_invalid",
         "status": "draft",
         "member_draft_ids": [
-          "draft_9945d80e8b3d860c6c7d"
+          "draft_3b076c43b2a4a602f272"
         ],
-        "representative_draft_id": "draft_9945d80e8b3d860c6c7d",
+        "representative_draft_id": "draft_3b076c43b2a4a602f272",
         "representative": {
-          "draft_id": "draft_9945d80e8b3d860c6c7d",
+          "draft_id": "draft_3b076c43b2a4a602f272",
+          "question": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+          "answer": "A promo code has been created.",
+          "question_passages": [
+            {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t1",
+              "speaker": "customer",
+              "span": [
+                0,
+                76
+              ],
+              "quote": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+              "source_version": "genesys-curated@c39d2e061041"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t11",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "genesys-curated@c39d2e061041"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Look man, I'm just a Guest",
+              "basis": "customer_statement",
+              "passage": {
+                "conversation_id": "ABCD-0046",
+                "source_key": "ABCD:5326",
+                "turn_id": "ABCD-0046#t8",
+                "speaker": "customer",
+                "span": [
+                  0,
+                  26
+                ],
+                "quote": "Look man, I'm just a Guest",
+                "source_version": "genesys-curated@c39d2e061041"
+              }
+            },
+            {
+              "text": "Membership level of guest has been noted.",
+              "basis": "recorded_action",
+              "passage": {
+                "conversation_id": "ABCD-0046",
+                "source_key": "ABCD:5326",
+                "turn_id": "ABCD-0046#t10",
+                "speaker": "system_action",
+                "span": [
+                  0,
+                  41
+                ],
+                "quote": "Membership level of guest has been noted.",
+                "source_version": "genesys-curated@c39d2e061041"
+              }
+            }
+          ],
+          "status": "draft"
+        },
+        "draft_count": 1,
+        "distinct_conversation_count": 1,
+        "source_keys": [
+          "ABCD:5326"
+        ],
+        "meets_source_threshold": false,
+        "membership_levels": [
+          "guest"
+        ],
+        "duplicates": [],
+        "existing_matches": []
+      },
+      {
+        "group_id": "group_34599bc9ef13ec35124f",
+        "company_id": "acme",
+        "scope": {
+          "flow": "purchase_dispute",
+          "subflow": "promo_code_invalid"
+        },
+        "scope_key": "purchase_dispute/promo_code_invalid",
+        "status": "draft",
+        "member_draft_ids": [
+          "draft_d38af4dc259890b6b90a"
+        ],
+        "representative_draft_id": "draft_d38af4dc259890b6b90a",
+        "representative": {
+          "draft_id": "draft_d38af4dc259890b6b90a",
           "question": "Why does my promo code say invalid?",
           "answer": "Promo codes usually last 7 days, so a code issued longer ago than that has expired. If you are a gold, silver or bronze member I can issue you a new code. A promo code has been created. I've sent you a new code, it is for 20% off your next purchase.",
           "question_passages": [
@@ -1204,100 +1297,7 @@
         "existing_matches": []
       },
       {
-        "group_id": "group_90690808a8d53ad9102d",
-        "company_id": "acme",
-        "scope": {
-          "flow": "purchase_dispute",
-          "subflow": "promo_code_invalid"
-        },
-        "scope_key": "purchase_dispute/promo_code_invalid",
-        "status": "draft",
-        "member_draft_ids": [
-          "draft_f37d2ae30b7026614eea"
-        ],
-        "representative_draft_id": "draft_f37d2ae30b7026614eea",
-        "representative": {
-          "draft_id": "draft_f37d2ae30b7026614eea",
-          "question": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
-          "answer": "A promo code has been created.",
-          "question_passages": [
-            {
-              "conversation_id": "ABCD-0046",
-              "source_key": "ABCD:5326",
-              "turn_id": "ABCD-0046#t1",
-              "speaker": "customer",
-              "span": [
-                0,
-                76
-              ],
-              "quote": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
-              "source_version": "genesys-curated@c39d2e061041"
-            }
-          ],
-          "answer_passages": [
-            {
-              "conversation_id": "ABCD-0046",
-              "source_key": "ABCD:5326",
-              "turn_id": "ABCD-0046#t11",
-              "speaker": "system_action",
-              "span": [
-                0,
-                30
-              ],
-              "quote": "A promo code has been created.",
-              "source_version": "genesys-curated@c39d2e061041"
-            }
-          ],
-          "conditions": [
-            {
-              "text": "Look man, I'm just a Guest",
-              "basis": "customer_statement",
-              "passage": {
-                "conversation_id": "ABCD-0046",
-                "source_key": "ABCD:5326",
-                "turn_id": "ABCD-0046#t8",
-                "speaker": "customer",
-                "span": [
-                  0,
-                  26
-                ],
-                "quote": "Look man, I'm just a Guest",
-                "source_version": "genesys-curated@c39d2e061041"
-              }
-            },
-            {
-              "text": "Membership level of guest has been noted.",
-              "basis": "recorded_action",
-              "passage": {
-                "conversation_id": "ABCD-0046",
-                "source_key": "ABCD:5326",
-                "turn_id": "ABCD-0046#t10",
-                "speaker": "system_action",
-                "span": [
-                  0,
-                  41
-                ],
-                "quote": "Membership level of guest has been noted.",
-                "source_version": "genesys-curated@c39d2e061041"
-              }
-            }
-          ],
-          "status": "draft"
-        },
-        "draft_count": 1,
-        "distinct_conversation_count": 1,
-        "source_keys": [
-          "ABCD:5326"
-        ],
-        "meets_source_threshold": false,
-        "membership_levels": [
-          "guest"
-        ],
-        "duplicates": [],
-        "existing_matches": []
-      },
-      {
-        "group_id": "group_daff5de3fcbd02266de8",
+        "group_id": "group_8c646eeccf6df4a2044e",
         "company_id": "acme",
         "scope": {
           "flow": "storewide_query",
@@ -1306,11 +1306,11 @@
         "scope_key": "storewide_query/policy_1",
         "status": "draft",
         "member_draft_ids": [
-          "draft_e7354d11cbfbea2a4470"
+          "draft_251b6b40404a12573aae"
         ],
-        "representative_draft_id": "draft_e7354d11cbfbea2a4470",
+        "representative_draft_id": "draft_251b6b40404a12573aae",
         "representative": {
-          "draft_id": "draft_e7354d11cbfbea2a4470",
+          "draft_id": "draft_251b6b40404a12573aae",
           "question": "What is your return policy for gold members?",
           "answer": "Gold members can return items at any time. Bronze members can return items within 90 days of purchase, unless the item was on final sale. Guests can return items within 30 days with a receipt.",
           "question_passages": [
@@ -1459,7 +1459,7 @@
     },
     "results": [
       {
-        "draft_id": "draft_9945d80e8b3d860c6c7d",
+        "draft_id": "draft_d38af4dc259890b6b90a",
         "company_id": "acme",
         "scope": {
           "flow": "purchase_dispute",
@@ -1495,7 +1495,7 @@
                 ],
                 "version": "abcd-guidelines@6b8700ce67c6",
                 "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-                "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid' Both flows follow the same instructions below.",
+                "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'. Both flows follow the same instructions below.",
                 "approval": {
                   "status": "approved",
                   "approved_by": "example-reviewer",
@@ -1513,30 +1513,6 @@
                   "type": "communication"
                 },
                 "support": 0.9667
-              },
-              {
-                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
-                "combined_from": null,
-                "version": "abcd-guidelines@6b8700ce67c6",
-                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-                "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work.",
-                "approval": {
-                  "status": "approved",
-                  "approved_by": "example-reviewer",
-                  "approved_at": "2026-10-01"
-                },
-                "eligibility": {
-                  "status": "eligible",
-                  "valid_until": null,
-                  "reason": null
-                },
-                "guideline": {
-                  "flow": "Purchase Dispute",
-                  "subflow": "Promo Code Invalid",
-                  "button": "N/A",
-                  "type": "communication"
-                },
-                "support": 0.8556
               },
               {
                 "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
@@ -1564,6 +1540,7 @@
               }
             ],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           },
           {
@@ -1663,6 +1640,7 @@
               }
             ],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           },
           {
@@ -1756,6 +1734,7 @@
               }
             ],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           },
           {
@@ -1785,7 +1764,7 @@
                 ],
                 "version": "abcd-guidelines@6b8700ce67c6",
                 "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-                "quote": "Generate the promo code and share that with them No need to enter anything into the form. Click on [Promo Code] If the customer asks, you can say it is for 20% off their next purchase.",
+                "quote": "Generate the promo code and share that with them. No need to enter anything into the form. Click on [Promo Code]. If the customer asks, you can say it is for 20% off their next purchase.",
                 "approval": {
                   "status": "approved",
                   "approved_by": "example-reviewer",
@@ -1830,6 +1809,7 @@
               }
             ],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           }
         ],
@@ -1858,7 +1838,7 @@
         ]
       },
       {
-        "draft_id": "draft_f37d2ae30b7026614eea",
+        "draft_id": "draft_3b076c43b2a4a602f272",
         "company_id": "acme",
         "scope": {
           "flow": "purchase_dispute",
@@ -2016,6 +1996,7 @@
                 "reason": "The reference excludes guest, which the claim includes."
               }
             ],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           }
         ],
@@ -2045,7 +2026,7 @@
         ]
       },
       {
-        "draft_id": "draft_e7354d11cbfbea2a4470",
+        "draft_id": "draft_251b6b40404a12573aae",
         "company_id": "acme",
         "scope": {
           "flow": "storewide_query",
@@ -2073,6 +2054,7 @@
             "best_support": 0.0,
             "citations": [],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           },
           {
@@ -2093,6 +2075,7 @@
             "best_support": 0.0,
             "citations": [],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           },
           {
@@ -2113,6 +2096,7 @@
             "best_support": 0.0,
             "citations": [],
             "contradicted_by": [],
+            "possibly_contradicted_by": [],
             "missing_conditions": []
           }
         ],
@@ -2176,6 +2160,12 @@
       },
       {
         "check": "ml_approves_nothing",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "matches_a_fresh_run",
         "passed": true,
         "blocks_release": true,
         "problems": []

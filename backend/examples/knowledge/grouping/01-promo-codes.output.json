@@ -14,7 +14,7 @@
   "duplicate_input_drafts": 0,
   "groups": [
     {
-      "group_id": "group_b51f66dc15ab6aa21cff",
+      "group_id": "group_0b16e00fc1cf79a76830",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -23,13 +23,13 @@
       "scope_key": "purchase_dispute/promo_code_invalid",
       "status": "draft",
       "member_draft_ids": [
-        "draft_954ed71b8367ec8b7941",
-        "draft_b5231ab02ca88c972293",
-        "draft_d55b90b99e81dc741837"
+        "draft_3fd0b8b6683911e8e4ab",
+        "draft_c5708806b856efc8d08f",
+        "draft_ef0247002da78b422083"
       ],
-      "representative_draft_id": "draft_954ed71b8367ec8b7941",
+      "representative_draft_id": "draft_3fd0b8b6683911e8e4ab",
       "representative": {
-        "draft_id": "draft_954ed71b8367ec8b7941",
+        "draft_id": "draft_3fd0b8b6683911e8e4ab",
         "question": "How long are promo codes valid for?",
         "answer": "Promo codes are valid for 7 days after they are issued.",
         "question_passages": [
@@ -91,8 +91,8 @@
       "membership_levels": [],
       "duplicates": [
         {
-          "draft_id": "draft_b5231ab02ca88c972293",
-          "duplicate_of": "draft_954ed71b8367ec8b7941",
+          "draft_id": "draft_ef0247002da78b422083",
+          "duplicate_of": "draft_3fd0b8b6683911e8e4ab",
           "similarity": 1.0,
           "kind": "near",
           "same_conversation": false
@@ -110,7 +110,7 @@
       ]
     },
     {
-      "group_id": "group_e4da93136c2e522a77d5",
+      "group_id": "group_49c2c3a95a259b731ddc",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -119,12 +119,12 @@
       "scope_key": "purchase_dispute/promo_code_invalid",
       "status": "draft",
       "member_draft_ids": [
-        "draft_4e9fc33297a14ee808c6",
-        "draft_593212d1464c49e73aba"
+        "draft_67d660fd3f816ccf2f3b",
+        "draft_ca42a8643b0d39a9c319"
       ],
-      "representative_draft_id": "draft_4e9fc33297a14ee808c6",
+      "representative_draft_id": "draft_67d660fd3f816ccf2f3b",
       "representative": {
-        "draft_id": "draft_4e9fc33297a14ee808c6",
+        "draft_id": "draft_67d660fd3f816ccf2f3b",
         "question": "My promo code expired, can I get a replacement promo code?",
         "answer": "Silver members can get a replacement promo code.",
         "question_passages": [
@@ -191,7 +191,7 @@
       "existing_matches": []
     },
     {
-      "group_id": "group_0bdfd93cd80c236c5d73",
+      "group_id": "group_9b1353e49320c1bc5460",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -200,11 +200,86 @@
       "scope_key": "purchase_dispute/promo_code_invalid",
       "status": "draft",
       "member_draft_ids": [
-        "draft_018e50895861ee105fe5"
+        "draft_3cba8110b70d8409e682"
       ],
-      "representative_draft_id": "draft_018e50895861ee105fe5",
+      "representative_draft_id": "draft_3cba8110b70d8409e682",
       "representative": {
-        "draft_id": "draft_018e50895861ee105fe5",
+        "draft_id": "draft_3cba8110b70d8409e682",
+        "question": "Can I use two promo codes on one order?",
+        "answer": "Only one promo code can be applied to each order.",
+        "question_passages": [
+          {
+            "conversation_id": "SYN-G04",
+            "source_key": "SYNTHETIC:SYN-G04",
+            "turn_id": "SYN-G04#t2",
+            "speaker": "customer",
+            "span": [
+              0,
+              39
+            ],
+            "quote": "Can I use two promo codes on one order?",
+            "source_version": "authored"
+          }
+        ],
+        "answer_passages": [
+          {
+            "conversation_id": "SYN-G04",
+            "source_key": "SYNTHETIC:SYN-G04",
+            "turn_id": "SYN-G04#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              49
+            ],
+            "quote": "Only one promo code can be applied to each order.",
+            "source_version": "authored"
+          }
+        ],
+        "conditions": [
+          {
+            "text": "Only one promo code can be applied to each order.",
+            "basis": "agent_statement",
+            "passage": {
+              "conversation_id": "SYN-G04",
+              "source_key": "SYNTHETIC:SYN-G04",
+              "turn_id": "SYN-G04#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                49
+              ],
+              "quote": "Only one promo code can be applied to each order.",
+              "source_version": "authored"
+            }
+          }
+        ],
+        "status": "draft"
+      },
+      "draft_count": 1,
+      "distinct_conversation_count": 1,
+      "source_keys": [
+        "SYNTHETIC:SYN-G04"
+      ],
+      "meets_source_threshold": false,
+      "membership_levels": [],
+      "duplicates": [],
+      "existing_matches": []
+    },
+    {
+      "group_id": "group_b9dae1f0de6f70a07672",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "scope_key": "purchase_dispute/promo_code_invalid",
+      "status": "draft",
+      "member_draft_ids": [
+        "draft_8d4d5b4b3ef54e69c1f3"
+      ],
+      "representative_draft_id": "draft_8d4d5b4b3ef54e69c1f3",
+      "representative": {
+        "draft_id": "draft_8d4d5b4b3ef54e69c1f3",
         "question": "How long is a promo code valid?",
         "answer": "Promo codes are valid for 30 days after they are issued.",
         "question_passages": [
@@ -275,7 +350,7 @@
       ]
     },
     {
-      "group_id": "group_be9b455a35c6a8e78b42",
+      "group_id": "group_d281cb4c5b9b86cbb68f",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -284,86 +359,11 @@
       "scope_key": "purchase_dispute/promo_code_invalid",
       "status": "draft",
       "member_draft_ids": [
-        "draft_a47e14e3aa5325d4ec4f"
+        "draft_1919c42c77e1931fffaa"
       ],
-      "representative_draft_id": "draft_a47e14e3aa5325d4ec4f",
+      "representative_draft_id": "draft_1919c42c77e1931fffaa",
       "representative": {
-        "draft_id": "draft_a47e14e3aa5325d4ec4f",
-        "question": "Can I use two promo codes on one order?",
-        "answer": "Only one promo code can be applied to each order.",
-        "question_passages": [
-          {
-            "conversation_id": "SYN-G04",
-            "source_key": "SYNTHETIC:SYN-G04",
-            "turn_id": "SYN-G04#t2",
-            "speaker": "customer",
-            "span": [
-              0,
-              39
-            ],
-            "quote": "Can I use two promo codes on one order?",
-            "source_version": "authored"
-          }
-        ],
-        "answer_passages": [
-          {
-            "conversation_id": "SYN-G04",
-            "source_key": "SYNTHETIC:SYN-G04",
-            "turn_id": "SYN-G04#t3",
-            "speaker": "agent",
-            "span": [
-              0,
-              49
-            ],
-            "quote": "Only one promo code can be applied to each order.",
-            "source_version": "authored"
-          }
-        ],
-        "conditions": [
-          {
-            "text": "Only one promo code can be applied to each order.",
-            "basis": "agent_statement",
-            "passage": {
-              "conversation_id": "SYN-G04",
-              "source_key": "SYNTHETIC:SYN-G04",
-              "turn_id": "SYN-G04#t3",
-              "speaker": "agent",
-              "span": [
-                0,
-                49
-              ],
-              "quote": "Only one promo code can be applied to each order.",
-              "source_version": "authored"
-            }
-          }
-        ],
-        "status": "draft"
-      },
-      "draft_count": 1,
-      "distinct_conversation_count": 1,
-      "source_keys": [
-        "SYNTHETIC:SYN-G04"
-      ],
-      "meets_source_threshold": false,
-      "membership_levels": [],
-      "duplicates": [],
-      "existing_matches": []
-    },
-    {
-      "group_id": "group_c44745a43ad0143b3aa3",
-      "company_id": "acme",
-      "scope": {
-        "flow": "purchase_dispute",
-        "subflow": "promo_code_invalid"
-      },
-      "scope_key": "purchase_dispute/promo_code_invalid",
-      "status": "draft",
-      "member_draft_ids": [
-        "draft_f6a83fedf44af9593110"
-      ],
-      "representative_draft_id": "draft_f6a83fedf44af9593110",
-      "representative": {
-        "draft_id": "draft_f6a83fedf44af9593110",
+        "draft_id": "draft_1919c42c77e1931fffaa",
         "question": "My promo code expired, can I get a replacement promo code?",
         "answer": "Guests cannot get a replacement promo code.",
         "question_passages": [

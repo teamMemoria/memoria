@@ -9,7 +9,7 @@
   },
   "results": [
     {
-      "draft_id": "draft_9945d80e8b3d860c6c7d",
+      "draft_id": "draft_d38af4dc259890b6b90a",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -45,7 +45,7 @@
               ],
               "version": "abcd-guidelines@6b8700ce67c6",
               "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid' Both flows follow the same instructions below.",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'. Both flows follow the same instructions below.",
               "approval": {
                 "status": "approved",
                 "approved_by": "example-reviewer",
@@ -63,30 +63,6 @@
                 "type": "communication"
               },
               "support": 0.9667
-            },
-            {
-              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
-              "combined_from": null,
-              "version": "abcd-guidelines@6b8700ce67c6",
-              "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work.",
-              "approval": {
-                "status": "approved",
-                "approved_by": "example-reviewer",
-                "approved_at": "2026-10-01"
-              },
-              "eligibility": {
-                "status": "eligible",
-                "valid_until": null,
-                "reason": null
-              },
-              "guideline": {
-                "flow": "Purchase Dispute",
-                "subflow": "Promo Code Invalid",
-                "button": "N/A",
-                "type": "communication"
-              },
-              "support": 0.8556
             },
             {
               "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
@@ -114,6 +90,7 @@
             }
           ],
           "contradicted_by": [],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         },
         {
@@ -213,6 +190,7 @@
             }
           ],
           "contradicted_by": [],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         },
         {
@@ -306,6 +284,7 @@
             }
           ],
           "contradicted_by": [],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         },
         {
@@ -335,7 +314,7 @@
               ],
               "version": "abcd-guidelines@6b8700ce67c6",
               "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-              "quote": "Generate the promo code and share that with them No need to enter anything into the form. Click on [Promo Code] If the customer asks, you can say it is for 20% off their next purchase.",
+              "quote": "Generate the promo code and share that with them. No need to enter anything into the form. Click on [Promo Code]. If the customer asks, you can say it is for 20% off their next purchase.",
               "approval": {
                 "status": "approved",
                 "approved_by": "example-reviewer",
@@ -380,6 +359,7 @@
             }
           ],
           "contradicted_by": [],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         }
       ],
@@ -413,7 +393,7 @@
       ]
     },
     {
-      "draft_id": "draft_f37d2ae30b7026614eea",
+      "draft_id": "draft_3b076c43b2a4a602f272",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -571,12 +551,13 @@
               "reason": "The reference excludes guest, which the claim includes."
             }
           ],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         }
       ],
       "possible_conflicts": [
         {
-          "conflict_id": "conflict_1a6155ee0af26c40f1c1",
+          "conflict_id": "conflict_957997c36158c3d3edff",
           "status": "possible_conflict",
           "kind": "eligibility",
           "explanation": "One says this applies to guest; the other says it does not."
@@ -608,12 +589,12 @@
       ],
       "requirements_remaining": [
         "Resolve the contradiction with abcd:purchase_dispute/promo_code_invalid#a4.4: 'A promo code has been created.'",
-        "Resolve possible conflict conflict_1a6155ee0af26c40f1c1.",
+        "Resolve possible conflict conflict_957997c36158c3d3edff.",
         "An authorized person must review the evidence and record the verification decision in the backend."
       ]
     },
     {
-      "draft_id": "draft_ae32e8c290618a962673",
+      "draft_id": "draft_29a4372aabc3b963c871",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -672,6 +653,7 @@
             }
           ],
           "contradicted_by": [],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         },
         {
@@ -754,7 +736,7 @@
               ],
               "version": "abcd-guidelines@6b8700ce67c6",
               "snapshot_id": "abcd-guidelines@6b8700ce67c6",
-              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid' Both flows follow the same instructions below.",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'. Both flows follow the same instructions below.",
               "approval": {
                 "status": "approved",
                 "approved_by": "example-reviewer",
@@ -775,12 +757,13 @@
             }
           ],
           "contradicted_by": [],
+          "possibly_contradicted_by": [],
           "missing_conditions": []
         }
       ],
       "possible_conflicts": [
         {
-          "conflict_id": "conflict_1a6155ee0af26c40f1c1",
+          "conflict_id": "conflict_957997c36158c3d3edff",
           "status": "possible_conflict",
           "kind": "eligibility",
           "explanation": "One says this applies to guest; the other says it does not."
@@ -813,7 +796,7 @@
       "requirements_remaining": [
         "Confirm the part of this claim the references do not state: 'However, depending on your membership level, I may be able to provide a new code for you'",
         "Confirm the part of this claim the references do not state: \"Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members\"",
-        "Resolve possible conflict conflict_1a6155ee0af26c40f1c1.",
+        "Resolve possible conflict conflict_957997c36158c3d3edff.",
         "An authorized person must review the evidence and record the verification decision in the backend."
       ]
     }

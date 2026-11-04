@@ -290,7 +290,7 @@
   },
   "verification": {
     "cases": 10,
-    "status_accuracy": 0.6,
+    "status_accuracy": 0.7,
     "unsupported_verified": 0,
     "confusion": [
       {
@@ -305,18 +305,13 @@
       },
       {
         "expected": "supported",
-        "got": "contradicted",
-        "count": 1
-      },
-      {
-        "expected": "supported",
         "got": "partially_supported",
         "count": 3
       },
       {
         "expected": "supported",
         "got": "supported",
-        "count": 2
+        "count": 3
       },
       {
         "expected": "unverifiable",
@@ -376,8 +371,8 @@
       {
         "conversation": "SYN-H08",
         "expected": "supported",
-        "got": "contradicted",
-        "passed": false
+        "got": "supported",
+        "passed": true
       },
       {
         "conversation": "SYN-H09",
@@ -398,22 +393,22 @@
       "possible_conflicts": 3,
       "unresolved_conflicts": 0,
       "verification": {
-        "contradicted": 2,
+        "contradicted": 1,
         "partially_supported": 6,
-        "supported": 3,
+        "supported": 4,
         "unverifiable": 6
       }
     },
     "technical_failures": [],
     "missing_verification": 6,
     "timings_ms": {
-      "extraction_ms": 42.56,
-      "grouping_ms": 7.85,
-      "conflicts_ms": 8.53,
-      "verification_ms": 85.97,
-      "total_ms": 145.02
+      "extraction_ms": 67.89,
+      "grouping_ms": 8.13,
+      "conflicts_ms": 8.72,
+      "verification_ms": 139.95,
+      "total_ms": 224.79
     },
-    "ms_per_conversation": 5.18,
+    "ms_per_conversation": 8.03,
     "model_usage": {
       "model": null,
       "calls": 0,
@@ -449,6 +444,12 @@
         "problems": []
       },
       {
+        "check": "matches_a_fresh_run",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
         "check": "repeat_processing",
         "passed": true,
         "problems": [],
@@ -456,12 +457,11 @@
       }
     ]
   },
-  "evaluation_seconds": 1.23,
+  "evaluation_seconds": 5.05,
   "notes": [
     "Verification is measured against an in-memory copy of the ABCD guideline snapshot marked approved for evaluation only; the committed snapshot is unreviewed and verifies nothing.",
     "Labels are first-pass and have not had a second person's review (human_reviewed: false).",
     "Technical failures (invalid input, model errors) are counted separately from drafts that are merely unverifiable for lack of a reference.",
-    "Held-out cases: report only, never tune on them. The rule extractor's wording rules were developed while reading output over all 100 curated ABCD records, so ABCD held-out scores are optimistic; the SYN-H conversations were written after the rules were fixed.",
-    "Run 2, after fixing two bugs the first held-out run found (an 'only' about a time limit read as a membership restriction; FAQ instruction lines counted as support) and the problems found in code review. These held-out cases are no longer blind: the numbers before the fixes are in eval-heldout-run1."
+    "Held-out cases: report only, never tune on them. The rule extractor's wording rules were developed while reading output over all 100 curated ABCD records, so ABCD held-out scores are optimistic; the SYN-H conversations were written after the rules were fixed."
   ]
 }

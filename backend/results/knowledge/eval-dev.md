@@ -17,13 +17,14 @@ Extractor: `rule-extractor` v1. Release allowed: **yes**.
 - pass: `no_unsupported_verified_claims`
 - pass: `no_personal_data_leaks`
 - pass: `ml_approves_nothing`
+- pass: `matches_a_fresh_run`
 - pass: `repeat_processing`
 
 ## Pipeline run
 
-- 58 conversations, 44 drafts, 32 groups, 14 possible conflicts, 7 unresolved.
-- Verification: {'contradicted': 7, 'partially_supported': 18, 'supported': 8, 'unverifiable': 11}. Technical failures: 0 (counted separately from missing verification: 11 unverifiable).
-- About 7.54 ms per conversation on this machine; model calls: 0.
+- 58 conversations, 44 drafts, 32 groups, 11 possible conflicts, 6 unresolved.
+- Verification: {'contradicted': 6, 'partially_supported': 19, 'supported': 8, 'unverifiable': 11}. Technical failures: 0 (counted separately from missing verification: 11 unverifiable).
+- About 12.85 ms per conversation on this machine; model calls: 0.
 
 ## Failed cases
 

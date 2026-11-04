@@ -49,6 +49,12 @@ result.errors          # set whenever status is "error"
   `data/abcd/conversations/`;
 - the raw ABCD v1.1 shape (`convo_id`, `scenario`, `original`, `delexed`).
 
+A curated record must carry `customer_record`, using only the fields the
+redactor knows (`customer_name`, `member_level`, `phone`, `email`, `username`,
+`account_id`, `address`, `order`). Use `{}` when there are no personal details.
+A missing, non-object or renamed record is refused with `invalid_input`,
+because redaction depends on it.
+
 Both are read straight from JSON (`abcd.py`). The reader keeps the source and
 its version (`source.version`, `source.dataset_version`), the turns in order
 with stable IDs (`ABCD-0041#t21`), the recorded agent actions paired with
@@ -63,6 +69,12 @@ curated file or from the raw dump, so it is never counted twice.
   conversation ID, turn ID, speaker, character span and the exact quoted text.
   `check_draft_citations(draft, conversation)` re-reads the conversation and
   confirms every quote is the text at its span.
+  - **The span and quote index the masked turn, not the raw one.** The turn is
+    NFC-normalised and has personal details replaced by placeholders such as
+    `[CUSTOMER_NAME]` before anything is quoted. So `quote` is the exact text at
+    `span` of that masked turn. A consumer comparing against stored turns must
+    apply the same masking (`Redactor`) first, or match the quote and not the
+    offsets.
 - `conditions`. These are the parts the answer depends on: membership levels,
   time limits, exceptions and requirements. Each one cites its passage and its
   basis: `agent_statement`, `customer_statement` or `recorded_action`.
@@ -249,6 +261,8 @@ from backend.services.knowledge import find_conflicts
 result = find_conflicts(drafts, company_id="acme", existing_entries=entries, groups=groups)
 result["possible_conflicts"]     # status "possible_conflict" or "unresolved"
 result["explained_differences"]  # looked contradictory, explained by conditions or an exception
+# Drafts saying exactly the same two things are one record; "repeated_pairs"
+# counts the other pairs of drafts that say them.
 ```
 
 **What is compared.** Each answer passage of a draft is one claim, and so is
@@ -454,14 +468,20 @@ them by path under `conversation_files` instead, to keep ABCD records in
 `data/abcd/`. The CLI `run` command accepts either form.
 
 **Release checks.** `release_checks(output, payload)` must pass before
-anything is shown to people. The CLI exits with code 3 when it doesn't.
+anything is shown to people. `run_pipeline` attaches its result as
+`release_checks`, and the CLI exits with code 3 when it doesn't pass.
+
+The checks are run against the payload, never against values copied into the
+output: an edited output cannot vouch for itself. For rule-extracted output
+they also re-run the pipeline and require the same result.
 
 | Check | Fails when |
 |---|---|
-| `no_fabricated_citations` | any draft quote isn't the exact text at its span, a conflict quotes a passage its draft doesn't have, or a verification citation quotes text its reference doesn't have |
-| `no_unsupported_verified_claims` | a `supported` claim lacks an approved, eligible, authoritative citation, or a draft is `supported` while one of its claims isn't |
-| `no_personal_data_leaks` | any value from any input customer record (full name, any name part, email, username, address, city, zip, order id, purchase date, phone), or any email or card number, appears as a whole word in a text field of the output. The check is Unicode-normalised. Ids and versions are not text fields. Account ids the customer types are not in the record, so they rely on the redaction patterns |
-| `ml_approves_nothing` | a draft isn't an untrusted draft, a group isn't `draft`, a verification has a decision, or an approval or dispute field appears |
+| `no_fabricated_citations` | any passage anywhere in the output (drafts, group representatives, conflict sides, verification claims) isn't the exact text at an in-range integer span of its turn; a verbatim draft's `question`, `answer` or condition text isn't the text of its passages; a representative differs from its draft; a conflict side quotes a passage or entry version that wasn't supplied; or a citation's quote, version, approval or eligibility differs from the payload's reference (combined units are rebuilt from their parts) |
+| `no_unsupported_verified_claims` | a `supported` claim has no citation that the payload shows is approved, eligible, for this company and current on `as_of`; a reference contradicts it; or a draft is `supported` while one of its claims isn't |
+| `no_personal_data_leaks` | any value from any input customer record (full name, any name part, email, username, address, city, zip, order id, purchase date, phone) appears as a whole word in a text field of the output, or an email, card number, phone number, street address or long number appears at all, found by pattern with no record needed. The check is Unicode-normalised. Ids and versions are not text fields |
+| `ml_approves_nothing` | any status is outside its allowed values: drafts `draft` and `not_verified`, groups and representatives `draft`, conflicts `possible_conflict`/`unresolved`/`explained_difference`, conflict sides unchanged from their draft or entry, verdicts and recommendations from their fixed lists, `decision` present and `null`; or an approval field appears outside a citation |
+| `matches_a_fresh_run` | the output differs from a fresh run on the same payload. Model-written drafts can't be re-created, so for them it is reported but doesn't block |
 | `repeat_processing` (in `evaluate`) | a second run differs, or doubled input changes a group or count |
 
 **Labelled cases, split.** All case files carry `labelled_by` and
@@ -503,19 +523,21 @@ separate from missing verification, ms per conversation, and model calls and
 tokens. The rule extractor costs nothing, since it makes no model calls.
 Current numbers:
 
-| | Dev | Held-out run 1 (blind) | Held-out now |
+| | Dev | Held-out run 1 (blind) | Held-out after fixes (not blind) |
 |---|---|---|---|
 | Extraction draft/no-draft | 1.00 | 1.00 | 1.00 |
 | Extraction answer phrases / conditions | 1.00 / 1.00 | 0.75 / 1.00 | 0.75 / 1.00 |
 | Exact citations, privacy errors | 1.00, 0 | 1.00, 0 | 1.00, 0 |
 | Grouping same-group / kept apart | 1.00 / 1.00 | 0.67 / 1.00 | 0.67 / 1.00 |
 | Conflicts accuracy (missed, false alarms) | 1.00 (0, 0) | 1.00 (0, 0) | 1.00 (0, 0) |
-| Verification status accuracy | 1.00 | 0.50 | 0.60 |
+| Verification status accuracy | 1.00 | 0.50 | 0.70 |
 | Unsupported claims marked supported | 0 | 0 | 0 |
 | Release checks | pass | pass | pass |
 
-Dev is perfect because the rules were tuned on it. Read the held-out
-columns. Run 1 found two bugs, now fixed with regression tests:
+Dev is perfect because the rules were tuned on it. Only run 1 is a blind
+held-out estimate. The last column is after fixing bugs that run 1 and two code
+reviews found, so it is no longer blind: it shows the fixes did not overfit the
+labels, which were not changed, but it is not a fresh measurement. Run 1 found two bugs, now fixed with regression tests:
 
 - "Silver members get an extension if they are only 1 day late" was read as
   "*only* silver", which falsely contradicted a correct gold-member draft.
@@ -555,3 +577,32 @@ documented, not tuned away:
 - **Final blind review.** This is a release check, not a dependency on
   Nick's tickets. A real deployment needs broader testing on real
   (consented, redacted) transcripts.
+
+A second independent review found more, fixed with regression tests in
+`tests/knowledge/test_second_review_fixes.py`:
+
+- A hedged or time-bound claim ("Sorry about that, ...", "I think ...",
+  "Right now ..."), or one with a negation on both sides about different verbs,
+  could be "supported" by a reference saying the opposite. Verification now
+  compares what each side negates, clause by clause, and a hedged clash keeps a
+  claim from being supported (`possibly_contradicted_by`).
+- The release checks trusted values copied into the output. They now check the
+  payload, cover every passage and status in the output, and re-run the
+  pipeline.
+- Personal data: a missing or renamed customer record silently turned redaction
+  off; names that are ordinary words ("Will", "May"), short forms of a name
+  ("Joe") and house numbers ("change this to 7873") were kept. The record is now
+  required and checked, those forms are removed, and the leak check also looks
+  for personal-data patterns without the record.
+- A guideline heading and its sub-points were joined in input order, so the
+  order of references could change a verdict. They are now read in id order, a
+  sentence each.
+- Identical drafts produced a conflict for every pair of their own sentences.
+  Repeats of the same disagreement are now one record with a `repeated_pairs`
+  count. Conflict ids include the entry version and claim text.
+- The same conversation read curated and raw got two draft ids. Draft ids now
+  use the source key and turn numbers.
+- A model whose every draft was rejected looked like "no knowledge here"; it is
+  now a `model_output_invalid` failure. Malformed input (bad JSON, a lone
+  surrogate, a malformed reference or conflicts file) is a typed error, not a
+  crash.
