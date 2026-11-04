@@ -18,12 +18,17 @@ from .evaluation import evaluate, render_markdown
 from .extraction import ModelExtractor, RuleExtractor, extract_drafts
 from .grouping import group_drafts
 from .llm import OpenAICompatibleClient
-from .pipeline import release_checks, run_pipeline
+from .pipeline import run_pipeline
 from .verification import check_drafts, load_reference_snapshot
 
 
 def _read(path: str) -> Any:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise PipelineError(
+            "invalid_input", f"cannot read {path} as JSON: {type(error).__name__}", path
+        ) from error
 
 
 def _write(value: Any, path: str | None) -> None:
@@ -123,8 +128,6 @@ def cmd_run(args: argparse.Namespace) -> int:
     output = run_pipeline(
         payload, extractor=_extractor(args.extractor), include_timings=args.timings
     )
-    if output["status"] != "error":
-        output["release_checks"] = release_checks(output, payload)
     _write(output, args.out)
     if output["status"] == "error":
         return 1
@@ -227,7 +230,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except PipelineError as error:
+        # Unreadable input files and the like: a typed error, never a traceback.
+        _write(
+            {"status": "error", "errors": [error.to_dict()]}, getattr(args, "out", None)
+        )
+        return 1
 
 
 if __name__ == "__main__":

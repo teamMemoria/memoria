@@ -84,7 +84,8 @@ def test_counts_are_distinct_conversations_and_reprocessing_does_not_raise_them(
 
 
 def test_the_same_source_conversation_counts_once():
-    # ABCD-0041 read from the curated file and from the raw dump: two drafts, one conversation.
+    # ABCD-0041 read from the curated file and from the raw dump: one conversation,
+    # so the same draft id and one draft, counted once.
     curated = abcd("ABCD-0041")
     raw = {
         "convo_id": int(curated["source"]["original_id"]),
@@ -101,13 +102,13 @@ def test_the_same_source_conversation_counts_once():
     }
     a = extract_drafts(curated, COMPANY).drafts[0]
     b = extract_drafts(raw, COMPANY).drafts[0]
-    assert a["draft_id"] != b["draft_id"]
+    assert a["draft_id"] == b["draft_id"]
     assert read_conversation(raw, COMPANY).source_key == a["source"]["source_key"]
     result = group_drafts([a, b], COMPANY)
     group = group_of(result, a["draft_id"])
-    assert group["draft_count"] == 2
+    assert group["draft_count"] == 1
     assert group["distinct_conversation_count"] == 1
-    assert group["duplicates"][0]["same_conversation"] is True
+    assert result["duplicate_input_drafts"] == 1
 
 
 def test_grouping_does_not_depend_on_input_order():

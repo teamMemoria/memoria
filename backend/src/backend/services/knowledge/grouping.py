@@ -17,6 +17,7 @@ reviewer's time.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -460,9 +461,10 @@ def _describe(
             "draft_id": representative.item_id,
             "question": rep["question"],
             "answer": rep["answer"],
-            "question_passages": rep.get("question_passages", []),
-            "answer_passages": rep.get("answer_passages", []),
-            "conditions": rep.get("conditions", []),
+            # Copies, so changing the group never changes the draft it came from.
+            "question_passages": copy.deepcopy(rep.get("question_passages", [])),
+            "answer_passages": copy.deepcopy(rep.get("answer_passages", [])),
+            "conditions": copy.deepcopy(rep.get("conditions", [])),
             "status": "draft",
         },
         "draft_count": len(members),

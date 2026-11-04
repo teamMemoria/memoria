@@ -177,6 +177,12 @@ class ExtractionConfig:
                 "config.extraction.topics",
                 "must be null or a list of flow or flow/subflow names",
             )
+        if topics is not None and not topics:
+            # An empty list would quietly select nothing; leave it out to select everything.
+            raise invalid(
+                "config.extraction.topics",
+                "must not be empty; use null to select every topic",
+            )
         if topics is not None and not isinstance(topics, frozenset):
             object.__setattr__(self, "topics", frozenset(topics))
         for name, low in (("min_answer_words", 1), ("max_drafts_per_conversation", 1)):
@@ -699,17 +705,26 @@ class _Rejected(Exception):
 # --------------------------------------------------------------------------- drafts
 
 
+def _turn_number(turn_id: str) -> int:
+    return int(turn_id.rsplit("#t", 1)[1])
+
+
 def _draft_id(
     conversation: Conversation, extractor: Extractor, selection: Selection
 ) -> str:
+    """Stable across reads: the same source conversation (curated or raw) and the
+    same cited spans always give the same id. Model wording is part of it, so
+    two different model drafts on the same turns stay apart."""
     key = json.dumps(
         [
             conversation.company_id,
             conversation.source_key,
             extractor.name,
             extractor.version,
-            [(p.turn_id, p.start, p.end) for p in selection.question],
-            [(p.turn_id, p.start, p.end) for p in selection.answer],
+            [(_turn_number(p.turn_id), p.start, p.end) for p in selection.question],
+            [(_turn_number(p.turn_id), p.start, p.end) for p in selection.answer],
+            selection.question_text,
+            selection.answer_text,
         ]
     )
     return "draft_" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:20]
@@ -827,13 +842,33 @@ def extract_drafts(
             errors=[failure.to_dict()],
         )
     result.rejected = rejected
+    if not selections and rejected:
+        # The model answered, but nothing it proposed could be used: a model
+        # failure, not a conversation without reusable knowledge.
+        failure = PipelineError(
+            MODEL_OUTPUT_INVALID,
+            f"every one of the {len(rejected)} proposed drafts was rejected",
+            "model.drafts",
+        )
+        return ExtractionResult(
+            conversation.conversation_id,
+            conversation.source_key,
+            "error",
+            rejected=rejected,
+            errors=[failure.to_dict()],
+        )
     if not selections:
         result.no_draft_reason = reason or "no_reusable_answer"
         return result
     drafts: dict[str, dict[str, Any]] = {}
-    for selection in selections[: config.max_drafts_per_conversation]:
+    for index, selection in enumerate(selections[: config.max_drafts_per_conversation]):
         draft = build_draft(redacted, extractor, selection)
-        drafts.setdefault(draft["draft_id"], draft)
+        if draft["draft_id"] in drafts:
+            result.rejected.append(
+                {"index": index, "reason": "repeats an earlier draft exactly"}
+            )
+            continue
+        drafts[draft["draft_id"]] = draft
     result.drafts = list(drafts.values())
     return result
 
@@ -849,16 +884,54 @@ def check_draft_citations(
     if not draft.get("question_passages") or not draft.get("answer_passages"):
         problems.append("draft has no question or no answer passage")
     for passage in passages:
-        turn_id = passage.get("turn_id")
-        if (
-            passage.get("conversation_id") != conversation.conversation_id
-            or turn_id not in redacted.texts
+        problems += check_passage(passage, conversation, redacted)
+    if draft.get("wording") == "verbatim":
+        # Verbatim wording is the quotes themselves; anything else was rewritten.
+        for field_name, key in (
+            ("question", "question_passages"),
+            ("answer", "answer_passages"),
         ):
-            problems.append(f"{turn_id}: cites a turn that is not in the conversation")
-            continue
-        start, end = passage.get("span", [0, 0])
-        if redacted.texts[turn_id][start:end] != passage.get("quote"):
-            problems.append(f"{turn_id}: quote is not the exact text at its span")
-        if passage.get("speaker") != conversation.turn(turn_id).speaker:
-            problems.append(f"{turn_id}: speaker does not match")
+            quotes = " ".join(
+                str(p.get("quote", "")).strip() for p in draft.get(key, [])
+            )
+            if draft.get(field_name) != quotes:
+                problems.append(f"{field_name} is not the text of its passages")
+        for condition in draft.get("conditions", []):
+            if condition.get("text") != (condition.get("passage") or {}).get("quote"):
+                problems.append("a condition is not the text of its passage")
+    return problems
+
+
+def check_passage(
+    passage: Any,
+    conversation: Conversation,
+    redacted: RedactedConversation | None = None,
+) -> list[str]:
+    """Problems with one cited passage; [] when it is the exact text at its span."""
+    redacted = redacted or redact_conversation(conversation)
+    if not isinstance(passage, Mapping):
+        return ["a passage is not an object"]
+    turn_id = passage.get("turn_id")
+    if (
+        passage.get("conversation_id") != conversation.conversation_id
+        or not isinstance(turn_id, str)
+        or turn_id not in redacted.texts
+    ):
+        return [f"{turn_id}: cites a turn that is not in the conversation"]
+    text = redacted.texts[turn_id]
+    span = passage.get("span")
+    if (
+        not isinstance(span, list)
+        or len(span) != 2
+        or not all(type(v) is int for v in span)
+        or not 0 <= span[0] < span[1] <= len(text)
+    ):
+        return [f"{turn_id}: span is not a range inside the turn"]
+    problems = []
+    if text[span[0] : span[1]] != passage.get("quote"):
+        problems.append(f"{turn_id}: quote is not the exact text at its span")
+    if passage.get("speaker") != conversation.turn(turn_id).speaker:
+        problems.append(f"{turn_id}: speaker does not match")
+    if passage.get("source_key") != conversation.source_key:
+        problems.append(f"{turn_id}: source key does not match")
     return problems

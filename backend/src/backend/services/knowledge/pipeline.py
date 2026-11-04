@@ -26,6 +26,8 @@ block release.
 
 from __future__ import annotations
 
+import datetime as dt
+import re
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -38,11 +40,19 @@ from .extraction import (
     Extractor,
     RuleExtractor,
     check_draft_citations,
+    check_passage,
     extract_drafts,
+    redact_conversation,
 )
 from .grouping import GroupingConfig, group_drafts
-from .privacy import Redactor
-from .verification import VerificationConfig, check_drafts
+from .privacy import Redactor, pattern_leaks
+from .verification import (
+    VerificationConfig,
+    _framing,
+    _ineligible,
+    check_drafts,
+    combine_texts,
+)
 
 PIPELINE_SCHEMA_VERSION = "knowledge-pipeline/1"
 _FORBIDDEN_KEYS = {
@@ -71,7 +81,23 @@ def run_pipeline(
     extractor: Extractor | None = None,
     include_timings: bool = False,
 ) -> dict[str, Any]:
-    """Run every stage. Returns ``status: "error"`` (and nothing else) only when the payload itself is unusable."""
+    """Run every stage and the release checks.
+
+    Returns ``status: "error"`` (and nothing else) only when the payload itself
+    is unusable. Otherwise the output carries ``release_checks``; nothing should
+    be shown to people unless ``release_checks.release_allowed`` is true.
+    """
+    output = _run_stages(payload, extractor, include_timings)
+    if output["status"] != "error":
+        output["release_checks"] = release_checks(output, payload, extractor=extractor)
+    return output
+
+
+def _run_stages(
+    payload: Any,
+    extractor: Extractor | None = None,
+    include_timings: bool = False,
+) -> dict[str, Any]:
     started = time.perf_counter()
     timings: dict[str, float] = {}
     try:
@@ -279,10 +305,39 @@ def output_text(value: Any) -> str:
     return "\n".join(lines)
 
 
+_VERDICTS = {"supported", "partially_supported", "contradicted", "unverifiable"}
+_RECOMMENDATIONS = {
+    "supported_by_references",
+    "needs_more_evidence",
+    "contradicted_by_references",
+    "cannot_be_verified",
+}
+_CONFLICT_STATUSES = {"possible_conflict", "unresolved"}
+# Where a copy of a reference's approval may appear: inside a citation.
+_CITATION_LISTS = (".citations[", ".contradicted_by[", ".possibly_contradicted_by[")
+
+
+def _comparable(output: Mapping[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in output.items() if k not in {"timings", "release_checks"}}
+
+
+def _is_passage(value: Any) -> bool:
+    return (
+        isinstance(value, Mapping)
+        and {"conversation_id", "turn_id", "span", "quote"} <= value.keys()
+    )
+
+
 def release_checks(
-    output: Mapping[str, Any], payload: Mapping[str, Any]
+    output: Mapping[str, Any],
+    payload: Mapping[str, Any],
+    extractor: Extractor | None = None,
 ) -> dict[str, Any]:
-    """Checks that must all pass before results are shown to people."""
+    """Checks that must all pass before results are shown to people.
+
+    They are checked against the payload, never against values copied into
+    the output, so an edited output cannot vouch for itself.
+    """
     checks: list[dict[str, Any]] = []
     company_id = payload.get("company_id", "")
     conversations: dict[str, Conversation] = {}
@@ -292,6 +347,27 @@ def release_checks(
         except PipelineError:
             continue
         conversations[conversation.conversation_id] = conversation
+    redacted = {cid: redact_conversation(c) for cid, c in conversations.items()}
+    references = {
+        r.get("reference_id"): r
+        for r in payload.get("references", []) or []
+        if isinstance(r, Mapping)
+    }
+    entries = {
+        (e.get("entry_id"), str(e.get("version"))): e
+        for e in payload.get("existing_entries", []) or []
+        if isinstance(e, Mapping)
+    }
+    as_of = None
+    try:
+        as_of = (
+            dt.date.fromisoformat(payload["as_of"]) if payload.get("as_of") else None
+        )
+    except (TypeError, ValueError):
+        as_of = None
+    drafts = {
+        d.get("draft_id"): d for d in output.get("drafts", []) if isinstance(d, Mapping)
+    }
 
     def add(name: str, problems: list[str], blocks: bool = True) -> None:
         checks.append(
@@ -303,50 +379,158 @@ def release_checks(
             }
         )
 
-    # 1. Every draft citation is the exact text at its span.
-    problems = []
-    for draft in output.get("drafts", []):
-        conversation = conversations.get(draft["source"]["conversation_id"])
+    try:
+        _citation_checks(
+            output, conversations, redacted, references, entries, drafts, add
+        )
+        _support_checks(output, references, company_id, as_of, add)
+        _privacy_checks(output, conversations, add)
+        _status_checks(output, entries, add)
+    except (KeyError, TypeError, AttributeError, ValueError) as error:
+        # A malformed output is never released, and never crashes the check.
+        add(
+            "output_is_well_formed",
+            [f"the output is malformed: {type(error).__name__}"],
+        )
+    _recompute_check(output, payload, extractor, add)
+
+    passed = all(c["passed"] for c in checks if c["blocks_release"])
+    return {"release_allowed": passed, "checks": checks}
+
+
+def _citation_checks(
+    output, conversations, redacted, references, entries, drafts, add
+) -> None:
+    """1. Every quoted text is exactly what its source says, wherever it appears."""
+    problems: list[str] = []
+    for draft_id, draft in drafts.items():
+        conversation = conversations.get(
+            (draft.get("source") or {}).get("conversation_id")
+        )
         if conversation is None:
             problems.append(
-                f"{draft['draft_id']}: cites a conversation that was not in the input"
+                f"{draft_id}: cites a conversation that was not in the input"
             )
             continue
         problems += [
-            f"{draft['draft_id']}: {p}"
-            for p in check_draft_citations(draft, conversation)
+            f"{draft_id}: {p}" for p in check_draft_citations(draft, conversation)
         ]
-    # Conflict passages must be the passages of the drafts they name.
-    passages = {d["draft_id"]: d["answer_passages"] for d in output.get("drafts", [])}
-    for conflict in output.get("conflicts", {}).get(
-        "possible_conflicts", []
-    ) + output.get("conflicts", {}).get("explained_differences", []):
-        for side in ("a", "b"):
-            draft_id = conflict[side].get("draft_id")
-            if draft_id and conflict[side]["passage"] not in passages.get(draft_id, []):
+    # Any passage anywhere in the output (groups, conflicts, verification).
+    for path, _, value in _walk(output):
+        if _is_passage(value):
+            conversation = conversations.get(value["conversation_id"])
+            if conversation is None:
                 problems.append(
-                    f"{conflict['conflict_id']}: side {side} quotes a passage its draft does not have"
+                    f"{path}: cites a conversation that was not in the input"
                 )
-    # Verification citations must quote a reference that was supplied.
-    references = {
-        r.get("reference_id"): r
-        for r in payload.get("references", [])
-        if isinstance(r, Mapping)
-    }
-    for result in output.get("verification", {}).get("results", []):
-        for claim in result["claims"]:
-            for citation in claim["citations"] + claim["contradicted_by"]:
-                reference = references.get(citation["reference_id"])
-                if reference is None or not citation["quote"].startswith(
-                    reference.get("text", "\0")
+                continue
+            problems += [
+                f"{path}: {p}"
+                for p in check_passage(
+                    value, conversation, redacted[conversation.conversation_id]
+                )
+            ]
+    for group in output.get("groups", {}).get("groups", []):
+        rep = group.get("representative") or {}
+        draft = drafts.get(rep.get("draft_id"))
+        if draft is None or any(
+            rep.get(k) != draft.get(k)
+            for k in (
+                "question",
+                "answer",
+                "question_passages",
+                "answer_passages",
+                "conditions",
+            )
+        ):
+            problems.append(
+                f"{group.get('group_id')}: representative is not its draft, unchanged"
+            )
+    conflicts = output.get("conflicts", {})
+    for conflict in conflicts.get("possible_conflicts", []) + conflicts.get(
+        "explained_differences", []
+    ):
+        for side_name in ("a", "b"):
+            side = conflict[side_name]
+            where = f"{conflict['conflict_id']} side {side_name}"
+            if side.get("type") == "draft":
+                draft = drafts.get(side.get("draft_id"))
+                if draft is None or side["passage"] not in draft.get(
+                    "answer_passages", []
                 ):
                     problems.append(
-                        f"{result['draft_id']}: cites {citation['reference_id']} with text it does not have"
+                        f"{where}: quotes a passage its draft does not have"
                     )
+                elif side.get("claim") not in side["passage"]["quote"]:
+                    problems.append(f"{where}: claim is not the text of its passage")
+            elif side.get("type") == "existing_entry":
+                entry = entries.get((side.get("entry_id"), str(side.get("version"))))
+                quote = (side.get("passage") or {}).get("quote")
+                if (
+                    entry is None
+                    or not isinstance(quote, str)
+                    or quote not in str(entry.get("answer", ""))
+                    or side.get("claim") != quote
+                ):
+                    problems.append(
+                        f"{where}: quotes an entry version that was not supplied"
+                    )
+            else:
+                problems.append(f"{where}: unknown side type")
+    for result in output.get("verification", {}).get("results", []):
+        draft = drafts.get(result["draft_id"])
+        if draft is None:
+            problems.append(
+                f"{result['draft_id']}: verifies a draft that is not in the output"
+            )
+            continue
+        for claim in result["claims"]:
+            if claim["passage"] not in draft.get("answer_passages", []) or claim[
+                "claim"
+            ] not in claim["passage"].get("quote", ""):
+                problems.append(
+                    f"{result['draft_id']}: a claim is not one of its draft's passages"
+                )
+            for citation in (
+                claim["citations"]
+                + claim["contradicted_by"]
+                + claim.get("possibly_contradicted_by", [])
+            ):
+                problem = _citation_problem(citation, references)
+                if problem:
+                    problems.append(f"{result['draft_id']}: {problem}")
     add("no_fabricated_citations", problems)
 
-    # 2. A "supported" claim needs an approved, eligible, authoritative citation.
-    problems = []
+
+def _citation_problem(
+    citation: Mapping[str, Any], references: Mapping[str, Any]
+) -> str | None:
+    reference = references.get(citation.get("reference_id"))
+    if reference is None:
+        return f"cites {citation.get('reference_id')}, which was not supplied"
+    combined = citation.get("combined_from")
+    if combined:
+        parts = [references.get(r) for r in combined]
+        if combined[0] != reference.get("reference_id") or any(
+            p is None for p in parts
+        ):
+            return f"cites {citation['reference_id']} combined with passages that were not supplied"
+        expected = combine_texts([p["text"] for p in parts])
+    else:
+        expected = reference.get("text")
+    if citation.get("quote") != expected:
+        return f"cites {citation['reference_id']} with text it does not have"
+    if citation.get("version") != reference.get("version"):
+        return f"cites {citation['reference_id']} at a version that was not supplied"
+    for key in ("approval", "eligibility"):
+        if citation.get(key) != reference.get(key):
+            return f"cites {citation['reference_id']} with a changed {key}"
+    return None
+
+
+def _support_checks(output, references, company_id, as_of, add) -> None:
+    """2. A "supported" claim needs a citation the payload shows is usable today."""
+    problems: list[str] = []
     for result in output.get("verification", {}).get("results", []):
         for claim in result["claims"]:
             if claim["status"] != "supported":
@@ -354,14 +538,20 @@ def release_checks(
             good = [
                 c
                 for c in claim["citations"]
-                if (c.get("approval") or {}).get("status") == "approved"
-                and (c.get("eligibility") or {}).get("status") == "eligible"
-                and references.get(c["reference_id"], {}).get("kind")
-                == "authoritative_reference"
+                if (ref := references.get(c.get("reference_id"))) is not None
+                and all(
+                    _ineligible(references.get(r, {}), company_id, as_of) is None
+                    for r in (c.get("combined_from") or [c["reference_id"]])
+                )
+                and _framing(ref) is None
             ]
             if not good:
                 problems.append(
-                    f"{result['draft_id']}: supported claim without an approved, eligible citation"
+                    f"{result['draft_id']}: supported claim without an approved, eligible, current citation"
+                )
+            if claim.get("contradicted_by") or claim.get("possibly_contradicted_by"):
+                problems.append(
+                    f"{result['draft_id']}: supported claim that a reference contradicts"
                 )
         if result["verification_status"] == "supported" and any(
             c["status"] != "supported" for c in result["claims"]
@@ -371,37 +561,127 @@ def release_checks(
             )
     add("no_unsupported_verified_claims", problems)
 
-    # 3. No personal data from any input customer record appears anywhere in the output.
-    problems = []
+
+def _privacy_checks(output, conversations, add) -> None:
+    """3. No personal data, by each record's values and by pattern alone."""
+    problems: list[str] = []
     text = output_text(output)
     for conversation in conversations.values():
         leaks = Redactor(conversation.customer_record).leaks(text)
         if leaks:
             problems.append(f"{conversation.conversation_id}: {', '.join(leaks)}")
+    # Independent of any record, so a missing or wrong record cannot hide a leak.
+    patterns = pattern_leaks(text)
+    if patterns:
+        problems.append(f"output: {', '.join(patterns)}")
     add("no_personal_data_leaks", problems)
 
-    # 4. The pipeline approved nothing and changed no status.
-    problems = []
+
+def _status_checks(output, entries, add) -> None:
+    """4. The pipeline approved nothing and changed no status: every status is an allowed one."""
+    problems: list[str] = []
     for draft in output.get("drafts", []):
         if (
             draft.get("status") != "draft"
-            or draft.get("trusted")
-            or draft.get("audit_eligible")
+            or draft.get("trusted") is not False
+            or draft.get("audit_eligible") is not False
+            or (draft.get("verification") or {}).get("status") != "not_verified"
         ):
-            problems.append(f"{draft['draft_id']}: is not an untrusted draft")
+            problems.append(
+                f"{draft.get('draft_id')}: is not an untrusted, unverified draft"
+            )
     for group in output.get("groups", {}).get("groups", []):
-        if group.get("status") != "draft":
-            problems.append(f"{group['group_id']}: group status is not draft")
+        if (
+            group.get("status") != "draft"
+            or (group.get("representative") or {}).get("status") != "draft"
+        ):
+            problems.append(f"{group.get('group_id')}: group status is not draft")
+    conflicts = output.get("conflicts", {})
+    for conflict in conflicts.get("possible_conflicts", []):
+        if conflict.get("status") not in _CONFLICT_STATUSES:
+            problems.append(
+                f"{conflict.get('conflict_id')}: status {conflict.get('status')!r} is not allowed"
+            )
+    for conflict in conflicts.get("explained_differences", []):
+        if conflict.get("status") != "explained_difference":
+            problems.append(
+                f"{conflict.get('conflict_id')}: status {conflict.get('status')!r} is not allowed"
+            )
+    for conflict in conflicts.get("possible_conflicts", []) + conflicts.get(
+        "explained_differences", []
+    ):
+        for side_name in ("a", "b"):
+            side = conflict.get(side_name) or {}
+            if side.get("type") == "draft" and side.get("status") != "draft":
+                problems.append(
+                    f"{conflict.get('conflict_id')}: side {side_name} changed a draft status"
+                )
+            if side.get("type") == "existing_entry":
+                entry = (
+                    entries.get((side.get("entry_id"), str(side.get("version")))) or {}
+                )
+                if side.get("status") != entry.get("status", "unknown"):
+                    problems.append(
+                        f"{conflict.get('conflict_id')}: side {side_name} changed an entry status"
+                    )
     for result in output.get("verification", {}).get("results", []):
-        if result.get("decision") is not None:
-            problems.append(f"{result['draft_id']}: has a decision")
+        if "decision" not in result or result["decision"] is not None:
+            problems.append(f"{result.get('draft_id')}: has a decision")
+        if (
+            result.get("verification_status") not in _VERDICTS
+            or result.get("ml_recommendation") not in _RECOMMENDATIONS
+        ):
+            problems.append(
+                f"{result.get('draft_id')}: verdict or recommendation is not an allowed value"
+            )
+        for claim in result.get("claims", []):
+            if claim.get("status") not in _VERDICTS:
+                problems.append(
+                    f"{result.get('draft_id')}: claim status is not an allowed value"
+                )
     for path, key, _ in _walk(output):
         if key in _FORBIDDEN_KEYS:
             problems.append(f"{path}: forbidden field")
+        elif key == "approval" and not any(
+            marker in path for marker in _CITATION_LISTS
+        ):
+            problems.append(f"{path}: an approval outside a citation")
+        elif key == "decision" and not re.fullmatch(
+            r"\$\.verification\.results\[\d+\]\.decision", path
+        ):
+            problems.append(f"{path}: a decision outside a verification result")
     add("ml_approves_nothing", problems)
 
-    passed = all(c["passed"] for c in checks if c["blocks_release"])
-    return {"release_allowed": passed, "checks": checks}
+
+def _recompute_check(output, payload, extractor, add) -> None:
+    """5. The output is exactly what a fresh run on the same payload gives.
+
+    This catches any edit the other checks miss. A model's drafts cannot be
+    re-created, so for them the check is reported but does not decide release.
+    """
+    names = {
+        (d.get("extractor") or {}).get("name")
+        for d in output.get("drafts", [])
+        if isinstance(d, Mapping)
+    }
+    if (extractor is not None and not isinstance(extractor, RuleExtractor)) or names - {
+        RuleExtractor.name
+    }:
+        add(
+            "matches_a_fresh_run",
+            [
+                "not run: model-written drafts cannot be re-created; the other checks still apply"
+            ],
+            blocks=False,
+        )
+        return
+    fresh = _run_stages(payload, RuleExtractor())
+    add(
+        "matches_a_fresh_run",
+        []
+        if _comparable(fresh) == _comparable(output)
+        else ["the output differs from a fresh run on the same payload"],
+    )
 
 
 def repeat_processing_check(
