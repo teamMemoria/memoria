@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import httpx
 import pytest
@@ -9,7 +9,11 @@ from backend.core.auth import Permission
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.models import OrganizationMembership, User, UserRole
-from backend.providers import Providers, create_fixture_providers
+from backend.providers import (
+    FixtureIdentityProvider,
+    Providers,
+    create_fixture_providers,
+)
 from backend.providers.database import create_database_providers
 from backend.providers.fixture_data import KNOWLEDGE
 from tests.database_seed import (
@@ -357,12 +361,42 @@ async def test_database_failure_is_503_not_empty():
         async def __aexit__(self, *exc):
             return False
 
-    async with client_for(create_database_providers(lambda: Broken())) as client:
+    # Identities still resolve, so the 503 comes from the conversation provider.
+    providers = replace(
+        create_database_providers(lambda: Broken()),
+        identities=FixtureIdentityProvider(),
+    )
+    async with client_for(providers) as client:
         response = await client.get(
             "/api/agent/conversations", headers={"X-Dev-User": ALEX}
         )
     assert response.status_code == 503
     assert response.json() == {"detail": "Data source unavailable"}
+
+
+async def test_an_identity_lookup_failure_is_503_not_401():
+    class Broken:
+        async def __aenter__(self):
+            raise OperationalError("SELECT 1", {}, ConnectionError("refused"))
+
+        async def __aexit__(self, *exc):
+            return False
+
+    async with client_for(create_database_providers(lambda: Broken())) as client:
+        response = await client.get("/api/viewer", headers={"X-Dev-User": ALEX})
+    assert response.status_code == 503
+
+
+@pytest.mark.parametrize("conversation_id", ["2147483648", "99999999999", "0"])
+async def test_ids_outside_the_key_range_are_not_found(
+    providers, data, conversation_id
+):
+    async with client_for(providers) as client:
+        response = await client.get(
+            f"/api/agent/conversations/{conversation_id}",
+            headers={"X-Dev-User": ALEX},
+        )
+    assert response.status_code == 404
 
 
 def test_settings_choose_the_data_source(monkeypatch):
