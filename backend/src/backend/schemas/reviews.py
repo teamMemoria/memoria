@@ -1,10 +1,9 @@
-from typing import Annotated, Literal
-
-from pydantic import StringConstraints
+from typing import Literal
 
 from backend.schemas.base import ApiModel
 from backend.schemas.call_review import CallReview, ReviewRequest
 from backend.schemas.conversations import Conversation
+from backend.schemas.feedback import text_field
 
 # Matches frontend/src/features/review-queue/teamQueue.ts.
 DecisionOutcome = Literal["confirmed", "corrected", "dismissed", "cannot-assess"]
@@ -29,12 +28,12 @@ class FindingReviewDetail(ApiModel):
     can_decide: bool
 
 
+DecisionReason = text_field(2000)
+DecisionFeedback = text_field(4000)
+
+
 class DecisionInput(ApiModel):
     outcome: DecisionOutcome
     # Both are required so every decision explains itself to the agent.
-    reason: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
-    ]
-    feedback: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)
-    ]
+    reason: DecisionReason
+    feedback: DecisionFeedback

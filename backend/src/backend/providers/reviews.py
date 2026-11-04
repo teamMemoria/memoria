@@ -43,7 +43,7 @@ from backend.providers.database import (
     review_request_schema,
     unavailable_on_database_error,
 )
-from backend.schemas import ManagerDecision
+from backend.schemas import AgentContext, ManagerDecision
 from backend.schemas.reviews import (
     DecisionInput,
     FindingReviewDetail,
@@ -199,6 +199,18 @@ class DatabaseReviewProvider:
             )
             agents = await agent_identities(session, membership.organization_id)
         call = call_review(conversation, audit, agents[conversation.agent_id], context)
+        if call.review_request is not None:
+            # Show what the agent had written when they asked for the review,
+            # not a note they may have changed since.
+            flag = current_flag(audit, {finding.id for finding in call.findings})
+            snapshot = (
+                AgentContext(
+                    text=flag.agent_context, saved_at=iso_timestamp(flag.flagged_at)
+                )
+                if flag.agent_context is not None
+                else None
+            )
+            call = call.model_copy(update={"agent_context": snapshot})
         return FindingReviewDetail(call=call, can_decide=True)
 
     @unavailable_on_database_error
@@ -228,8 +240,10 @@ class DatabaseReviewProvider:
             if flag.manager_review is not None:
                 return self._repeat(flag.manager_review, decision), False
 
+            # A plain value, because a rollback below expires loaded objects.
+            flag_key = flag.id
             review = ManagerReview(
-                feedback_flag_id=flag.id,
+                feedback_flag_id=flag_key,
                 outcome=OUTCOMES[decision.outcome],
                 reviewer=membership.user.display_name,
                 reviewer_membership_id=membership.id,
@@ -245,7 +259,7 @@ class DatabaseReviewProvider:
                 await session.rollback()
                 existing = await session.scalar(
                     select(ManagerReview).where(
-                        ManagerReview.feedback_flag_id == flag.id
+                        ManagerReview.feedback_flag_id == flag_key
                     )
                 )
                 if existing is None:

@@ -16,9 +16,11 @@ from backend.models import (
     ManagerReviewOutcome,
 )
 from backend.providers import create_fixture_providers
+from backend.providers.base import ConflictError
 from backend.providers.database import create_database_providers
 from backend.providers.reviews import DatabaseReviewProvider
-from tests.database_seed import ALEX, HARBOR, MAYA, SAM, seed, sessions_for
+from backend.schemas.reviews import DecisionInput
+from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, SAM, seed, sessions_for
 
 NOW = datetime(2026, 11, 2, 11, 0, tzinfo=UTC)
 DECISION = {
@@ -37,6 +39,7 @@ async def data(session):
             finding_id=result.procedure_finding.id,
             agent_id=result.alex_agent.id,
             reason="I checked the order before offering.",
+            agent_context="The order screen was open the whole time.",
             flagged_at=datetime(2026, 10, 9, 9, 30, tzinfo=UTC),
         )
     )
@@ -381,3 +384,66 @@ async def test_queue_is_scoped_by_organization_in_the_provider(session, data):
     provider = DatabaseReviewProvider(sessions_for(session))
     harbor_view = await provider.list_for_manager(HARBOR, "manager-harbor")
     assert {item.id for item in harbor_view} == {data.id(data.harbor_call)}
+
+
+async def test_managers_see_the_context_as_it_was_when_review_was_requested(
+    session, data
+):
+    async with client_for(session) as client:
+        await client.put(
+            f"/api/agent/conversations/{data.id(data.assessed)}/context",
+            json={"text": "A note written after the request."},
+            headers={"X-Dev-User": ALEX},
+        )
+        session.expunge_all()
+        detail = await client.get(
+            f"/api/manager/conversations/{data.id(data.assessed)}", headers=MANAGER
+        )
+    assert detail.json()["call"]["agentContext"] == {
+        "text": "The order screen was open the whole time.",
+        "savedAt": "2026-10-09T09:30:00Z",
+    }
+
+
+async def test_a_nul_character_in_a_decision_is_rejected(session, data):
+    async with client_for(session) as client:
+        response = await client.post(
+            decision_path(data, data.assessed, data.procedure_finding),
+            json={**DECISION, "feedback": "bad\u0000text"},
+            headers=MANAGER,
+        )
+    assert response.status_code == 422
+
+
+async def test_concurrent_decisions_record_one_and_answer_the_rest(committed_sessions):
+    import asyncio
+
+    async with committed_sessions() as session:
+        data = await seed(session)
+        session.add(
+            FeedbackFlag(
+                finding_id=data.procedure_finding.id,
+                agent_id=data.alex_agent.id,
+                reason="Please check.",
+            )
+        )
+        await session.commit()
+    provider = DatabaseReviewProvider(committed_sessions, now=lambda: NOW)
+    outcomes = ["corrected", "dismissed"] * 4
+
+    async def attempt(outcome):
+        try:
+            _, created = await provider.decide(
+                NORTHWIND,
+                MAYA,
+                data.id(data.assessed),
+                data.id(data.procedure_finding),
+                DecisionInput(**{**DECISION, "outcome": outcome}),
+            )
+            return "created" if created else "same"
+        except ConflictError:
+            return "conflict"
+
+    results = await asyncio.gather(*[attempt(outcome) for outcome in outcomes])
+    assert results.count("created") == 1
+    assert set(results) <= {"created", "same", "conflict"}

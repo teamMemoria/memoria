@@ -299,6 +299,9 @@ there is no team model yet, so the organization is the review scope. Another org
   reviewer's name, their membership (`reviewer_membership_id`) and the time. The automated finding is
   never changed. The agent sees the decision in `CallReview.decision`, and the request's `status` becomes
   `complete`.
+- **The agent's context is the one they asked with.** When the call has a review request, the detail's
+  `agentContext` is the note as it was when the review was requested, with `savedAt` set to the
+  request time. Later edits by the agent don't change what the Manager reviews.
 - **Only requested reviews can be decided.** A finding with no review request is `404`
   `Review request not found`.
 - **Duplicates and conflicts are explicit.** A request is decided once. If two Managers submit at the
