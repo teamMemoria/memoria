@@ -1,26 +1,4 @@
-"""Check drafts against approved, independent reference passages (#19).
-
-``check_drafts(drafts, company_id, references, ...)`` breaks each draft into
-claims (its answer passages), finds the reference passages that apply, and
-reports, claim by claim, whether each is supported, partly supported,
-contradicted or unverifiable, with citations to the exact reference passages
-(reference id, version, approval and eligibility). It also lists conditions the
-references set that the draft leaves out, the possible conflicts from #18, the
-conversations that repeat the answer, and everything still needed before a
-person could verify it.
-
-Rules that cannot be bent from here:
-
-* Only references that are approved, eligible (not stale, disputed or out of
-  scope) and for the same company and scope can support or contradict a claim.
-  Every other reference is listed under ``ignored_references`` with the reason.
-* Support has to come from an authoritative reference passage. Other drafts,
-  repeated agent answers and existing knowledge entries never count.
-* The output carries no decision. ``ml_recommendation`` is advice for the
-  reviewer; ``requirements_remaining`` always includes a human verification,
-  because having permission is not the same as having checked. Approval,
-  rejection, replacement, verification dates and audit use belong to the
-  backend and an authorized person.
+"""Check drafts against approved, independent reference passages
 """
 
 from __future__ import annotations
