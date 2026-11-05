@@ -86,6 +86,7 @@ class Redactor:
             ("EMAIL", _strings([record.get("email")])),
             ("ADDRESS", _strings([address.get("full_address"), address.get("street")])),
             ("USERNAME", _strings([record.get("username")])),
+            ("ACCOUNT_DETAIL", _strings([record.get("account_id")])),
             ("ORDER_ID", _strings([order.get("order_id")])),
             ("PURCHASE_DATE", _strings([order.get("purchase_date")])),
             ("ZIP_CODE", _strings([address.get("zip_code")])),

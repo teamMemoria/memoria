@@ -108,7 +108,8 @@
           "exceptions": []
         }
       },
-      "subject_overlap": 0.2222
+      "subject_overlap": 0.2222,
+      "repeated_pairs": 0
     },
     {
       "conflict_id": "conflict_60238c411669518626d2",
@@ -200,7 +201,8 @@
           "exceptions": []
         }
       },
-      "subject_overlap": 0.5
+      "subject_overlap": 0.5,
+      "repeated_pairs": 0
     },
     {
       "conflict_id": "conflict_8d63b3bdf45704ff1b0a",
@@ -284,7 +286,8 @@
           "exceptions": []
         }
       },
-      "subject_overlap": 1.0
+      "subject_overlap": 1.0,
+      "repeated_pairs": 0
     },
     {
       "conflict_id": "conflict_2e8e5aeabce4d86008df",
@@ -370,7 +373,8 @@
           "exceptions": []
         }
       },
-      "subject_overlap": 0.4444
+      "subject_overlap": 0.4444,
+      "repeated_pairs": 0
     },
     {
       "conflict_id": "conflict_921290ab640a5e8869a4",
@@ -463,7 +467,8 @@
           "exceptions": []
         }
       },
-      "subject_overlap": 0.4444
+      "subject_overlap": 0.4444,
+      "repeated_pairs": 0
     }
   ],
   "explained_differences": [
@@ -560,7 +565,8 @@
           "exceptions": []
         }
       },
-      "subject_overlap": 0.75
+      "subject_overlap": 0.75,
+      "repeated_pairs": 0
     }
   ],
   "note": "Possible conflicts are for an authorized reviewer. This step does not mark entries disputed, remove them from use, replace them or change earlier audits."
