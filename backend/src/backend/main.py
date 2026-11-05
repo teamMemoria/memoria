@@ -1,8 +1,13 @@
-from fastapi import FastAPI, Request, status
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api import conversations, viewer
 from backend.core.config import Settings
+from backend.db.session import get_db_session
 from backend.providers import (
     Providers,
     ProviderUnavailableError,
@@ -28,6 +33,13 @@ def create_app(
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/ready")
+    async def readiness(
+        session: Annotated[AsyncSession, Depends(get_db_session)],
+    ):
+        await session.execute(text("SELECT 1"))
+        return {"status": "ready"}
 
     app.include_router(viewer.router)
     app.include_router(conversations.router)

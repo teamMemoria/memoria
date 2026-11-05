@@ -1,5 +1,6 @@
+import type { CallApi } from '../../types/callReview'
 import type { Conversation, ConversationsApi } from './conversations'
-import { getAgentConversations } from './conversations'
+import { getAgentConversations, reviewRequestStatuses } from './conversations'
 
 const conversations: Conversation[] = [
   {
@@ -13,12 +14,22 @@ const conversations: Conversation[] = [
   },
 ]
 
-export function createDevConversationsApi(): ConversationsApi {
+// Pass the call API to show review requests saved in this session.
+export function createDevConversationsApi(callApi?: CallApi): ConversationsApi {
   return {
     async listForAgent(agentId) {
-      return getAgentConversations(conversations, agentId).map((conversation) => ({
-        ...conversation,
-      }))
+      return Promise.all(
+        getAgentConversations(conversations, agentId).map(async (conversation) => {
+          const request = (await callApi?.getCallForAgent(agentId, conversation.id))
+            ?.reviewRequest
+          return {
+            ...conversation,
+            reviewStatus: request
+              ? reviewRequestStatuses[request.status]
+              : conversation.reviewStatus,
+          }
+        }),
+      )
     },
   }
 }

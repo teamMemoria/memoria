@@ -9,3 +9,5 @@ __pycache__/
 !.env.example
 *.log
 .DS_Store
+ml/raw/
+ml/output/

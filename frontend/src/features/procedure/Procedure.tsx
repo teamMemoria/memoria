@@ -17,6 +17,12 @@ import type {
 } from '../../types/callReview'
 import { canReadKnowledge } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
+import {
+  reviewRequestStatuses,
+  reviewStatusLabels,
+} from '../conversations/conversations'
+import { AgentContext } from './AgentContext'
+import { FlagFeedback } from './FlagFeedback'
 import { Waveforms } from './Waveforms'
 import './procedure.css'
 
@@ -125,12 +131,13 @@ function ConversationTimeline({
           '4:00',
           '4:32',
         ].map((time, index) => {
-          const left = index === 9 ? 1335 : 99 + index * 136.32
+          // Positions are a share of the 1366px design so the timeline fills the width.
+          const left = `${((index === 9 ? 1335 : 99 + index * 136.32) / 1366) * 100}%`
           return (
             <span key={time} aria-hidden="true">
               <span
                 className="evidence-timeline-grid"
-                style={{ left: left - 1 }}
+                style={{ left, marginLeft: -1 }}
               />
               <span className="evidence-timeline-time" style={{ left }}>
                 {time}
@@ -519,11 +526,34 @@ function AgentProcedure({
           </section>
         )}
       </div>
+      {finding && api && (
+        <div className="agent-actions">
+          <AgentContext
+            api={api}
+            agentId={viewer.id}
+            conversationId={call.id}
+            saved={call.agentContext}
+            onSaved={(agentContext) => state.update({ agentContext })}
+          />
+          <FlagFeedback
+            api={api}
+            agentId={viewer.id}
+            conversationId={call.id}
+            findingId={finding.id}
+            request={call.reviewRequest}
+            onRequested={(reviewRequest) => state.update({ reviewRequest })}
+          />
+        </div>
+      )}
       <footer className="evidence-footer">
         <p>
           {fullTranscript
             ? `${turns.length} ${call.transcript?.complete ? 'complete conversation' : 'available'} turns`
-            : 'Feedback ready'}
+            : reviewStatusLabels[
+                call.reviewRequest
+                  ? reviewRequestStatuses[call.reviewRequest.status]
+                  : 'feedback-ready'
+              ]}
         </p>
         {!fullTranscript && (
           <Button variant="secondary" disabled>
