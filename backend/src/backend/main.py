@@ -1,17 +1,34 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api import viewer
+from backend.core.config import Settings
 from backend.db.session import get_db_session
-from backend.providers import Providers, create_fixture_providers
+from backend.providers import (
+    Providers,
+    ProviderUnavailableError,
+    create_fixture_providers,
+)
 
 
-def create_app(providers: Providers | None = None) -> FastAPI:
+def create_app(
+    providers: Providers | None = None, settings: Settings | None = None
+) -> FastAPI:
     app = FastAPI(title="Call Assist")
     # Fixture providers until the database providers (#75) are ready.
     app.state.providers = providers or create_fixture_providers()
+    app.state.settings = settings or Settings()
+
+    @app.exception_handler(ProviderUnavailableError)
+    async def provider_unavailable(request: Request, exc: ProviderUnavailableError):
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": "Data source unavailable"},
+        )
 
     @app.get("/health")
     def health():
@@ -24,6 +41,7 @@ def create_app(providers: Providers | None = None) -> FastAPI:
         await session.execute(text("SELECT 1"))
         return {"status": "ready"}
 
+    app.include_router(viewer.router)
     return app
 
 

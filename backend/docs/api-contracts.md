@@ -31,9 +31,39 @@ is always `null` while a call is processing.
 - a processing call already has criteria, findings or a decision
 - transcript turn numbers are duplicated or out of order. Gaps are allowed and kept as-is
 
+## Identity and permissions
+
+Every route except `/health` reads the requester from `get_current_user`
+(`backend/src/backend/api/auth.py`), which returns a `CurrentUser` with a user ID,
+organization ID and set of permissions.
+
+There is no login system yet. When `MEMORIA_APP_ENV` is `development` or `test`, the requester
+is one of the fixed identities in `backend/src/backend/core/auth.py`, named in the `X-Dev-User`
+header:
+
+| `X-Dev-User` | Organization | Permissions |
+|---|---|---|
+| `agent-alex-morgan` | `org-northwind` | `conversations:read-own`, `knowledge:read` |
+| `agent-sam-rivera` | `org-northwind` | `conversations:read-own`, `knowledge:read` |
+| `manager-maya-chen` | `org-northwind` | `feedback:review`, `knowledge:read` |
+| `approver-devon-park` | `org-northwind` | `knowledge:approve`, `knowledge:read` |
+| `agent-riley-chen` | `org-harbor` | `conversations:read-own`, `knowledge:read` |
+
+`MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every request gets `401`.
+To run locally:
+
+```bash
+MEMORIA_APP_ENV=development .venv/bin/uvicorn backend.main:app --reload
+curl -H "X-Dev-User: agent-alex-morgan" localhost:8000/api/viewer
+```
+
+`feedback:review` (Managers) and `knowledge:approve` (Knowledge Approvers) are deliberately separate.
+Routes protect themselves with `Depends(require_permission(Permission.X))`, and agent-owned records
+are checked with `can_read_agent_record(user, organization_id, agent_id)`.
+
 ## Proposed routes
 
-These are implemented in #72–#74. The agent is always the authenticated requester (#71),
+`/api/viewer` is implemented (#71); the rest come in #72–#74. The agent is always the authenticated requester (#71),
 never an ID taken from the URL or query string.
 
 | Method and path | Response | Frontend interface |
