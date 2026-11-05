@@ -13,6 +13,7 @@ from sqlalchemy.pool import NullPool
 from backend.core.config import get_settings
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+SOURCE_DIR = BACKEND_DIR / "src"
 
 # The disposable database the suite drops, recreates and migrates on every run.
 # Point TEST_DATABASE_URL at any scratch database to isolate a run.
@@ -60,7 +61,11 @@ def migrated_database():
     subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND_DIR,
-        env={**os.environ, "DATABASE_URL": TEST_DATABASE_URL},
+        env={
+            **os.environ,
+            "DATABASE_URL": TEST_DATABASE_URL,
+            "PYTHONPATH": str(SOURCE_DIR),
+        },
         check=True,
         capture_output=True,
     )

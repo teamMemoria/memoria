@@ -14,6 +14,7 @@ from backend.models import (
     User,
     UserRole,
 )
+from backend.services.knowledge_approval import approve_draft
 from backend.services.organization_scope import (
     conversations_for,
     knowledge_drafts_for,
@@ -187,3 +188,44 @@ async def test_knowledge_review_cannot_use_another_organizations_manager(session
 
     with pytest.raises(IntegrityError):
         await session.flush()
+
+
+async def test_agent_cannot_approve_knowledge(session):
+    org = organization("northwind")
+    agent = membership(org, "agent-alex", UserRole.AGENT)
+    draft = KnowledgeDraft(
+        organization=org,
+        topic=Topic(
+            organization=org,
+            source_dataset="HarperValleyBank",
+            name="Card replacement",
+        ),
+        answer_text="A replacement arrives in 5 to 7 business days.",
+    )
+    session.add_all([agent, draft])
+    await session.flush()
+
+    with pytest.raises(PermissionError, match="knowledge approval"):
+        await approve_draft(session, draft, agent)
+
+
+async def test_manager_can_approve_knowledge(session):
+    org = organization("northwind")
+    manager = membership(org, "manager-maya", UserRole.MANAGER)
+    draft = KnowledgeDraft(
+        organization=org,
+        topic=Topic(
+            organization=org,
+            source_dataset="HarperValleyBank",
+            name="Card replacement",
+        ),
+        answer_text="A replacement arrives in 5 to 7 business days.",
+    )
+    session.add_all([manager, draft])
+    await session.flush()
+
+    entry = await approve_draft(session, draft, manager)
+
+    assert draft.status.value == "approved"
+    assert entry.approved_review.reviewer_membership is manager
+    assert entry.answer_text == draft.answer_text

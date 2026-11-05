@@ -49,6 +49,9 @@ generated (fixed seed, so always the same) and stored in
 
     uv run assign-synthetic-dates
 
+Each data command accepts `--organization <slug>` and defaults to the
+migration-created `default` organization.
+
 ## Provenance manifests
 
 Generated artifacts store their provenance in a JSON sidecar beside the

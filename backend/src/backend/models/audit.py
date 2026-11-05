@@ -5,6 +5,8 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
+    Integer,
     Table,
     Text,
     UniqueConstraint,
@@ -16,6 +18,7 @@ from backend.core.database import Base
 from backend.models.columns import str_enum
 from backend.models.conversation import Conversation, Turn
 from backend.models.knowledge import KnowledgeEntry
+from backend.models.organization import Organization
 
 
 class FindingCategory(StrEnum):
@@ -46,27 +49,57 @@ class Audit(Base):
     """The post-call audit of one conversation."""
 
     __tablename__ = "audits"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "id"),
+        ForeignKeyConstraint(
+            ["organization_id", "conversation_id"],
+            ["conversations.organization_id", "conversations.id"],
+            ondelete="CASCADE",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    conversation_id: Mapped[int] = mapped_column(
-        ForeignKey("conversations.id", ondelete="CASCADE"), unique=True
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
+    conversation_id: Mapped[int] = mapped_column(unique=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
-    conversation: Mapped[Conversation] = relationship()
+    # Composite foreign keys share organization_id across these relationships.
+    organization: Mapped[Organization] = relationship(overlaps="conversation")
+    conversation: Mapped[Conversation] = relationship(overlaps="organization")
     findings: Mapped[list["Finding"]] = relationship(
-        back_populates="audit", cascade="all, delete-orphan", order_by="Finding.id"
+        back_populates="audit",
+        cascade="all, delete-orphan",
+        order_by="Finding.id",
+        overlaps="organization",
     )
 
 
 class Finding(Base):
     __tablename__ = "findings"
-    __table_args__ = (UniqueConstraint("audit_id", "category"),)
+    __table_args__ = (
+        UniqueConstraint("audit_id", "category"),
+        UniqueConstraint("organization_id", "id"),
+        ForeignKeyConstraint(
+            ["organization_id", "audit_id"],
+            ["audits.organization_id", "audits.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "knowledge_entry_id"],
+            ["knowledge_entries.organization_id", "knowledge_entries.id"],
+            ondelete="SET NULL (knowledge_entry_id)",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    audit_id: Mapped[int] = mapped_column(ForeignKey("audits.id", ondelete="CASCADE"))
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    audit_id: Mapped[int] = mapped_column()
     category: Mapped[FindingCategory] = mapped_column(
         str_enum(FindingCategory, "finding_category")
     )
@@ -75,12 +108,17 @@ class Finding(Base):
     )
     feedback: Mapped[str] = mapped_column(Text)
     # The approved entry this finding was checked against, if any.
-    knowledge_entry_id: Mapped[int | None] = mapped_column(
-        ForeignKey("knowledge_entries.id", ondelete="SET NULL"), index=True
-    )
+    knowledge_entry_id: Mapped[int | None] = mapped_column(Integer, index=True)
 
-    audit: Mapped[Audit] = relationship(back_populates="findings")
+    organization: Mapped[Organization] = relationship(
+        overlaps="audit,findings,knowledge_entry"
+    )
+    audit: Mapped[Audit] = relationship(
+        back_populates="findings", overlaps="organization"
+    )
     evidence: Mapped[list[Turn]] = relationship(
         secondary=finding_evidence, order_by=Turn.line_number
     )
-    knowledge_entry: Mapped[KnowledgeEntry | None] = relationship()
+    knowledge_entry: Mapped[KnowledgeEntry | None] = relationship(
+        overlaps="audit,findings,organization"
+    )

@@ -72,6 +72,7 @@ class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
         UniqueConstraint("organization_id", "source_dataset", "original_id"),
+        UniqueConstraint("organization_id", "curated_id"),
         UniqueConstraint("organization_id", "id"),
         ForeignKeyConstraint(
             ["organization_id", "agent_id"],
@@ -100,7 +101,7 @@ class Conversation(Base):
     agent_id: Mapped[int] = mapped_column(index=True)
     topic_id: Mapped[int | None] = mapped_column(index=True)
     # File ID in the curated docs repo, e.g. "HVB-0001". Null for live calls.
-    curated_id: Mapped[str | None] = mapped_column(String(20), unique=True)
+    curated_id: Mapped[str | None] = mapped_column(String(20))
     # Dataset-specific fields, kept exactly as the source provides them.
     source_fields: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default="{}"
