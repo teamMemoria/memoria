@@ -121,8 +121,10 @@ class OpenAICompatibleClient:
         self.usage.input_tokens += int(usage.get("prompt_tokens") or 0)
         self.usage.output_tokens += int(usage.get("completion_tokens") or 0)
         try:
+            if payload["choices"][0].get("finish_reason") != "stop":
+                raise _failure("model reply did not finish normally")
             content = payload["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as error:
+        except (KeyError, IndexError, TypeError, AttributeError) as error:
             raise _failure("model reply had no message content") from error
         return parse_json_object(content)
 
