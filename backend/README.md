@@ -6,7 +6,7 @@ From the `backend` directory, run the validator against the supplied curated
 conversation directory:
 
 ```bash
-uv run python src/backend/services/conversation_corpus.py /path/to/uoft-ftli-2026-genesys-docs/curated/conversations
+uv run profile-conversations /path/to/uoft-ftli-2026-genesys-docs/curated/conversations
 ```
 
 The command validates every JSON file before printing a deterministic profile.
