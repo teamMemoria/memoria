@@ -21,7 +21,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.database import SessionLocal
+from backend.db.session import async_session_factory
 from backend.models import Agent, Conversation, Turn
 
 REQUIRED_KEYS = ("id", "source", "channel", "turns", "source_fields")
@@ -148,7 +148,7 @@ async def dataset_counts(session: AsyncSession) -> dict[str, tuple[int, int, int
 
 async def run(path: Path) -> None:
     conversations = load_directory(path)
-    async with SessionLocal() as session:
+    async with async_session_factory() as session:
         async with session.begin():
             await import_conversations(session, conversations)
         counts = await dataset_counts(session)

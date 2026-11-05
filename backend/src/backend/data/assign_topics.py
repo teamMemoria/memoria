@@ -20,7 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.database import SessionLocal
+from backend.db.session import async_session_factory
 from backend.models import Conversation, Topic
 
 DEFAULT_MAPPING = Path(__file__).with_name("topic_mapping.toml")
@@ -104,7 +104,7 @@ async def topic_counts(session: AsyncSession) -> Counter[tuple[str, str | None]]
 
 async def run(mapping_path: Path) -> None:
     mapping = load_mapping(mapping_path)
-    async with SessionLocal() as session:
+    async with async_session_factory() as session:
         try:
             async with session.begin():
                 await assign_topics(session, mapping)

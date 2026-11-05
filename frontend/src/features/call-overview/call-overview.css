@@ -1,0 +1,301 @@
+.call-overview {
+  position: relative;
+}
+.call-overview-back {
+  position: absolute;
+  top: -56px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  text-decoration: none;
+}
+.call-overview-state {
+  display: grid;
+  gap: 24px;
+}
+.call-overview-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 4px 0 20px;
+  padding: 0;
+  color: var(--color-muted);
+  font-size: 18px;
+  line-height: 28px;
+  list-style: none;
+}
+.call-overview-summary {
+  margin-bottom: 32px;
+}
+.call-audit-diagram {
+  position: relative;
+  padding-top: 18px;
+}
+.call-audit-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 336px;
+  height: 124px;
+  margin: 0 auto 90px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panel-radius);
+  color: var(--color-heading);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 36px;
+}
+.call-audit-phone,
+.call-criterion-marker,
+.call-finding-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+.call-audit-phone {
+  width: 72px;
+  height: 72px;
+  background: #f3f5fa;
+}
+.call-audit-diagram::before,
+.call-audit-diagram::after,
+.call-criterion-column::before,
+.call-criterion-column::after {
+  content: '';
+  position: absolute;
+  border-radius: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+.call-audit-diagram::before {
+  top: 141px;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 52px;
+}
+.call-audit-diagram::after {
+  top: 191px;
+  left: calc((100% - 120px) / 8);
+  right: calc((100% - 120px) / 8);
+  aspect-ratio: 1058 / 2;
+}
+.call-criteria {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 40px;
+}
+.call-criterion-column {
+  position: relative;
+  min-width: 0;
+}
+.call-criterion-column::before {
+  top: -41px;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 42px;
+}
+.call-criterion-column::after {
+  z-index: 1;
+  top: -8px;
+  left: calc(50% - 8px);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+.call-criterion-column--attention::after {
+  background: var(--color-accent);
+}
+.call-criterion-column--positive::after {
+  background: var(--color-positive);
+}
+.call-criterion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 236px;
+  padding: 24px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panel-radius);
+  background: #f3f5fa;
+  color: var(--color-muted);
+  text-align: center;
+  text-decoration: none;
+}
+.call-criterion:not(:disabled):hover {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.call-criterion:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.call-criterion--attention {
+  border-color: var(--color-accent);
+  background: var(--color-evidence);
+  color: var(--color-attention);
+}
+.call-criterion--positive {
+  border-color: var(--color-positive);
+  background: #e2f6e5;
+  color: var(--color-positive);
+}
+.call-criterion-marker {
+  background: var(--color-muted);
+  color: white;
+}
+.call-criterion--attention .call-criterion-marker,
+.call-finding-marker {
+  background: var(--color-accent);
+  color: white;
+}
+.call-criterion--positive .call-criterion-marker {
+  background: var(--color-positive);
+}
+.call-criterion-title {
+  color: var(--color-heading);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+.call-criterion-qualification {
+  color: var(--color-muted);
+  font-size: 16px;
+  line-height: 24px;
+}
+.call-finding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+}
+.call-finding-strip {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 120px;
+  margin-top: 56px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panel-radius);
+  background: var(--color-evidence);
+}
+.call-finding-copy {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.call-finding-copy > h2 {
+  font-size: 22px;
+  line-height: 28px;
+}
+.call-finding-actions {
+  flex-shrink: 0;
+}
+.call-finding-actions > a {
+  text-decoration: none;
+}
+.call-finding-actions > .button--primary {
+  min-width: 224px;
+}
+.call-finding-actions > .button--secondary {
+  min-width: 176px;
+}
+.call-manager-decision {
+  margin-top: 24px;
+}
+.call-manager-decision > h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 20px;
+}
+.call-overview-decision-meta {
+  color: var(--color-muted);
+  font-size: 18px;
+}
+.call-transcript-link {
+  display: inline-block;
+  margin-top: 32px;
+}
+.call-overview-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 1200px) {
+  .call-finding-strip {
+    flex-wrap: wrap;
+  }
+  .call-finding-actions {
+    margin-left: 88px;
+  }
+  .call-criteria {
+    gap: 24px;
+  }
+  .call-audit-diagram::after {
+    left: calc((100% - 72px) / 8);
+    right: calc((100% - 72px) / 8);
+  }
+}
+@media (max-width: 1000px) {
+  .call-finding-actions {
+    margin-left: 0;
+  }
+  .call-criteria {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .call-audit-root {
+    margin-bottom: 24px;
+  }
+  .call-audit-diagram::before,
+  .call-audit-diagram::after,
+  .call-criterion-column::before,
+  .call-criterion-column::after {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .call-finding-strip {
+    padding: 16px;
+  }
+  .call-finding-marker {
+    display: none;
+  }
+  .call-finding-actions {
+    width: 100%;
+    gap: 12px;
+  }
+  .call-finding-actions > .button {
+    width: 100%;
+    min-width: 0;
+  }
+  .call-criteria {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .call-audit-root {
+    width: 100%;
+    max-width: 336px;
+    height: auto;
+    min-height: 124px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .call-overview-back {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,104 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+:root {
+  font-family: var(--font-family);
+  color: var(--color-text);
+  background: var(--color-canvas);
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+select {
+  cursor: pointer;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+h1 {
+  color: var(--color-heading);
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 56px;
+  overflow-wrap: anywhere;
+}
+h2 {
+  color: var(--color-heading);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 36px;
+}
+a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+.codicon::before {
+  display: inline-block;
+}
+.metadata-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 20px;
+  color: var(--color-muted);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+.metadata-note {
+  display: block;
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 3px;
+}
+
+.startup {
+  width: min(760px, calc(100% - 48px));
+  margin: 80px auto;
+}
+.startup > h1 {
+  margin-bottom: 24px;
+}
+
+@media (max-width: 700px) {
+  body {
+    font-size: 18px;
+  }
+  h1 {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  h2 {
+    font-size: 22px;
+    line-height: 30px;
+  }
+}
