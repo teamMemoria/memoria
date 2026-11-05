@@ -23,13 +23,7 @@ HUMAN_STEP = "An authorized person must review the evidence and record the verif
 
 @dataclass(frozen=True)
 class VerificationConfig:
-    """Choices the team still has to agree (issue #19).
-
-    ``support_threshold``: share of a claim's subject words a reference passage must contain to support it.
-    ``partial_threshold``: share below which a claim is unverifiable rather than partly supported.
-
-    A draft is only ``supported`` when every one of its claims is. Whether
-    that should be relaxed is still to agree (#19).
+    """
     """
 
     support_threshold: float = 0.6
