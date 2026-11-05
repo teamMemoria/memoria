@@ -101,10 +101,46 @@ def stem(word: str) -> str:
     return word
 
 
+# A few domain synonyms, so "promotional code" and "coupon" meet "promo code".
+SYNONYMS = {
+    "promotional": "promo",
+    "coupon": "promo",
+    "voucher": "promo",
+    "discount": "promo",
+    "expire": "valid",
+    "expires": "valid",
+    "expired": "valid",
+    "expiry": "valid",
+    "expiration": "valid",
+    "last": "valid",
+    "lasts": "valid",
+    "reimburse": "refund",
+    "reimbursement": "refund",
+    "money": "refund",
+    "purchase": "order",
+    "purchases": "order",
+    "bought": "order",
+    "buy": "order",
+    "deliver": "ship",
+    "delivery": "ship",
+    "delivered": "ship",
+    "shipping": "ship",
+    "shipped": "ship",
+    "cancellation": "cancel",
+    "canceled": "cancel",
+    "cancelled": "cancel",
+    "membership": "member",
+    "members": "member",
+    "site": "website",
+    "web": "website",
+}
+
+
 def content_terms(text: str) -> list[str]:
     """Stemmed content words, keeping negations and membership levels."""
     out = []
     for word in words(text):
+        word = SYNONYMS.get(word, word)
         if word.startswith("["):
             continue
         if word in NEGATIONS:
@@ -215,3 +251,39 @@ def jaccard(a: set[str], b: set[str]) -> float:
     if not a and not b:
         return 1.0
     return len(a & b) / len(a | b)
+
+
+_NOT_NEGATION = re.compile(
+    r"\b(no (problem|worries|trouble|doubt)|not a problem|not to worry|no need to worry|why not|no matter)\b"
+)
+
+
+def negated_terms(text: str, window: int = 4) -> set[str]:
+    """Content words a negation applies to: "will not be charged" -> {"charg"}."""
+    lowered = _NOT_NEGATION.sub(" ", normalise(text))
+    tokens = words(lowered)
+    out: set[str] = set()
+    for i, token in enumerate(tokens):
+        if token in NEGATIONS or token.endswith("n't"):
+            for following in tokens[i + 1 : i + 1 + window]:
+                term = stem(SYNONYMS.get(following, following))
+                if (
+                    following not in STOPWORDS
+                    and following not in NEGATIONS
+                    and len(following) > 1
+                ):
+                    out.add(term)
+    return out
+
+
+def conditions(text: str) -> set[str]:
+    """Explicit conditions only; unfamiliar paraphrases are not assumed equivalent."""
+    return {
+        normalise(match.group())
+        for match in re.finditer(
+            r"\b(?:only (?:if|when|with)|if|unless|except(?: for| when| if)?|"
+            r"provided(?: that)?|as long as)\b[^,.;!?]*",
+            text,
+            re.IGNORECASE,
+        )
+    }

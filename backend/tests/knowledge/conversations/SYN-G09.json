@@ -1,0 +1,45 @@
+{
+  "id": "SYN-G09",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-G09",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, thanks for contacting us. How can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "How long is a promo code valid?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Promo codes are valid for 30 days after they are issued."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Thanks."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Is there anything else I can help you with?"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": []
+  },
+  "note": "Same question as G01 with a different figure. Not merged; #18 reports it as a possible conflict."
+}

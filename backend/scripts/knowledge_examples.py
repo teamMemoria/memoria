@@ -17,7 +17,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from backend.services.knowledge.errors import PipelineError
 from backend.services.knowledge.extraction import extract_drafts
+from backend.services.knowledge.grouping import group_drafts
 
 BACKEND = Path(__file__).resolve().parents[1]
 EXAMPLES = BACKEND / "examples" / "knowledge"
@@ -41,8 +43,30 @@ def run_extraction(payload: dict[str, Any]) -> Any:
     return extract_drafts(_conversation(payload), payload["company_id"]).to_dict()
 
 
+def _drafts(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Drafts given inline, or extracted from the listed conversation files."""
+    drafts = list(payload.get("drafts", []))
+    for path in payload.get("conversation_files", []):
+        drafts.extend(
+            extract_drafts(_load(BACKEND / path), payload["company_id"]).drafts
+        )
+    return drafts
+
+
+def run_grouping(payload: dict[str, Any]) -> Any:
+    try:
+        return group_drafts(
+            _drafts(payload),
+            payload["company_id"],
+            existing_entries=payload.get("existing_entries", []),
+        )
+    except PipelineError as error:
+        return {"status": "error", "errors": [error.to_dict()]}
+
+
 RUNNERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "extraction": run_extraction,
+    "grouping": run_grouping,
 }
 
 

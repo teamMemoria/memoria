@@ -1,0 +1,152 @@
+{
+  "label_set": "grouping",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "First-pass labels; a second team member should review before these count as human-labelled.",
+  "fields": {
+    "conversations": "conversation files whose drafts are grouped together in one call",
+    "same_group": "pairs whose drafts must share a group",
+    "different_group": "pairs that must not",
+    "duplicates": "pairs that must be reported as duplicates",
+    "not_duplicates": "pairs in one group that are paraphrases, not duplicates"
+  },
+  "cases": [
+    {
+      "name": "paraphrases, duplicates and similar-but-different questions",
+      "conversations": [
+        "SYN-G01",
+        "SYN-G02",
+        "SYN-G03",
+        "SYN-G04",
+        "SYN-G09"
+      ],
+      "same_group": [
+        [
+          "SYN-G01",
+          "SYN-G02"
+        ],
+        [
+          "SYN-G01",
+          "SYN-G03"
+        ]
+      ],
+      "different_group": [
+        [
+          "SYN-G01",
+          "SYN-G04"
+        ],
+        [
+          "SYN-G01",
+          "SYN-G09"
+        ],
+        [
+          "SYN-G03",
+          "SYN-G09"
+        ]
+      ],
+      "duplicates": [
+        [
+          "SYN-G01",
+          "SYN-G02"
+        ]
+      ],
+      "not_duplicates": [
+        [
+          "SYN-G01",
+          "SYN-G03"
+        ]
+      ],
+      "note": "G09 gives 30 days where G01 gives 7: same question, incompatible answer. It stays apart for #18 to flag."
+    },
+    {
+      "name": "conditional answers",
+      "conversations": [
+        "SYN-G05",
+        "SYN-G06",
+        "SYN-G08"
+      ],
+      "same_group": [
+        [
+          "SYN-G05",
+          "SYN-G08"
+        ]
+      ],
+      "different_group": [
+        [
+          "SYN-G05",
+          "SYN-G06"
+        ],
+        [
+          "SYN-G06",
+          "SYN-G08"
+        ]
+      ],
+      "not_duplicates": [
+        [
+          "SYN-G05",
+          "SYN-G08"
+        ]
+      ]
+    },
+    {
+      "name": "different scope",
+      "conversations": [
+        "SYN-G01",
+        "SYN-G07"
+      ],
+      "different_group": [
+        [
+          "SYN-G01",
+          "SYN-G07"
+        ]
+      ]
+    },
+    {
+      "name": "ABCD out-of-stock back orders",
+      "conversations": [
+        "ABCD-0043",
+        "ABCD-0045",
+        "ABCD-0047",
+        "ABCD-0042"
+      ],
+      "same_group": [
+        [
+          "ABCD-0043",
+          "ABCD-0045"
+        ]
+      ],
+      "different_group": [
+        [
+          "ABCD-0042",
+          "ABCD-0043"
+        ]
+      ],
+      "note": "0042 is the general out-of-stock subflow, the others one item."
+    },
+    {
+      "name": "ABCD promo codes under different conditions",
+      "conversations": [
+        "ABCD-0041",
+        "ABCD-0044",
+        "ABCD-0046",
+        "ABCD-0050"
+      ],
+      "different_group": [
+        [
+          "ABCD-0041",
+          "ABCD-0046"
+        ],
+        [
+          "ABCD-0046",
+          "ABCD-0050"
+        ],
+        [
+          "ABCD-0044",
+          "ABCD-0050"
+        ]
+      ],
+      "note": "A guest refused (0041), a gold member given a code (0044), a guest given a code (0046) and a system error fixed with a code (0050) are different answers."
+    }
+  ]
+}

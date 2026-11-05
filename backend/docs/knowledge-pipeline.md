@@ -10,7 +10,8 @@ Code lives in `src/backend/services/knowledge/`.
 
 | Stage | Issue | Entry point | Status |
 |---|---|---|---|
-| Extract knowledge drafts | #16 | `extract_drafts` | this PR |
+| Extract knowledge drafts | #16 | `extract_drafts` | done |
+| Group drafts and find duplicates | #17 | `group_drafts` | this PR |
 
 ## Running it
 
@@ -19,6 +20,7 @@ cd backend
 uv sync
 uv run pytest tests/knowledge                      # offline, about 2 s
 uv run python -m backend.services.knowledge extract data/abcd/conversations --company acme --out /tmp/drafts.json
+uv run python -m backend.services.knowledge group /tmp/drafts.json --company acme --out /tmp/groups.json
 uv run python scripts/knowledge_examples.py        # rewrite examples/knowledge/ after a deliberate change
 ```
 
@@ -143,3 +145,87 @@ not an unbiased score. Issue #20 adds a held-out set. The test floors are 95 %,
 - Redaction is pattern based. It is tested on all 100 ABCD records and on
   made-up edge cases, but real transcripts will need a broader test set before
   any real data is used.
+
+## #17: Group drafts and find duplicates
+
+```python
+from backend.services.knowledge import group_drafts, GroupingConfig
+
+result = group_drafts(drafts, company_id="acme", existing_entries=entries, config=GroupingConfig())
+result["groups"]  # one entry per group, singletons included
+```
+
+**Input.** Drafts from #16, for one company. Optionally, existing knowledge
+entries supplied by the backend, in the form `{entry_id, company_id, scope:
+{flow, subflow}, question, answer, conditions, status, version}`. A draft
+from another company is rejected with `invalid_input`. An entry from another
+company is ignored. Knowledge bases never mix.
+
+**What groups.** Drafts are only compared within one scope: company plus
+ABCD subflow (`scope_level="flow"` widens this to the flow). A draft joins a
+group when its similarity to the group's members is at least
+`group_threshold` **and** its conditions are compatible with every member's.
+Conditions are compatible unless one of these holds:
+
+- the membership levels named are disjoint (gold vs guest);
+- only one of the two depends on membership at all;
+- the same unit has different values (7 days vs 30 days).
+
+Incompatible drafts stay apart even with identical wording. #18 is where they
+get compared. Similarity is TF-IDF cosine over question and answer, plus a
+sentence-by-sentence alignment of the answers, so filler around the part that
+matters doesn't hide a match. A handful of domain synonyms ("promotional",
+"coupon" → "promo") and quantity tokens ("one week" = "7 days") are applied.
+Clustering visits drafts in `draft_id` order, so the result doesn't depend on
+input order.
+
+**What comes out, per group.**
+
+- `member_draft_ids`, plus `representative`. The representative is the most
+  central member, **unchanged** and still `status: "draft"`, with its own
+  passages. Text is never blended across drafts.
+- `distinct_conversation_count` and `source_keys`. These count distinct
+  source conversations, not drafts or turns. The same draft submitted twice
+  is kept once and reported in `duplicate_input_drafts`. The same ABCD
+  conversation read from the curated and the raw file counts once.
+  Reprocessing never raises a count.
+- `duplicates`. These are pairs that are exact, or above
+  `duplicate_threshold` with identical conditions. Paraphrases share a group
+  without being duplicates.
+- `existing_matches`. Existing entries in the same scope, with their status
+  and version, marked `equivalent`, `related` or `different_conditions`.
+- `meets_source_threshold`. True once `min_distinct_conversations` distinct
+  conversations back the group. **This is not verification**, and neither is
+  a similarity score or a match with an approved entry.
+
+ML only returns groups, counts and matches. The backend stores them and
+updates queue statuses and counts.
+
+**Tests.** `tests/knowledge/test_grouping.py`. The labelled cases in
+`labels/grouping.json` (first pass, `human_reviewed: false`) cover exact
+duplicates, paraphrases, similar but different questions, conditional answers
+that must not merge, different scopes, and two real ABCD sets. Other tests
+cover repeat processing, input-order independence, cross-company input and
+existing-entry matches. `group_threshold` (0.25) was chosen on these labels, so
+treat them as a regression check. #20's held-out cases are where it gets a
+fair score.
+
+### Still to agree (#17)
+
+- `group_threshold` 0.25, `duplicate_threshold` 0.8,
+  `existing_match_threshold` 0.45.
+- `min_distinct_conversations` 3 (the README's guess). It only sets
+  `meets_source_threshold`, a queue hint. Whether drafts below it should be
+  created at all is undecided, and it is **not an approval rule** either way.
+- Whether one person calling three times counts once. Today the count is of
+  conversations. Counting distinct customers needs a customer id, which ABCD
+  doesn't provide.
+
+### Known limits
+
+- Lexical similarity misses paraphrases that share few words. The model
+  extractor's normalised wording helps. Embeddings (pgvector is already in
+  the stack) are the obvious next step and fit behind `similarity()`.
+- Condition compatibility reads membership levels and quantities only. A
+  condition such as "with a receipt" vs "without a receipt" isn't caught here.
+  #18 compares claims more closely.

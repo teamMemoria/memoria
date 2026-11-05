@@ -1,0 +1,45 @@
+{
+  "id": "SYN-G03",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-G03",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, thanks for contacting us. How can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "When does a promotional code expire?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Our promo codes expire one week after the day they are issued."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Thanks."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Is there anything else I can help you with?"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": []
+  },
+  "note": "Paraphrase of G01 (one week = 7 days): same group, not a duplicate."
+}

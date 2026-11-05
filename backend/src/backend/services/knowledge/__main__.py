@@ -12,7 +12,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from .errors import PipelineError
 from .extraction import ModelExtractor, RuleExtractor, extract_drafts
+from .grouping import group_drafts
 from .llm import OpenAICompatibleClient
 
 
@@ -48,6 +50,27 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 1 if any(r["status"] == "error" for r in results) else 0
 
 
+def _drafts_from(path: str) -> list[dict[str, Any]]:
+    """Drafts from an `extract` output file, or a plain JSON array of drafts."""
+    data = _read(path)
+    if isinstance(data, dict) and "results" in data:
+        return [d for r in data["results"] for d in r.get("drafts", [])]
+    return data
+
+
+def cmd_group(args: argparse.Namespace) -> int:
+    entries = _read(args.existing) if args.existing else []
+    try:
+        result = group_drafts(
+            _drafts_from(args.drafts), args.company, existing_entries=entries
+        )
+    except PipelineError as error:
+        _write({"status": "error", "errors": [error.to_dict()]}, args.out)
+        return 1
+    _write(result, args.out)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m backend.services.knowledge")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -66,6 +89,13 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--extractor", choices=["rule", "model"], default="rule")
     extract.add_argument("--out", help="write JSON here instead of stdout")
     extract.set_defaults(func=cmd_extract)
+
+    group = sub.add_parser("group", help="group drafts and find duplicates (#17)")
+    group.add_argument("drafts", help="output of `extract`, or a JSON array of drafts")
+    group.add_argument("--company", required=True)
+    group.add_argument("--existing", help="JSON array of existing knowledge entries")
+    group.add_argument("--out")
+    group.set_defaults(func=cmd_group)
     return parser
 
 
