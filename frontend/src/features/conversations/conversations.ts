@@ -1,3 +1,5 @@
+import type { ReviewRequest } from '../../types/callReview'
+
 export const automatedResultLabels = {
   'needs-review': 'Needs review',
   'meets-criteria': 'Meets criteria',
@@ -19,6 +21,12 @@ export const conversationStatusLabels = {
 
 export type AutomatedResult = keyof typeof automatedResultLabels
 export type ReviewStatus = keyof typeof reviewStatusLabels
+
+// The list status that matches an agent's review request.
+export const reviewRequestStatuses = {
+  requested: 'review-requested',
+  complete: 'review-complete',
+} as const satisfies Record<ReviewRequest['status'], ReviewStatus>
 export type ConversationStatusFilter = keyof typeof conversationStatusLabels
 
 export type Conversation = {
