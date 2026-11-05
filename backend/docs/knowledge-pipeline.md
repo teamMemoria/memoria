@@ -107,6 +107,8 @@ sentence that only hands one customer their own details ("Your new password is
   a figure or membership level missing from the cited turns, a negation
   missing from them, under 60 % of content words supported by them, or any
   personal detail. The model only ever sees redacted text.
+  Rewritten wording stays unverifiable: checking its source quotes does not
+  establish that a paraphrase means the same thing. Truncated replies are errors.
   `OpenAICompatibleClient` works with any `/chat/completions` server,
   including a local Ollama. Set `LLM_BASE_URL`, `LLM_MODEL` and
   `LLM_API_KEY`. The provider is still undecided (see the top-level README).
@@ -364,6 +366,9 @@ eligibility, guideline, support score), `contradicted_by` (with the reason) and
 `missing_conditions`. A missing condition is a membership level or limit that
 the matching reference attaches to what the agent said, which the draft
 leaves out. These stay unresolved and become requirements.
+Explicit condition clauses are compared literally, not by general language understanding.
+Conditions in a heading and its sub-points are checked together; warnings quote
+the original section that states the condition.
 
 **Per draft:**
 

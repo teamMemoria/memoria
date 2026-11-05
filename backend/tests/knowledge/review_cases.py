@@ -36,3 +36,17 @@ def entry(version, answer):
         "question": "Can I return this?",
         "answer": answer,
     }
+
+
+def reference(text, rid="r1", **extra):
+    return {
+        "reference_id": rid,
+        "company_id": COMPANY,
+        "kind": "authoritative_reference",
+        "scope": SCOPE,
+        "version": "1",
+        "text": text,
+        "approval": {"status": "approved"},
+        "eligibility": {"status": "eligible"},
+        **extra,
+    }

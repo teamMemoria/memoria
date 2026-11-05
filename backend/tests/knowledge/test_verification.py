@@ -147,7 +147,7 @@ def test_ml_never_decides(references):
     assert (draft, references) == before  # no approval, eligibility or date was touched
     [item] = result["results"]
     assert item["decision"] is None
-    assert item["ml_recommendation"] == "supported_by_references"
+    assert item["ml_recommendation"] == "needs_more_evidence"
     assert item["requirements_remaining"][-1] == HUMAN_STEP
     text = json.dumps(result)
     for forbidden in (
