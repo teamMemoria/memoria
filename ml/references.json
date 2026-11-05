@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "references": [
+    {
+      "id": "abcd-refund-initiate-account-lookup",
+      "version": "sha256:246f40ce9e1d2b814b533a4b06178296f9a23aeeb746cd9de6eed262106bea46",
+      "section_id": "account-lookup",
+      "title": "Pull up Account",
+      "text": "All chats in this flow start by asking the customer for their full name or Account ID using [Pull up Account].  This will pull up their account in the background with the right information related to this user.",
+      "conditions": [],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/actions/0"
+      },
+      "status": "approved",
+      "approved_by": "Nicolas",
+      "approved_version": "sha256:246f40ce9e1d2b814b533a4b06178296f9a23aeeb746cd9de6eed262106bea46",
+      "approved_at": "2026-10-28",
+      "verified_at": "2026-10-28",
+      "review_due": "2027-10-28",
+      "safety_flags": [],
+      "interpretation_limits": [
+        "Use only in the controlled ABCD refund-initiation experiment; this is not verified company policy.",
+        "This step finds an account; a name or account ID alone does not prove identity or refund authority.",
+        "Information already supplied counts; do not require the agent to ask for it again."
+      ]
+    },
+    {
+      "id": "abcd-refund-initiate-purchase-validation",
+      "version": "sha256:93169ef390df0df481e67f916fec58c8bd21c17179ef42a2e90d345e6b86383a",
+      "section_id": "purchase-validation",
+      "title": "Validate Purchase",
+      "text": "To confirm that their purchase is valid with [Validate Purchase]:\nUsername - occasionally, the customer may not remember their username.  In this case, use the Recover Username subflow in the Account Access flow\nEmail Address\nOrder ID - last item, to be consistent with verify identity",
+      "conditions": [
+        "Username - occasionally, the customer may not remember their username.  In this case, use the Recover Username subflow in the Account Access flow",
+        "Email Address",
+        "Order ID - last item, to be consistent with verify identity"
+      ],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/actions/1"
+      },
+      "status": "approved",
+      "approved_by": "Nicolas",
+      "approved_version": "sha256:93169ef390df0df481e67f916fec58c8bd21c17179ef42a2e90d345e6b86383a",
+      "approved_at": "2026-10-28",
+      "verified_at": "2026-10-28",
+      "review_due": "2027-10-28",
+      "safety_flags": [],
+      "interpretation_limits": [
+        "Use only in the controlled ABCD refund-initiation experiment; this is not verified company policy.",
+        "Assess only the standard username, email and order-ID checks.",
+        "If account recovery is needed and reviewed recovery guidance is unavailable, use Cannot assess rather than agent failure.",
+        "A validation-in-progress action does not establish successful validation."
+      ]
+    },
+    {
+      "id": "abcd-refund-initiate-refund-method",
+      "version": "sha256:23732c3f94db2fa55d83c8e5660cce6cb014670b5b0b1cc5e7a14a024e13460a",
+      "section_id": "refund-method",
+      "title": "Record Reason",
+      "text": "Refund method in [Record Reason] - valid options are\nGift card - they want a prepaid gift card, also ask for their address so you know where to mail it.  Enter this value in the next step.\nAdd value - to add value to their account.\nPaper check - also ask for their address so you know where to mail the check.  Enter this address in the next step.\nCredit card - direct refund to their credit card, assume a credit card is already on file.  To find it, you will need the account ID, which is entered in the next step.",
+      "conditions": [
+        "Gift card - they want a prepaid gift card, also ask for their address so you know where to mail it.  Enter this value in the next step.",
+        "Add value - to add value to their account.",
+        "Paper check - also ask for their address so you know where to mail the check.  Enter this address in the next step.",
+        "Credit card - direct refund to their credit card, assume a credit card is already on file.  To find it, you will need the account ID, which is entered in the next step."
+      ],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/actions/2"
+      },
+      "status": "unapproved",
+      "approved_by": null,
+      "approved_version": null,
+      "approved_at": null,
+      "verified_at": null,
+      "review_due": null,
+      "safety_flags": [
+        "assumes-card-on-file"
+      ]
+    },
+    {
+      "id": "abcd-refund-initiate-refund-details",
+      "version": "sha256:a698c20ea2a73a22649496d02336bb31ef713d3d9b6d14c9f98bceab8276b7cc",
+      "section_id": "refund-details",
+      "title": "Enter Details",
+      "text": "Add in additional information using [Enter Details]\nIf the customer chose gift card or paper check then enter the full address\nIf the customer chose add value or credit card then enter the account ID",
+      "conditions": [
+        "If the customer chose gift card or paper check then enter the full address",
+        "If the customer chose add value or credit card then enter the account ID"
+      ],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/actions/3"
+      },
+      "status": "approved",
+      "approved_by": "Nicolas",
+      "approved_version": "sha256:a698c20ea2a73a22649496d02336bb31ef713d3d9b6d14c9f98bceab8276b7cc",
+      "approved_at": "2026-10-28",
+      "verified_at": "2026-10-28",
+      "review_due": "2027-10-28",
+      "safety_flags": [],
+      "interpretation_limits": [
+        "Use only in the controlled ABCD refund-initiation experiment; this is not verified company policy.",
+        "For gift card or paper check, check the full-address branch; for add value or credit card, check the account-ID branch.",
+        "Assess details for the selected method only; this step does not establish permission to issue a refund."
+      ]
+    },
+    {
+      "id": "abcd-refund-initiate-refund-amount",
+      "version": "sha256:8134100dae5b0d45550f5b13176cda004bbe91b6be519d5b77e4e7f78d03b841",
+      "section_id": "refund-amount",
+      "title": "Offer Refund",
+      "text": "Dollar amount - enter this value into the details form (without the dollar sign)\nThen click [Offer Refund]\nIf the customer does not know, the default amount is $50",
+      "conditions": [
+        "Then click [Offer Refund]",
+        "If the customer does not know, the default amount is $50"
+      ],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/actions/4"
+      },
+      "status": "unapproved",
+      "approved_by": null,
+      "approved_version": null,
+      "approved_at": null,
+      "verified_at": null,
+      "review_due": null,
+      "safety_flags": [
+        "defaults-unknown-refund-to-50"
+      ]
+    },
+    {
+      "id": "abcd-refund-initiate-refund-reason",
+      "version": "sha256:96b7f2c0b761b08608b17c2c582168d1a50494bdacd05f353c5e73d168c03eb3",
+      "section_id": "refund-reason",
+      "title": "Ask for the refund reason",
+      "text": "Start by asking for the refund reason.  Then, to complete the refund, perform the following actions",
+      "conditions": [],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/instructions/0"
+      },
+      "status": "approved",
+      "approved_by": "Nicolas",
+      "approved_version": "sha256:96b7f2c0b761b08608b17c2c582168d1a50494bdacd05f353c5e73d168c03eb3",
+      "approved_at": "2026-10-28",
+      "verified_at": "2026-10-28",
+      "review_due": "2027-10-28",
+      "safety_flags": [],
+      "interpretation_limits": [
+        "Use only in the controlled ABCD refund-initiation experiment; this is not verified company policy.",
+        "A reason already volunteered by the customer counts; do not require the same question again.",
+        "Missing evidence in an excerpt does not prove the reason was never established."
+      ]
+    },
+    {
+      "id": "abcd-refund-initiate-closing",
+      "version": "sha256:d8e63e4782173ee48cec0a9fa28c79cb7c97b8e3d517e2ac38321591d8b96823",
+      "section_id": "closing",
+      "title": "Offer further assistance",
+      "text": "As always, wrap up by nicely asking if the customer needs any further assistance.",
+      "conditions": [],
+      "exclusions": [
+        "refund-update",
+        "refund-status",
+        "return-stain",
+        "return-color",
+        "return-size"
+      ],
+      "scope": [
+        "refund-initiation"
+      ],
+      "source": {
+        "dataset": "ABCD",
+        "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+        "path": "data/guidelines.json",
+        "sha256": "9264557941df24fe075138a632a2345172971573124a354ccb2ceee2a12e4c2a",
+        "pointer": "/Product Defect/subflows/Initiate Refund/instructions/1"
+      },
+      "status": "approved",
+      "approved_by": "Nicolas",
+      "approved_version": "sha256:d8e63e4782173ee48cec0a9fa28c79cb7c97b8e3d517e2ac38321591d8b96823",
+      "approved_at": "2026-10-28",
+      "verified_at": "2026-10-28",
+      "review_due": "2027-10-28",
+      "safety_flags": [],
+      "interpretation_limits": [
+        "Use only in the controlled ABCD refund-initiation experiment; this is not verified company policy.",
+        "Accept equivalent offers of further assistance rather than an exact script.",
+        "Assess the wording only; do not infer vocal tone from text."
+      ]
+    }
+  ]
+}

@@ -54,7 +54,7 @@ h2 {
 }
 a {
   color: var(--color-link);
-  text-underline-offset: 4px;
+  text-decoration: none;
 }
 .codicon::before {
   display: inline-block;

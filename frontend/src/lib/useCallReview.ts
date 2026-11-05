@@ -75,5 +75,17 @@ export function useCallReview(
     setAttempt((value) => value + 1)
   }
 
-  return { ...state, retry }
+  // Shows a successful save without reloading the whole call.
+  function update(changes: Partial<CallReview>) {
+    setRequest((current) =>
+      current.state.status === 'ready'
+        ? {
+            ...current,
+            state: { status: 'ready', call: { ...current.state.call, ...changes } },
+          }
+        : current,
+    )
+  }
+
+  return { ...state, retry, update }
 }

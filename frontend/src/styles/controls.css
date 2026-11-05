@@ -85,6 +85,10 @@
   color: var(--color-text);
   line-height: 28px;
 }
+.control-input--multiline {
+  display: block;
+  resize: vertical;
+}
 .field-input--search .control-input {
   padding-left: 44px;
 }
@@ -145,7 +149,7 @@
   gap: 16px;
   padding: 24px;
   border: 1px solid var(--color-border);
-  border-radius: var(--control-radius);
+  border-radius: var(--panel-radius);
 }
 .panel p {
   max-width: 72ch;
@@ -153,6 +157,31 @@
 .panel > .button {
   justify-self: start;
 }
+
+table {
+  border: 1px solid var(--color-table-border);
+  border-spacing: 0;
+  border-radius: var(--panel-radius);
+}
+table th {
+  background: var(--color-table-header);
+}
+table thead th:first-child {
+  border-start-start-radius: calc(var(--panel-radius) - 1px);
+}
+table thead th:last-child {
+  border-start-end-radius: calc(var(--panel-radius) - 1px);
+}
+table tbody tr:last-child td {
+  border-bottom: 0;
+}
+table tbody tr:last-child td:first-child {
+  border-end-start-radius: calc(var(--panel-radius) - 1px);
+}
+table tbody tr:last-child td:last-child {
+  border-end-end-radius: calc(var(--panel-radius) - 1px);
+}
+
 .status-label {
   display: inline-flex;
   align-items: center;
