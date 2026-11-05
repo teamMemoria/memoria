@@ -336,7 +336,11 @@ def _compare(a: _Claim, b: _Claim, config: ConflictConfig) -> _Finding | None:
     # Members-only on one side and "guests cannot" on the other say the same thing.
     if a.negated != b.negated:
         negative, positive = (a, b) if a.negated else (b, a)
-        if positive.exclusive and negative.denied and negative.denied <= positive.denied:
+        if (
+            positive.exclusive
+            and negative.denied
+            and negative.denied <= positive.denied
+        ):
             return None
 
     # 2. Values: the same unit with different figures.
@@ -428,6 +432,10 @@ def _conflict_id(company_id: str, a: _Claim, b: _Claim) -> str:
     )
 
 
+def _said(claim: _Claim) -> str:
+    return " ".join(claim.text.lower().split())
+
+
 def find_conflicts(
     drafts: Any,
     company_id: str,
@@ -472,6 +480,7 @@ def find_conflicts(
 
     conflicts: list[dict[str, Any]] = []
     explained: list[dict[str, Any]] = []
+    by_statement: dict[tuple[str, ...], dict[str, Any]] = {}
     for key in sorted(buckets):
         members = buckets[key]
         for i, first in enumerate(members):
@@ -514,7 +523,32 @@ def find_conflicts(
                                 "b": _conditions(b),
                             },
                             "subject_overlap": round(_overlap(a, b), 4),
+                            "repeated_pairs": 0,
                         }
+                        statement = (
+                            finding.status,
+                            finding.kind,
+                            *key,
+                            *(
+                                str((o.owner_id, o.info.get("version")))
+                                for o in (a.owner, b.owner)
+                                if o.kind == "entry"
+                            ),
+                            *sorted([_said(a), _said(b)]),
+                        )
+                        if statement in by_statement:
+                            previous = by_statement[statement]
+                            previous["repeated_pairs"] += 1
+                            affected = set(previous.get("affected_draft_ids", []))
+                            affected.update(
+                                item[side]["draft_id"]
+                                for item in (previous, record)
+                                for side in ("a", "b")
+                                if item[side]["type"] == "draft"
+                            )
+                            previous["affected_draft_ids"] = sorted(affected)
+                            continue
+                        by_statement[statement] = record
                         (
                             explained if finding.status == "explained" else conflicts
                         ).append(record)
