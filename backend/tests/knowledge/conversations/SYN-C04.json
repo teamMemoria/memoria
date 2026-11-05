@@ -1,0 +1,45 @@
+{
+  "id": "SYN-C04",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-C04",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, how can I help you today?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "How long is a promo code good for?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "I think promo codes are usually valid for 14 days, but I'm not completely sure."
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "Okay, thank you."
+    },
+    {
+      "n": 5,
+      "speaker": "agent",
+      "text": "Have a great day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": []
+  },
+  "note": "Hedged figure that differs from 7 days: uncertain, so unresolved rather than a conflict."
+}

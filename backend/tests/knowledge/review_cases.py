@@ -24,3 +24,15 @@ def chat(cid, answer, question="Can I return this?", record=None, flow=SCOPE):
 def draft(record):
     [d] = extract_drafts(record, COMPANY).drafts
     return d
+
+
+def entry(version, answer):
+    return {
+        "entry_id": "E1",
+        "company_id": COMPANY,
+        "version": version,
+        "status": "approved",
+        "scope": SCOPE,
+        "question": "Can I return this?",
+        "answer": answer,
+    }

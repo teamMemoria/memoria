@@ -131,6 +131,9 @@ SYNONYMS = {
     "cancelled": "cancel",
     "membership": "member",
     "members": "member",
+    "replacement": "new",
+    "replace": "new",
+    "another": "new",
     "site": "website",
     "web": "website",
 }
@@ -230,32 +233,16 @@ def numbers(text: str) -> set[str]:
     return set(re.findall(r"\d+(?:\.\d+)?", lowered.replace(",", "")))
 
 
-def is_negated(text: str) -> bool:
-    lowered = normalise(text)
-    return any(
-        re.search(rf"(?<![\w']){re.escape(n)}(?![\w'])", lowered) for n in NEGATIONS
-    ) or bool(re.search(r"\bn't\b|\w+n't\b", lowered))
-
-
-def membership_levels(text: str) -> set[str]:
-    lowered = normalise(text)
-    found = {
-        level for level in MEMBERSHIP_LEVELS if re.search(rf"\b{level}s?\b", lowered)
-    }
-    if re.search(r"\b(non-?members?|not a member|regular user)\b", lowered):
-        found.add("guest")
-    return found
-
-
-def jaccard(a: set[str], b: set[str]) -> float:
-    if not a and not b:
-        return 1.0
-    return len(a & b) / len(a | b)
-
-
 _NOT_NEGATION = re.compile(
     r"\b(no (problem|worries|trouble|doubt)|not a problem|not to worry|no need to worry|why not|no matter)\b"
 )
+
+
+def is_negated(text: str) -> bool:
+    lowered = _NOT_NEGATION.sub(" ", normalise(text))
+    return any(
+        re.search(rf"(?<![\w']){re.escape(n)}(?![\w'])", lowered) for n in NEGATIONS
+    ) or bool(re.search(r"\bn't\b|\w+n't\b", lowered))
 
 
 def negated_terms(text: str, window: int = 4) -> set[str]:
@@ -274,6 +261,22 @@ def negated_terms(text: str, window: int = 4) -> set[str]:
                 ):
                     out.add(term)
     return out
+
+
+def membership_levels(text: str) -> set[str]:
+    lowered = normalise(text)
+    found = {
+        level for level in MEMBERSHIP_LEVELS if re.search(rf"\b{level}s?\b", lowered)
+    }
+    if re.search(r"\b(non-?members?|not a member|regular user)\b", lowered):
+        found.add("guest")
+    return found
+
+
+def jaccard(a: set[str], b: set[str]) -> float:
+    if not a and not b:
+        return 1.0
+    return len(a & b) / len(a | b)
 
 
 def conditions(text: str) -> set[str]:

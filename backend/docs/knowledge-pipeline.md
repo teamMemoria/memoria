@@ -11,7 +11,8 @@ Code lives in `src/backend/services/knowledge/`.
 | Stage | Issue | Entry point | Status |
 |---|---|---|---|
 | Extract knowledge drafts | #16 | `extract_drafts` | done |
-| Group drafts and find duplicates | #17 | `group_drafts` | this PR |
+| Group drafts and find duplicates | #17 | `group_drafts` | done |
+| Find possible knowledge conflicts | #18 | `find_conflicts` | this PR |
 
 ## Running it
 
@@ -21,6 +22,7 @@ uv sync
 uv run pytest tests/knowledge                      # offline, about 2 s
 uv run python -m backend.services.knowledge extract data/abcd/conversations --company acme --out /tmp/drafts.json
 uv run python -m backend.services.knowledge group /tmp/drafts.json --company acme --out /tmp/groups.json
+uv run python -m backend.services.knowledge conflicts /tmp/drafts.json --company acme --groups /tmp/groups.json --out /tmp/conflicts.json
 uv run python scripts/knowledge_examples.py        # rewrite examples/knowledge/ after a deliberate change
 ```
 
@@ -229,3 +231,86 @@ fair score.
 - Condition compatibility reads membership levels and quantities only. A
   condition such as "with a receipt" vs "without a receipt" isn't caught here.
   #18 compares claims more closely.
+
+## #18: Find possible knowledge conflicts
+
+```python
+from backend.services.knowledge import find_conflicts
+
+result = find_conflicts(drafts, company_id="acme", existing_entries=entries, groups=groups)
+result["possible_conflicts"]     # status "possible_conflict" or "unresolved"
+result["explained_differences"]  # looked contradictory, explained by conditions or an exception
+```
+
+**What is compared.** Each answer passage of a draft is one claim, and so is
+each sentence of an existing entry. Two drafts are compared when they share a
+company and scope and their questions overlap. A draft is compared with every
+existing entry in its scope. Group membership doesn't limit this: incompatible
+drafts were deliberately put in different groups by #17, and they still need
+to be compared. One conversation read twice is not compared with itself.
+Pairs of existing entries are not compared.
+
+**What counts as a possible conflict.** Two claims about the same thing (at
+least two shared subject words), where one of these holds:
+
+- **eligibility:** one claim allows a membership level that the other
+  excludes. "Guests can always get a replacement code" against "Guests cannot
+  get a replacement promo code". Or, from a real ABCD pair, "I could only
+  issue a replacement promo code to one of our existing members" against a
+  guest's chat where "A promo code has been created". A recorded action takes
+  the membership level of its own conversation.
+- **value:** the same unit with different figures under the same conditions,
+  such as 7 days against 30 days.
+- **polarity:** "X" against "not X", where the negation applies to something
+  the other claim asserts. "You will not be charged" doesn't contradict "I
+  cancelled the order".
+
+**What doesn't.** These are separated out:
+
+- **Different wording.** 7 days and "one week" agree.
+- **Different conditions.** Members can but guests cannot, or different
+  figures for different levels. These go to `explained_differences` so the
+  condition difference stays visible.
+- **An exception.** "Bronze cannot return final-sale items" is the "unless the
+  item was on final sale" of the other claim.
+- **Different scope or company.** These are never compared.
+- **Missing evidence.** If only one side states a figure or condition, nothing
+  is reported.
+
+**Uncertain cases stay `unresolved`.** That covers hedged wording ("I think",
+"usually", "might"), time-bound statements ("this year", a date) that may
+differ by date rather than by policy, and polarity with only partial overlap.
+
+**Each finding has** both exact passages, with their draft id or entry id,
+source key or entry version, `reference_status` (`unverified draft`, or the
+entry's own status such as `approved`), the conditions of each side, the
+compared conditions (levels allowed and excluded, quantities, negation,
+exceptions), a one-line explanation, the uncertainty reasons, and the group id
+of each side when `groups` is passed.
+
+**ML only reports.** It never marks an entry disputed, removes it from use,
+replaces it or rewrites an earlier audit. A test checks that inputs are
+unchanged and that no such field appears. Authorized people and backend rules
+decide all of that. This module doesn't use Nick's audit code or reports.
+
+**Tests.** `tests/knowledge/test_conflicts.py`. The labelled pairs in
+`labels/conflicts.json` (first pass, `human_reviewed: false`) cover
+contradictions, paraphrases, exceptions, different scopes, different
+conditions, uncertain cases and agreements, which check for false alarms.
+Across all 100 ABCD records, the only possible conflict reported is the real
+one (ABCD-0041 against ABCD-0046).
+
+### Still to agree (#18)
+
+- **How to show unresolved conflicts.** Today they are a separate status,
+  each with its own `uncertainty` list. The backend could queue them with
+  possible conflicts or keep a separate list.
+- **Which condition differences must stay visible.** Today every explained
+  difference is returned. Trimming the list is a display choice.
+
+### Known limits
+
+- Claims are compared with rules: membership levels, numbers with units,
+  negation scope and exception clauses. A contradiction expressed in other
+  terms is missed, for example "in store only" against "by mail". A model
+  comparator could sit behind `_compare` with the same output shape.
