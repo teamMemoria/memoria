@@ -95,7 +95,14 @@ class _Item:
 
     @property
     def quantities(self) -> set[tuple[str, str]]:
-        return {(q.unit, q.value) for q in tx.quantities(self.condition_text)}
+        return {
+            (q.unit, q.value)
+            for q in tx.quantities(self.condition_text + " " + self.answer)
+        }
+
+    @property
+    def conditions(self) -> set[str]:
+        return tx.conditions(self.condition_text + " " + self.answer)
 
 
 def scope_key(scope: Mapping[str, str], company_id: str, level: str) -> tuple[str, ...]:
@@ -258,6 +265,11 @@ def similarity(a: _Item, b: _Item, config: GroupingConfig) -> float:
 
 def conditions_compatible(a: _Item, b: _Item) -> tuple[bool, str | None]:
     """Whether two items can share a group. Returns (ok, reason when not)."""
+    a_negated, b_negated = tx.negated_terms(a.answer), tx.negated_terms(b.answer)
+    if (a_negated - b_negated) & set(tx.content_terms(b.answer)) or (
+        b_negated - a_negated
+    ) & set(tx.content_terms(a.answer)):
+        return False, "opposite polarity"
     if a.levels and b.levels and not (a.levels & b.levels):
         return False, f"membership {sorted(a.levels)} vs {sorted(b.levels)}"
     if bool(a.levels) != bool(b.levels):
@@ -404,8 +416,12 @@ def _describe(
             exact = tx.normalise(a.answer) == tx.normalise(b.answer) and tx.normalise(
                 a.question
             ) == tx.normalise(b.question)
-            same_conditions = a.levels == b.levels and a.quantities == b.quantities
-            if exact or (score >= config.duplicate_threshold and same_conditions):
+            same_conditions = (
+                a.levels == b.levels
+                and a.quantities == b.quantities
+                and a.conditions == b.conditions
+            )
+            if same_conditions and (exact or score >= config.duplicate_threshold):
                 duplicates.append(
                     {
                         "draft_id": b.item_id,
@@ -421,6 +437,8 @@ def _describe(
         if scope_key(entry.scope, company_id, config.scope_level) != key:
             continue
         ok, reason = conditions_compatible(representative, entry)
+        if representative.conditions != entry.conditions:
+            ok, reason = False, "different or unresolved conditions"
         score = max(similarity(m, entry, config) for m in members)
         if score < config.existing_match_threshold:
             continue

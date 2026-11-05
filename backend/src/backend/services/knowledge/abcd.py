@@ -188,7 +188,7 @@ def _read_curated(record: Mapping[str, Any], company_id: str) -> Conversation:
     if not isinstance(source, Mapping):
         raise invalid("source", "must be an object")
     dataset = source.get("dataset")
-    if dataset not in CURATED_DATASETS:
+    if not isinstance(dataset, str) or dataset not in CURATED_DATASETS:
         raise invalid(
             "source.dataset",
             "must be ABCD (or SYNTHETIC for authored test conversations)",
@@ -211,7 +211,7 @@ def _read_curated(record: Mapping[str, Any], company_id: str) -> Conversation:
                 f"turns[{index}].n", "must be greater than the previous turn number"
             )
         speaker = turn.get("speaker")
-        if speaker not in SPEAKERS:
+        if not isinstance(speaker, str) or speaker not in SPEAKERS:
             raise invalid(
                 f"turns[{index}].speaker", "must be agent, customer or system_action"
             )
