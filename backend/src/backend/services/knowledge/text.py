@@ -251,3 +251,39 @@ def jaccard(a: set[str], b: set[str]) -> float:
     if not a and not b:
         return 1.0
     return len(a & b) / len(a | b)
+
+
+_NOT_NEGATION = re.compile(
+    r"\b(no (problem|worries|trouble|doubt)|not a problem|not to worry|no need to worry|why not|no matter)\b"
+)
+
+
+def negated_terms(text: str, window: int = 4) -> set[str]:
+    """Content words a negation applies to: "will not be charged" -> {"charg"}."""
+    lowered = _NOT_NEGATION.sub(" ", normalise(text))
+    tokens = words(lowered)
+    out: set[str] = set()
+    for i, token in enumerate(tokens):
+        if token in NEGATIONS or token.endswith("n't"):
+            for following in tokens[i + 1 : i + 1 + window]:
+                term = stem(SYNONYMS.get(following, following))
+                if (
+                    following not in STOPWORDS
+                    and following not in NEGATIONS
+                    and len(following) > 1
+                ):
+                    out.add(term)
+    return out
+
+
+def conditions(text: str) -> set[str]:
+    """Explicit conditions only; unfamiliar paraphrases are not assumed equivalent."""
+    return {
+        normalise(match.group())
+        for match in re.finditer(
+            r"\b(?:only (?:if|when|with)|if|unless|except(?: for| when| if)?|"
+            r"provided(?: that)?|as long as)\b[^,.;!?]*",
+            text,
+            re.IGNORECASE,
+        )
+    }
