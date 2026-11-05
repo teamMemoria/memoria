@@ -18,6 +18,14 @@ The current 200-file corpus is pinned at commit
 `marcomarchesanogenesys/uoft-ftli-2026-genesys-docs`. Keep those real
 conversation files in the source repository; do not copy them into Memoria.
 
+## Tests
+
+Tests run against a separate `callassist_test` database that is dropped, recreated
+and migrated at the start of each run, so they never touch your local data. With
+the database running:
+
+    uv run pytest
+
 ## Provenance manifests
 
 Generated artifacts store their provenance in a JSON sidecar beside the
