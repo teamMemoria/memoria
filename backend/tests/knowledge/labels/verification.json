@@ -1,0 +1,67 @@
+{
+  "label_set": "verification",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "First-pass labels; a second team member should review before these count as human-labelled. Expected statuses assume every passage of data/references/abcd-guidelines.snapshot.json has been approved (the tests approve a copy in memory).",
+  "fields": {
+    "expect": "supported, partially_supported, contradicted or unverifiable (the draft-level verification_status)"
+  },
+  "cases": [
+    {
+      "conversation": "SYN-0006",
+      "expect": "supported",
+      "note": "Every claim (7-day validity, members qualify, a new code, 20% off) is in the promo-code guideline."
+    },
+    {
+      "conversation": "ABCD-0044",
+      "expect": "supported",
+      "note": "A gold member given a new code, as the guideline says."
+    },
+    {
+      "conversation": "SYN-0005",
+      "expect": "contradicted",
+      "note": "A guest given a new code; the guideline says guests cannot be helped."
+    },
+    {
+      "conversation": "ABCD-0046",
+      "expect": "contradicted",
+      "note": "Real ABCD case of the same mistake."
+    },
+    {
+      "conversation": "ABCD-0004",
+      "expect": "contradicted",
+      "note": "The agent asks for 2 of 3 details; the guideline asks for 3 out of 4."
+    },
+    {
+      "conversation": "ABCD-0033",
+      "expect": "partially_supported",
+      "note": "The return rules are supported; the closing pleasantries are not knowledge but are part of the answer."
+    },
+    {
+      "conversation": "ABCD-0031",
+      "expect": "partially_supported",
+      "note": "Returns in original packaging are supported, but the bronze time limit is not stated."
+    },
+    {
+      "conversation": "ABCD-0041",
+      "expect": "partially_supported",
+      "note": "Consistent with the guideline, but phrased loosely ('depending on your membership level')."
+    },
+    {
+      "conversation": "SYN-0004",
+      "expect": "unverifiable",
+      "note": "Return-policy FAQ answers are not in the ABCD guidelines, which only say to search the FAQ."
+    },
+    {
+      "conversation": "SYN-0003",
+      "expect": "unverifiable",
+      "note": "Damaged-item refund policy is not in any guideline."
+    },
+    {
+      "conversation": "ABCD-0072",
+      "expect": "unverifiable",
+      "note": "Membership benefits FAQ: not in the guidelines."
+    }
+  ]
+}

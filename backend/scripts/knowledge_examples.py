@@ -21,6 +21,7 @@ from backend.services.knowledge.conflicts import find_conflicts
 from backend.services.knowledge.errors import PipelineError
 from backend.services.knowledge.extraction import extract_drafts
 from backend.services.knowledge.grouping import group_drafts
+from backend.services.knowledge.verification import check_drafts
 
 BACKEND = Path(__file__).resolve().parents[1]
 EXAMPLES = BACKEND / "examples" / "knowledge"
@@ -77,10 +78,29 @@ def run_conflicts(payload: dict[str, Any]) -> Any:
         return {"status": "error", "errors": [error.to_dict()]}
 
 
+def run_verification(payload: dict[str, Any]) -> Any:
+    drafts = _drafts(payload)
+    company = payload["company_id"]
+    try:
+        groups = group_drafts(drafts, company)
+        conflicts = find_conflicts(drafts, company, groups=groups)
+        return check_drafts(
+            drafts,
+            company,
+            payload["references"],
+            conflicts=conflicts,
+            groups=groups,
+            as_of=payload.get("as_of"),
+        )
+    except PipelineError as error:
+        return {"status": "error", "errors": [error.to_dict()]}
+
+
 RUNNERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "extraction": run_extraction,
     "grouping": run_grouping,
     "conflicts": run_conflicts,
+    "verification": run_verification,
 }
 
 
