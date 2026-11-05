@@ -1,29 +1,3 @@
-"""The whole knowledge pipeline behind one function, plus its release checks (#20).
-
-``run_pipeline(payload)`` takes fixed JSON in and returns fixed JSON out:
-
-    {
-      "company_id": "acme",
-      "conversations": [<ABCD records>],
-      "existing_entries": [...],          # optional, from the backend
-      "references": [...],                # optional, approved reference passages
-      "as_of": "2026-10-22",              # optional, for reference expiry
-      "config": {"extraction": {...}, "grouping": {...}, "conflicts": {...}, "verification": {...}}
-    }
-
-It runs extraction (#16), grouping (#17), conflict finding (#18) and
-verification (#19) and returns all of their outputs. A conversation that
-fails (invalid, oversized, model failure) is reported under
-``technical_failures`` and the rest still run; a draft that simply has no
-supporting reference shows up as ``unverifiable`` in ``verification``. The two
-are never mixed up.
-
-``release_checks(output, payload)`` is the gate before anything is shown to
-people: fabricated citations, unsupported "supported" claims, leaked personal
-data, or any sign of the pipeline approving something or changing a status
-block release.
-"""
-
 from __future__ import annotations
 
 import datetime as dt
