@@ -28,6 +28,7 @@ from .verification import (
     combine_texts,
 )
 
+# **Output format version and fields the pipeline must never produce**
 PIPELINE_SCHEMA_VERSION = "knowledge-pipeline/1"
 _FORBIDDEN_KEYS = {
     "approved",
@@ -39,6 +40,7 @@ _FORBIDDEN_KEYS = {
 }
 
 
+# **Reads the settings for one step**
 def _config(raw: Any, cls: type, name: str):
     if raw is None:
         return cls()
@@ -50,6 +52,7 @@ def _config(raw: Any, cls: type, name: str):
         raise invalid(f"config.{name}", str(error)) from error
 
 
+# **Reads the settings for grouping, conflicts and verification**
 def _assessment_configs(config):
     return (
         _config(config.get("grouping"), GroupingConfig, "grouping"),
@@ -58,6 +61,7 @@ def _assessment_configs(config):
     )
 
 
+# **Main entry point: runs every step, then the release checks**
 def run_pipeline(
     payload: Any,
     extractor: Extractor | None = None,
@@ -75,6 +79,7 @@ def run_pipeline(
     return output
 
 
+# **Runs the four steps in order: extraction, grouping, conflicts, verification**
 def _run_stages(
     payload: Any,
     extractor: Extractor | None = None,
@@ -115,6 +120,7 @@ def _run_stages(
             "errors": [error.to_dict()],
         }
 
+    # **Step 1: extract knowledge drafts from conversations (#16)**
     extractor = extractor or RuleExtractor()
     tick = time.perf_counter()
     results = [
@@ -134,11 +140,13 @@ def _run_stages(
     draft_list = list(drafts.values())
     try:
         tick = time.perf_counter()
+        # **Step 2: group drafts and find duplicates (#17)**
         groups = group_drafts(
             draft_list, company_id, existing_entries=entries, config=grouping_config
         )
         timings["grouping_ms"] = (time.perf_counter() - tick) * 1000
         tick = time.perf_counter()
+        # **Step 3: find possible conflicts (#18)**
         conflicts = find_conflicts(
             draft_list,
             company_id,
@@ -148,6 +156,7 @@ def _run_stages(
         )
         timings["conflicts_ms"] = (time.perf_counter() - tick) * 1000
         tick = time.perf_counter()
+        # **Step 4: check drafts against approved sources (#19)**
         verification = check_drafts(
             draft_list,
             company_id,
@@ -175,6 +184,7 @@ def _run_stages(
             "errors": [failure.to_dict()],
             "technical_failures": failures,
         }
+    # **Builds the final report**
     extraction = [r.to_dict() for r in results]
     output: dict[str, Any] = {
         "schema": PIPELINE_SCHEMA_VERSION,
@@ -199,6 +209,7 @@ def _run_stages(
     return output
 
 
+# **Reports model usage**
 def _usage(extractor: Extractor) -> dict[str, Any]:
     client = getattr(extractor, "client", None)
     usage = getattr(client, "usage", None)
@@ -207,6 +218,7 @@ def _usage(extractor: Extractor) -> dict[str, Any]:
     return {"model": getattr(client, "name", None), **usage.to_dict()}
 
 
+# **Counts drafts by verification result**
 def _tally(results: list[dict[str, Any]]) -> dict[str, int]:
     tally: dict[str, int] = {}
     for result in results:
@@ -216,6 +228,7 @@ def _tally(results: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(tally.items()))
 
 
+# **Summary counts for the report**
 def _counts(extraction, drafts, groups, conflicts, verification) -> dict[str, Any]:
     return {
         "conversations": len(extraction),
@@ -233,9 +246,10 @@ def _counts(extraction, drafts, groups, conflicts, verification) -> dict[str, An
     }
 
 
-# --------------------------------------------------------------------------- release checks
 
 
+
+# **Goes through every field in the report**
 def _walk(value: Any, path: str = "$"):
     if isinstance(value, Mapping):
         for key, item in value.items():
@@ -246,6 +260,7 @@ def _walk(value: Any, path: str = "$"):
             yield from _walk(item, f"{path}[{index}]")
 
 
+# **Fields that are IDs, not text**
 _ID_KEYS = {
     "schema",
     "source_key",
@@ -258,6 +273,7 @@ _ID_KEYS = {
 }
 
 
+# **Collects the report text for the privacy check**
 def output_text(value: Any) -> str:
     """Every human-readable string in an output, one per line, leaving out ids, keys and versions.
 
@@ -286,6 +302,7 @@ def output_text(value: Any) -> str:
     return "\n".join(lines)
 
 
+# **Allowed values for results and statuses**
 _VERDICTS = {"supported", "partially_supported", "contradicted", "unverifiable"}
 _RECOMMENDATIONS = {
     "supported_by_references",
@@ -298,6 +315,7 @@ _CONFLICT_STATUSES = {"possible_conflict", "unresolved"}
 _CITATION_LISTS = (".citations[", ".contradicted_by[", ".possibly_contradicted_by[")
 
 
+# **Report without timing fields, for comparison**
 def _comparable(output: Mapping[str, Any]) -> dict[str, Any]:
     return {
         k: v
@@ -306,6 +324,7 @@ def _comparable(output: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+# **Spots a quoted passage**
 def _is_passage(value: Any) -> bool:
     return (
         isinstance(value, Mapping)
@@ -313,6 +332,7 @@ def _is_passage(value: Any) -> bool:
     )
 
 
+# **Release checks: everything must pass before anyone sees the results (#20)**
 def release_checks(
     output: Mapping[str, Any],
     payload: Mapping[str, Any],
@@ -429,6 +449,7 @@ def release_checks(
     return {"release_allowed": passed, "checks": checks}
 
 
+# **Release check 1: every quote matches its source**
 def _citation_checks(
     output, conversations, redacted, references, entries, drafts, add
 ) -> None:
@@ -533,6 +554,7 @@ def _citation_checks(
     add("no_fabricated_citations", problems)
 
 
+# **Checks one citation against its reference**
 def _citation_problem(
     citation: Mapping[str, Any], references: Mapping[str, Any]
 ) -> str | None:
@@ -559,6 +581,7 @@ def _citation_problem(
     return None
 
 
+# **Release check 2: "supported" needs an approved, current source**
 def _support_checks(output, references, company_id, as_of, add) -> None:
     """2. A "supported" claim needs a citation the payload shows is usable today."""
     problems: list[str] = []
@@ -593,6 +616,7 @@ def _support_checks(output, references, company_id, as_of, add) -> None:
     add("no_unsupported_verified_claims", problems)
 
 
+# **Release check 3: no personal data in the report**
 def _privacy_checks(output, conversations, add) -> None:
     """3. No personal data, by each record's values and by pattern alone."""
     problems: list[str] = []
@@ -608,6 +632,7 @@ def _privacy_checks(output, conversations, add) -> None:
     add("no_personal_data_leaks", problems)
 
 
+# **Release check 4: the pipeline approves nothing**
 def _status_checks(output, entries, add) -> None:
     """4. The pipeline approved nothing and changed no status: every status is an allowed one."""
     problems: list[str] = []
@@ -684,6 +709,7 @@ def _status_checks(output, entries, add) -> None:
     add("ml_approves_nothing", problems)
 
 
+# **Release check 5: the report matches a fresh run**
 def _recompute_check(output, payload, extractor, add) -> None:
     """5. The output is exactly what a fresh run on the same payload gives.
 
@@ -748,6 +774,7 @@ def _recompute_check(output, payload, extractor, add) -> None:
     )
 
 
+# **Repeat check: running twice gives the same result and counts**
 def repeat_processing_check(
     payload: Mapping[str, Any], extractor: Extractor | None = None
 ) -> dict[str, Any]:
