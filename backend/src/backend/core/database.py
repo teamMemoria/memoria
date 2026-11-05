@@ -1,14 +1,7 @@
-import os
-
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql+psycopg://app:app@localhost:5432/callassist"
-)
-
-engine = create_async_engine(DATABASE_URL)
-SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+# The engine and sessions live in backend.db.session, and the database URL in
+# backend.core.config.Settings. This module only holds the model base class.
 
 
 class Base(DeclarativeBase):

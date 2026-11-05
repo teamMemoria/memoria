@@ -1,7 +1,9 @@
 from datetime import date
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import Date, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
@@ -50,6 +52,13 @@ class Conversation(Base):
     conversation_date: Mapped[date | None] = mapped_column(Date)
     agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
     topic_id: Mapped[int | None] = mapped_column(ForeignKey("topics.id"), index=True)
+    # File ID in the curated docs repo, e.g. "HVB-0001". Null for live calls.
+    curated_id: Mapped[str | None] = mapped_column(String(20), unique=True)
+    # Dataset-specific fields, kept exactly as the source provides them.
+    source_fields: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default="{}"
+    )
+    customer_record: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     agent: Mapped[Agent] = relationship(back_populates="conversations")
     topic: Mapped[Topic | None] = relationship(back_populates="conversations")

@@ -1,7 +1,7 @@
 """add evaluation forms and criteria
 
 Revision ID: 84b37f614ac2
-Revises: 1b6f24f748c0
+Revises: af4e24e69992
 Create Date: 2026-11-01
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "84b37f614ac2"
-down_revision: str | Sequence[str] | None = "1b6f24f748c0"
+down_revision: str | Sequence[str] | None = "af4e24e69992"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
