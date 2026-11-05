@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api import calls, conversations, viewer
+from backend.api import calls, conversations, knowledge, viewer
 from backend.core.config import Settings
 from backend.db.session import get_db_session
 from backend.providers import (
@@ -44,6 +44,7 @@ def create_app(
     app.include_router(viewer.router)
     app.include_router(conversations.router)
     app.include_router(calls.router)
+    app.include_router(knowledge.router)
     return app
 
 

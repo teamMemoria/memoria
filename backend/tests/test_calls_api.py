@@ -39,7 +39,20 @@ def raw_call(conversation_id):
 def test_ready_call_matches_frontend_shape():
     response = get("C1042")
     assert response.status_code == 200
-    assert response.json() == raw_call("C1042")
+    expected = raw_call("C1042")
+    expected = {
+        **expected,
+        "references": [
+            {**r, "availableToAgentIds": [ALEX]} for r in expected["references"]
+        ],
+    }
+    assert response.json() == expected
+
+
+def test_references_do_not_expose_other_agents_ids():
+    # RP-01 is assigned to Alex and Sam; Alex should only see their own ID.
+    assert raw_call("C1042")["references"][0]["availableToAgentIds"] == [ALEX, SAM]
+    assert get("C1042").json()["references"][0]["availableToAgentIds"] == [ALEX]
 
 
 def test_ready_call_has_four_categories_findings_transcript_and_references():

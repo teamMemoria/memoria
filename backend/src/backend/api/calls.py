@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from backend.api.conversations import AgentDep
 from backend.api.dependencies import ProvidersDep
+from backend.api.knowledge import for_requester
 from backend.core.auth import can_read_agent_record
 from backend.schemas import CallReview
 
@@ -25,4 +26,11 @@ async def get_call(
         user, user.organization_id, call.agent_id
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
-    return call
+    # References follow the same rule as the knowledge routes: no other agents' IDs.
+    return call.model_copy(
+        update={
+            "references": [
+                for_requester(reference, user) for reference in call.references
+            ]
+        }
+    )
