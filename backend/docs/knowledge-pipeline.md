@@ -479,15 +479,19 @@ anything is shown to people. `run_pipeline` attaches its result as
 The checks are run against the payload, never against values copied into the
 output: an edited output cannot vouch for itself. For rule-extracted output
 they also re-run the pipeline and require the same result.
+Model output must have the complete report structure; its grouping, conflicts
+and verification are recomputed from the cited drafts without another model call.
+Counts are derived from assessment data.
 
 | Check | Fails when |
 |---|---|
+| `counts_match_assessment` | counts differ from the assessment or contain values other than nonnegative integers |
 | `no_fabricated_citations` | any passage anywhere in the output (drafts, group representatives, conflict sides, verification claims) isn't the exact text at an in-range integer span of its turn; a verbatim draft's `question`, `answer` or condition text isn't the text of its passages; a representative differs from its draft; a conflict side quotes a passage or entry version that wasn't supplied; or a citation's quote, version, approval or eligibility differs from the payload's reference (combined units are rebuilt from their parts) |
 | `no_unsupported_verified_claims` | a `supported` claim has no citation that the payload shows is approved, eligible, for this company and current on `as_of`; a reference contradicts it; or a draft is `supported` while one of its claims isn't |
 | `no_personal_data_leaks` | any value from any input customer record (full name, any name part, email, username, address, city, zip, order id, purchase date, phone) appears as a whole word in a text field of the output, or an email, card number, phone number, street address or long number appears at all, found by pattern with no record needed. The check is Unicode-normalised. Ids and versions are not text fields |
 | `ml_approves_nothing` | any status is outside its allowed values: drafts `draft` and `not_verified`, groups and representatives `draft`, conflicts `possible_conflict`/`unresolved`/`explained_difference`, conflict sides unchanged from their draft or entry, verdicts and recommendations from their fixed lists, `decision` present and `null`; or an approval field appears outside a citation |
-| `matches_a_fresh_run` | the output differs from a fresh run on the same payload. Model-written drafts can't be re-created, so for them it is reported but doesn't block |
-| `repeat_processing` (in `evaluate`) | a second run differs, or doubled input changes a group or count |
+| `matches_a_fresh_run` / `matches_validated_drafts` | rule output differs from a fresh run, or model output differs from deterministic checks of its cited drafts |
+| `repeat_processing` (in `evaluate`) | assessment content differs, excluding usage/timing measurements, or doubled input changes a group or count |
 
 **Labelled cases, split.** All case files carry `labelled_by` and
 `human_reviewed: false`. They still need a second person's review before they

@@ -76,6 +76,14 @@ def _config(raw: Any, cls: type, name: str):
         raise invalid(f"config.{name}", str(error)) from error
 
 
+def _assessment_configs(config):
+    return (
+        _config(config.get("grouping"), GroupingConfig, "grouping"),
+        _config(config.get("conflicts"), ConflictConfig, "conflicts"),
+        _config(config.get("verification"), VerificationConfig, "verification"),
+    )
+
+
 def run_pipeline(
     payload: Any,
     extractor: Extractor | None = None,
@@ -121,10 +129,8 @@ def _run_stages(
         extraction_config = _config(
             config.get("extraction"), ExtractionConfig, "extraction"
         )
-        grouping_config = _config(config.get("grouping"), GroupingConfig, "grouping")
-        conflict_config = _config(config.get("conflicts"), ConflictConfig, "conflicts")
-        verification_config = _config(
-            config.get("verification"), VerificationConfig, "verification"
+        grouping_config, conflict_config, verification_config = _assessment_configs(
+            config
         )
         entries = payload.get("existing_entries", [])
         references = payload.get("references", [])
@@ -195,29 +201,13 @@ def _run_stages(
             "errors": [failure.to_dict()],
             "technical_failures": failures,
         }
+    extraction = [r.to_dict() for r in results]
     output: dict[str, Any] = {
         "schema": PIPELINE_SCHEMA_VERSION,
         "status": "completed_with_failures" if failures else "ok",
         "company_id": company_id,
-        "counts": {
-            "conversations": len(records),
-            "technical_failures": len(failures),
-            "no_draft": sum(1 for r in results if r.status == "ok" and not r.drafts),
-            "drafts": len(draft_list),
-            "groups": len(groups["groups"]),
-            "possible_conflicts": sum(
-                1
-                for c in conflicts["possible_conflicts"]
-                if c["status"] == "possible_conflict"
-            ),
-            "unresolved_conflicts": sum(
-                1
-                for c in conflicts["possible_conflicts"]
-                if c["status"] == "unresolved"
-            ),
-            "verification": _tally(verification["results"]),
-        },
-        "extraction": [r.to_dict() for r in results],
+        "counts": _counts(extraction, draft_list, groups, conflicts, verification),
+        "extraction": extraction,
         "technical_failures": failures,
         "drafts": draft_list,
         "groups": groups,
@@ -250,6 +240,23 @@ def _tally(results: list[dict[str, Any]]) -> dict[str, int]:
             tally.get(result["verification_status"], 0) + 1
         )
     return dict(sorted(tally.items()))
+
+
+def _counts(extraction, drafts, groups, conflicts, verification) -> dict[str, Any]:
+    return {
+        "conversations": len(extraction),
+        "technical_failures": sum(r["status"] == "error" for r in extraction),
+        "no_draft": sum(r["status"] == "ok" and not r["drafts"] for r in extraction),
+        "drafts": len(drafts),
+        "groups": len(groups["groups"]),
+        "possible_conflicts": sum(
+            c["status"] == "possible_conflict" for c in conflicts["possible_conflicts"]
+        ),
+        "unresolved_conflicts": sum(
+            c["status"] == "unresolved" for c in conflicts["possible_conflicts"]
+        ),
+        "verification": _tally(verification["results"]),
+    }
 
 
 # --------------------------------------------------------------------------- release checks
@@ -318,7 +325,11 @@ _CITATION_LISTS = (".citations[", ".contradicted_by[", ".possibly_contradicted_b
 
 
 def _comparable(output: Mapping[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in output.items() if k not in {"timings", "release_checks"}}
+    return {
+        k: v
+        for k, v in output.items()
+        if k not in {"timings", "release_checks", "model_usage"}
+    }
 
 
 def _is_passage(value: Any) -> bool:
@@ -338,6 +349,35 @@ def release_checks(
     They are checked against the payload, never against values copied into
     the output, so an edited output cannot vouch for itself.
     """
+    required = {
+        "company_id",
+        "extraction",
+        "groups",
+        "conflicts",
+        "verification",
+        "counts",
+        "technical_failures",
+        "model_usage",
+    }
+    if (
+        not isinstance(output, Mapping)
+        or not required <= output.keys()
+        or output.get("schema") != PIPELINE_SCHEMA_VERSION
+        or output.get("company_id") != payload.get("company_id")
+        or output.get("status") not in ("ok", "completed_with_failures")
+        or not isinstance(output.get("drafts"), list)
+    ):
+        return {
+            "release_allowed": False,
+            "checks": [
+                {
+                    "check": "output_is_well_formed",
+                    "passed": False,
+                    "blocks_release": True,
+                    "problems": ["missing or invalid report fields"],
+                }
+            ],
+        }
     checks: list[dict[str, Any]] = []
     company_id = payload.get("company_id", "")
     conversations: dict[str, Conversation] = {}
@@ -365,9 +405,6 @@ def release_checks(
         )
     except (TypeError, ValueError):
         as_of = None
-    drafts = {
-        d.get("draft_id"): d for d in output.get("drafts", []) if isinstance(d, Mapping)
-    }
 
     def add(name: str, problems: list[str], blocks: bool = True) -> None:
         checks.append(
@@ -380,19 +417,39 @@ def release_checks(
         )
 
     try:
+        drafts = {
+            d.get("draft_id"): d for d in output["drafts"] if isinstance(d, Mapping)
+        }
+        counts = output["counts"]
+        integers = [v for k, v in counts.items() if k != "verification"]
+        integers.extend(counts["verification"].values())
+        expected_counts = _counts(
+            output["extraction"],
+            output["drafts"],
+            output["groups"],
+            output["conflicts"],
+            output["verification"],
+        )
+        add(
+            "counts_match_assessment",
+            []
+            if counts == expected_counts
+            and all(type(n) is int and n >= 0 for n in integers)
+            else ["counts must be nonnegative integers derived from the assessment"],
+        )
         _citation_checks(
             output, conversations, redacted, references, entries, drafts, add
         )
         _support_checks(output, references, company_id, as_of, add)
         _privacy_checks(output, conversations, add)
         _status_checks(output, entries, add)
-    except (KeyError, TypeError, AttributeError, ValueError) as error:
+        _recompute_check(output, payload, extractor, add)
+    except (KeyError, TypeError, AttributeError, ValueError, PipelineError) as error:
         # A malformed output is never released, and never crashes the check.
         add(
             "output_is_well_formed",
             [f"the output is malformed: {type(error).__name__}"],
         )
-    _recompute_check(output, payload, extractor, add)
 
     passed = all(c["passed"] for c in checks if c["blocks_release"])
     return {"release_allowed": passed, "checks": checks}
@@ -656,8 +713,8 @@ def _status_checks(output, entries, add) -> None:
 def _recompute_check(output, payload, extractor, add) -> None:
     """5. The output is exactly what a fresh run on the same payload gives.
 
-    This catches any edit the other checks miss. A model's drafts cannot be
-    re-created, so for them the check is reported but does not decide release.
+    Model generation is not repeated; its drafts still go through the same
+    deterministic grouping, conflict and verification rules.
     """
     names = {
         (d.get("extractor") or {}).get("name")
@@ -667,12 +724,45 @@ def _recompute_check(output, payload, extractor, add) -> None:
     if (extractor is not None and not isinstance(extractor, RuleExtractor)) or names - {
         RuleExtractor.name
     }:
+        drafts = output["drafts"]
+        extracted = {}
+        for result in output["extraction"]:
+            for draft in result["drafts"]:
+                extracted.setdefault(draft["draft_id"], draft)
+        if len(output["extraction"]) != len(payload["conversations"]) or extracted != {
+            d["draft_id"]: d for d in drafts
+        }:
+            add("matches_validated_drafts", ["extraction and report drafts differ"])
+            return
+        company = payload["company_id"]
+        config = payload.get("config") or {}
+        entries = payload.get("existing_entries", [])
+        grouping_config, conflict_config, verification_config = _assessment_configs(
+            config
+        )
+        groups = group_drafts(drafts, company, entries, grouping_config)
+        conflicts = find_conflicts(drafts, company, entries, groups, conflict_config)
+        verification = check_drafts(
+            drafts,
+            company,
+            payload.get("references", []),
+            conflicts,
+            groups,
+            payload.get("as_of"),
+            verification_config,
+        )
+        expected = {
+            "groups": groups,
+            "conflicts": conflicts,
+            "verification": verification,
+        }
         add(
-            "matches_a_fresh_run",
+            "matches_validated_drafts",
             [
-                "not run: model-written drafts cannot be re-created; the other checks still apply"
+                f"{key} differs from its validated drafts"
+                for key, value in expected.items()
+                if output[key] != value
             ],
-            blocks=False,
         )
         return
     fresh = _run_stages(payload, RuleExtractor())
@@ -695,7 +785,7 @@ def repeat_processing_check(
         extractor=extractor,
     )
     problems = []
-    if first != second:
+    if _comparable(first) != _comparable(second):
         problems.append("two runs on the same input differ")
 
     def counts(output: Mapping[str, Any]) -> dict[str, int]:

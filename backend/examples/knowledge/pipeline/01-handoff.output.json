@@ -2174,6 +2174,12 @@
     "release_allowed": true,
     "checks": [
       {
+        "check": "counts_match_assessment",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
         "check": "no_fabricated_citations",
         "passed": true,
         "blocks_release": true,
