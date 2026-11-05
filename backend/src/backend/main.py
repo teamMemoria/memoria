@@ -1,22 +1,51 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api import calls, conversations, knowledge, viewer
+from backend.core.config import Settings
 from backend.db.session import get_db_session
-
-app = FastAPI(title="Call Assist")
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+from backend.providers import (
+    Providers,
+    ProviderUnavailableError,
+    create_fixture_providers,
+)
 
 
-@app.get("/ready")
-async def readiness(
-    session: Annotated[AsyncSession, Depends(get_db_session)],
-):
-    await session.execute(text("SELECT 1"))
-    return {"status": "ready"}
+def create_app(
+    providers: Providers | None = None, settings: Settings | None = None
+) -> FastAPI:
+    app = FastAPI(title="Call Assist")
+    # Fixture providers until the database providers (#75) are ready.
+    app.state.providers = providers or create_fixture_providers()
+    app.state.settings = settings or Settings()
+
+    @app.exception_handler(ProviderUnavailableError)
+    async def provider_unavailable(request: Request, exc: ProviderUnavailableError):
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": "Data source unavailable"},
+        )
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
+
+    @app.get("/ready")
+    async def readiness(
+        session: Annotated[AsyncSession, Depends(get_db_session)],
+    ):
+        await session.execute(text("SELECT 1"))
+        return {"status": "ready"}
+
+    app.include_router(viewer.router)
+    app.include_router(conversations.router)
+    app.include_router(calls.router)
+    app.include_router(knowledge.router)
+    return app
+
+
+app = create_app()
