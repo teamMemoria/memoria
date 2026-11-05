@@ -53,6 +53,7 @@ async def test_conversations_are_scoped_and_newest_first(providers):
         "C1044",
         "C1043",
         "C1042",
+        "C1047",
         "C1046",
     ]
     assert await providers.conversations.list_for_agent(HARBOR, ALEX) == []

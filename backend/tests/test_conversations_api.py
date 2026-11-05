@@ -37,6 +37,7 @@ def test_agent_gets_own_conversations_newest_first():
         "C1044",
         "C1043",
         "C1042",
+        "C1047",
         "C1046",
     ]
     assert {c["agentId"] for c in response.json()} == {ALEX}

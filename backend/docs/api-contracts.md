@@ -63,7 +63,7 @@ are checked with `can_read_agent_record(user, organization_id, agent_id)`.
 
 ## Proposed routes
 
-`/api/viewer` (#71) and `/api/agent/conversations` (#72) are implemented; the rest come in #73–#74. The agent is always the authenticated requester (#71),
+`/api/viewer` (#71), `/api/agent/conversations` (#72) and `/api/agent/conversations/{conversationId}` (#73) are implemented; knowledge comes in #74. The agent is always the authenticated requester (#71),
 never an ID taken from the URL or query string.
 
 | Method and path | Response | Frontend interface |
@@ -99,6 +99,30 @@ a processing call has `automatedResult: "processing"` and `reviewStatus: null`.
 | `401` | `{"detail": "Missing identity"}` | No identity |
 | `403` | `{"detail": "Not permitted"}` | A Manager or Knowledge Approver without `conversations:read-own` |
 | `503` | `{"detail": "Data source unavailable"}` | The conversation provider is down |
+
+### `GET /api/agent/conversations/{conversationId}`
+
+Requires `conversations:read-own`. Returns the `CallReview` for one of the requester's own calls.
+
+- **Ready:** four criteria (one per category), findings with suggestions, transcript turns and references.
+- **Processing:** `status: "processing"` with empty `criteria` and `findings` and no `decision`.
+- **Missing transcript:** `transcript: null`; criteria are `cannot-assess` with no evidence.
+- **Partial transcript:** `transcript.complete: false` with an `unavailableReason`; criteria that
+  depend on the missing part are `cannot-assess`.
+- **Turn numbers** are the originals, gaps included, and every evidence number points at a turn in
+  this call's transcript.
+- **References** are the versions the call was assessed against. A reference that has since become
+  stale is still returned, with its `status` and `version` unchanged, so the agent sees what they were
+  measured against (fixture `C1047`).
+- **`decision`** is the Manager's decision, kept beside the automated `criteria`, never merged into them.
+
+| Status | Body | When |
+|---|---|---|
+| `200` | `CallReview` | Success, in any of the states above |
+| `401` | `{"detail": "Missing identity"}` | No identity |
+| `403` | `{"detail": "Not permitted"}` | A Manager or Knowledge Approver without `conversations:read-own` |
+| `404` | `{"detail": "Conversation not found"}` | Unknown call, call record unavailable, or another agent's or organization's call |
+| `503` | `{"detail": "Data source unavailable"}` | The call provider is down |
 
 ### Examples
 
