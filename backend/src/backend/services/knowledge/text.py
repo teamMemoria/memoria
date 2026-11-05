@@ -279,3 +279,16 @@ def jaccard(a: set[str], b: set[str]) -> float:
     if not a and not b:
         return 1.0
     return len(a & b) / len(a | b)
+
+
+def conditions(text: str) -> set[str]:
+    """Explicit conditions only; unfamiliar paraphrases are not assumed equivalent."""
+    return {
+        normalise(match.group())
+        for match in re.finditer(
+            r"\b(?:only (?:if|when|with)|if|unless|except(?: for| when| if)?|"
+            r"provided(?: that)?|as long as)\b[^,.;!?]*",
+            text,
+            re.IGNORECASE,
+        )
+    }

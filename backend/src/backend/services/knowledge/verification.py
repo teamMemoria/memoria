@@ -502,19 +502,31 @@ def _claim_result(
         status = "partially_supported"
     else:
         status = "unverifiable"
-    missing = []
+    missing = {}
+
+    def add_missing(source, condition):
+        missing.setdefault(
+            (source["reference_id"], condition),
+            {
+                "reference_id": source["reference_id"],
+                "condition": condition,
+                "quote": source["text"],
+            },
+        )
+
     # Conditions the references attach to what the agent said, that the draft
     # does not state. Recorded actions are outcomes, not statements, so they are
-    # not held to this; combined passages mix several levels, so only single
-    # passages that apply to the claim's own levels are used.
+    # not held to this. Conditions can span a heading and its sub-points;
+    # membership and quantity comparisons still use individual passages.
     effective_levels = claim.levels | claim.owner.context_levels
     if (
         status in {"supported", "partially_supported"}
         and claim.passage.get("speaker") == "agent"
     ):
-        seen: set[tuple[str, str]] = set()
+        stated = tx.conditions(" ".join([claim.text, *claim.owner.condition_texts]))
+        sources = [u for u in units if not u.reference.get("combined_from")]
         for support, reference, ref_claim, _ in scored:
-            if support < config.support_threshold or reference.get("combined_from"):
+            if support < config.support_threshold:
                 continue
             if (
                 ref_claim.levels
@@ -522,23 +534,29 @@ def _claim_result(
                 and not ref_claim.levels & effective_levels
             ):
                 continue
-            needed = []
+            parts = reference.get("combined_from") or [reference["reference_id"]]
+            for part in sources:
+                if part.reference["reference_id"] not in parts:
+                    continue
+                if (
+                    part.claim.levels
+                    and effective_levels
+                    and not part.claim.levels & effective_levels
+                ):
+                    continue
+                for condition in sorted(tx.conditions(part.reference["text"]) - stated):
+                    add_missing(part.reference, condition)
+            if reference.get("combined_from"):
+                continue
             if ref_claim.levels and not effective_levels:
-                needed.append(
-                    f"membership level ({', '.join(sorted(ref_claim.levels))})"
+                add_missing(
+                    reference,
+                    f"membership level ({', '.join(sorted(ref_claim.levels))})",
                 )
             for unit in sorted(ref_claim.quantities.keys() - claim.quantities.keys()):
-                needed.append(f"{unit} limit {sorted(ref_claim.quantities[unit])}")
-            for condition in needed:
-                if (reference["reference_id"], condition) not in seen:
-                    seen.add((reference["reference_id"], condition))
-                    missing.append(
-                        {
-                            "reference_id": reference["reference_id"],
-                            "condition": condition,
-                            "quote": reference["text"],
-                        }
-                    )
+                add_missing(
+                    reference, f"{unit} limit {sorted(ref_claim.quantities[unit])}"
+                )
     return {
         "claim": claim.text,
         "passage": claim.passage,
@@ -547,7 +565,7 @@ def _claim_result(
         "citations": citations,
         "contradicted_by": contradictions,
         "possibly_contradicted_by": uncertain,
-        "missing_conditions": missing,
+        "missing_conditions": list(missing.values()),
     }
 
 
@@ -590,8 +608,10 @@ def check_drafts(
     conflicts_of: dict[str, list[dict[str, Any]]] = {}
     try:
         for item in (conflicts or {}).get("possible_conflicts", []):
-            for side in ("a", "b"):
-                draft_id = item[side].get("draft_id")
+            affected = set(item.get("affected_draft_ids", [])) | {
+                item[side].get("draft_id") for side in ("a", "b")
+            }
+            for draft_id in affected:
                 if draft_id:
                     conflicts_of.setdefault(draft_id, []).append(
                         {
@@ -605,7 +625,7 @@ def check_drafts(
         raise invalid("conflicts", "must be the output of find_conflicts") from error
 
     packets = []
-    for owner in owners:
+    for owner, draft in zip(owners, drafts, strict=True):
         # Another company's references are never looked at, not even to list them.
         in_scope = [
             r
@@ -641,6 +661,27 @@ def check_drafts(
                 config,
             )
         )
+        if draft.get("wording") == "model" and (
+            any(
+                tx.normalise(draft[field])
+                != tx.normalise(
+                    " ".join(p["quote"] for p in draft[f"{field}_passages"])
+                )
+                for field in ("question", "answer")
+            )
+            or any(
+                tx.normalise(c["text"]) != tx.normalise(c["passage"]["quote"])
+                for c in draft.get("conditions", [])
+            )
+        ):
+            packets[-1].update(
+                verification_status="unverifiable",
+                ml_recommendation="cannot_be_verified",
+            )
+            packets[-1]["requirements_remaining"].insert(
+                0,
+                "Review the rewritten model wording; exact source quotes do not verify a paraphrase.",
+            )
     return {
         "schema": VERIFICATION_SCHEMA_VERSION,
         "status": "ok",

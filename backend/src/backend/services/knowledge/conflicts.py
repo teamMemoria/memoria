@@ -648,10 +648,25 @@ def find_conflicts(
                         statement = (
                             finding.status,
                             finding.kind,
+                            *key,
+                            *(
+                                str((o.owner_id, o.info.get("version")))
+                                for o in (a.owner, b.owner)
+                                if o.kind == "entry"
+                            ),
                             *sorted([_said(a), _said(b)]),
                         )
                         if statement in by_statement:
-                            by_statement[statement]["repeated_pairs"] += 1
+                            previous = by_statement[statement]
+                            previous["repeated_pairs"] += 1
+                            affected = set(previous.get("affected_draft_ids", []))
+                            affected.update(
+                                item[side]["draft_id"]
+                                for item in (previous, record)
+                                for side in ("a", "b")
+                                if item[side]["type"] == "draft"
+                            )
+                            previous["affected_draft_ids"] = sorted(affected)
                             continue
                         by_statement[statement] = record
                         (

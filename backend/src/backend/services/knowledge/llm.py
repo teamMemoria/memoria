@@ -129,8 +129,10 @@ class OpenAICompatibleClient:
                 if isinstance(value, int) and value >= 0:
                     setattr(self.usage, attr, getattr(self.usage, attr) + value)
         try:
+            if payload["choices"][0].get("finish_reason") != "stop":
+                raise _failure("model reply did not finish normally")
             content = payload["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as error:
+        except (KeyError, IndexError, TypeError, AttributeError) as error:
             raise _failure("model reply had no message content") from error
         return parse_json_object(content)
 

@@ -16,7 +16,7 @@
         "subflow": "promo_code_invalid"
       },
       "verification_status": "supported",
-      "ml_recommendation": "supported_by_references",
+      "ml_recommendation": "needs_more_evidence",
       "decision": null,
       "claims": [
         {
@@ -91,7 +91,18 @@
           ],
           "contradicted_by": [],
           "possibly_contradicted_by": [],
-          "missing_conditions": []
+          "missing_conditions": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+              "condition": "if the code was issued a long time ago",
+              "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work."
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
+              "condition": "if the promo code is more than 7 days",
+              "quote": "If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'"
+            }
+          ]
         },
         {
           "claim": "If you are a gold, silver or bronze member I can issue you a new code.",
@@ -191,7 +202,18 @@
           ],
           "contradicted_by": [],
           "possibly_contradicted_by": [],
-          "missing_conditions": []
+          "missing_conditions": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.3",
+              "condition": "if their promo code is not valid for whatever reason",
+              "quote": "Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member."
+            },
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+              "condition": "if the customer is wrong (oracle says no)",
+              "quote": "If the customer is wrong (Oracle says No), then:"
+            }
+          ]
         },
         {
           "claim": "A promo code has been created.",
@@ -360,7 +382,13 @@
           ],
           "contradicted_by": [],
           "possibly_contradicted_by": [],
-          "missing_conditions": []
+          "missing_conditions": [
+            {
+              "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.3",
+              "condition": "if the customer asks",
+              "quote": "If the customer asks, you can say it is for 20% off their next purchase."
+            }
+          ]
         }
       ],
       "possible_conflicts": [],
@@ -389,6 +417,11 @@
         }
       ],
       "requirements_remaining": [
+        "State the if the code was issued a long time ago the reference abcd:purchase_dispute/promo_code_invalid#a2 sets.",
+        "State the if the promo code is more than 7 days the reference abcd:purchase_dispute/promo_code_invalid#a2.1 sets.",
+        "State the if their promo code is not valid for whatever reason the reference abcd:purchase_dispute/promo_code_invalid#a4.3 sets.",
+        "State the if the customer is wrong (oracle says no) the reference abcd:purchase_dispute/promo_code_invalid#a4 sets.",
+        "State the if the customer asks the reference abcd:purchase_dispute/promo_code_invalid#a5.3 sets.",
         "An authorized person must review the evidence and record the verification decision in the backend."
       ]
     },

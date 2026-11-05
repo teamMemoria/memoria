@@ -878,6 +878,14 @@ def check_draft_citations(
 ) -> list[str]:
     """Problems with a draft's citations against its conversation; [] when every quote is exact."""
     problems = []
+    if draft.get("wording") not in ("verbatim", "model"):
+        problems.append("draft has an unknown wording type")
+    source = draft.get("source")
+    if (
+        not isinstance(source, Mapping)
+        or source.get("version") != conversation.source["version"]
+    ):
+        problems.append("draft source version does not match")
     redacted = redact_conversation(conversation)
     passages = [*draft.get("question_passages", []), *draft.get("answer_passages", [])]
     passages += [c["passage"] for c in draft.get("conditions", [])]
@@ -934,4 +942,6 @@ def check_passage(
         problems.append(f"{turn_id}: speaker does not match")
     if passage.get("source_key") != conversation.source_key:
         problems.append(f"{turn_id}: source key does not match")
+    if passage.get("source_version") != conversation.source["version"]:
+        problems.append(f"{turn_id}: source version does not match")
     return problems
