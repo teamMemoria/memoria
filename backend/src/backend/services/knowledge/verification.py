@@ -1,32 +1,11 @@
-"""Check drafts against approved, independent reference passages (#19).
-
-``check_drafts(drafts, company_id, references, ...)`` breaks each draft into
-claims (its answer passages), finds the reference passages that apply, and
-reports, claim by claim, whether each is supported, partly supported,
-contradicted or unverifiable, with citations to the exact reference passages
-(reference id, version, approval and eligibility). It also lists conditions the
-references set that the draft leaves out, the possible conflicts from #18, the
-conversations that repeat the answer, and everything still needed before a
-person could verify it.
-
-Rules that cannot be bent from here:
-
-* Only references that are approved, eligible (not stale, disputed or out of
-  scope) and for the same company and scope can support or contradict a claim.
-  Every other reference is listed under ``ignored_references`` with the reason.
-* Support has to come from an authoritative reference passage. Other drafts,
-  repeated agent answers and existing knowledge entries never count.
-* The output carries no decision. ``ml_recommendation`` is advice for the
-  reviewer; ``requirements_remaining`` always includes a human verification,
-  because having permission is not the same as having checked. Approval,
-  rejection, replacement, verification dates and audit use belong to the
-  backend and an authorized person.
+"""Check drafts against approved, independent reference passages
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -44,22 +23,21 @@ HUMAN_STEP = "An authorized person must review the evidence and record the verif
 
 @dataclass(frozen=True)
 class VerificationConfig:
-    """Choices the team still has to agree (issue #19).
-
-    ``support_threshold``: share of a claim's subject words a reference passage must contain to support it.
-    ``partial_threshold``: share below which a claim is unverifiable rather than partly supported.
-    ``require_every_claim``: whether a draft needs every claim supported to be recommended
-    (False lets claims that are only procedural, like "A link will be sent.", be partly supported).
+    """
     """
 
     support_threshold: float = 0.6
     partial_threshold: float = 0.35
-    require_every_claim: bool = True
 
     def __post_init__(self) -> None:
-        if not 0 <= self.partial_threshold <= self.support_threshold <= 1:
+        values = (self.partial_threshold, self.support_threshold)
+        # A threshold of 0 would let a reference with no words in common "support" a claim.
+        if (
+            not all(type(v) in (int, float) for v in values)
+            or not 0 < values[0] <= values[1] <= 1
+        ):
             raise invalid(
-                "config", "need 0 <= partial_threshold <= support_threshold <= 1"
+                "config", "need 0 < partial_threshold <= support_threshold <= 1"
             )
 
 
@@ -89,13 +67,17 @@ def load_reference_snapshot(path: Path, company_id: str) -> list[dict[str, Any]]
 
 
 def _applies(reference: Mapping[str, Any], scope: Mapping[str, str]) -> bool:
-    ref_scope = reference.get("scope") or {}
+    ref_scope = reference["scope"]
     if ref_scope.get("flow") != scope.get("flow"):
         return False
     if "subflow" in ref_scope:
         return ref_scope["subflow"] == scope.get("subflow")
     prefix = ref_scope.get("subflow_prefix")
-    return bool(prefix) and str(scope.get("subflow", "")).startswith(prefix)
+    return (
+        isinstance(prefix, str)
+        and bool(prefix)
+        and str(scope.get("subflow", "")).startswith(prefix)
+    )
 
 
 def _ineligible(
@@ -112,7 +94,9 @@ def _ineligible(
     eligibility = reference.get("eligibility") or {}
     status = eligibility.get("status")
     if status != "eligible":
-        return f"not eligible ({status or 'missing'}{': ' + eligibility['reason'] if eligibility.get('reason') else ''})"
+        reason = eligibility.get("reason")
+        detail = f": {reason}" if reason else ""
+        return f"not eligible ({status or 'missing'}{detail})"
     valid_until = eligibility.get("valid_until")
     if valid_until:
         if as_of is None:
@@ -122,6 +106,14 @@ def _ineligible(
                 return f"stale (valid until {valid_until})"
         except ValueError:
             return f"unreadable valid_until {valid_until!r}"
+    return None
+
+
+def _framing(reference: Mapping[str, Any]) -> str | None:
+    """Guideline instruction lines frame a flow ("Customers want to know ...", a list of FAQ
+    topics); they do not state policy, so they neither support nor contradict a claim."""
+    if (reference.get("guideline") or {}).get("type") == "instruction":
+        return "instruction line: frames the flow, does not state policy"
     return None
 
 
@@ -136,6 +128,36 @@ def _check_reference(reference: Any, index: int) -> Mapping[str, Any]:
                 f"{key} must be a non-empty string",
                 f"{where}.{key}",
             )
+    for key in ("approval", "eligibility"):
+        value = reference.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, Mapping):
+            raise PipelineError(
+                "reference_invalid", f"{key} must be an object", f"{where}.{key}"
+            )
+        for field_name in ("status", "reason", "valid_until"):
+            if value.get(field_name) is not None and not isinstance(
+                value[field_name], str
+            ):
+                raise PipelineError(
+                    "reference_invalid",
+                    f"{field_name} must be a string",
+                    f"{where}.{key}.{field_name}",
+                )
+    if reference.get("parent") is not None and not isinstance(reference["parent"], str):
+        raise PipelineError(
+            "reference_invalid", "parent must be a string", f"{where}.parent"
+        )
+    scope = reference.get("scope")
+    if isinstance(scope, Mapping) and not all(
+        isinstance(scope.get(k), str)
+        for k in ("flow", "subflow", "subflow_prefix")
+        if k in scope
+    ):
+        raise PipelineError(
+            "reference_invalid", "scope values must be strings", f"{where}.scope"
+        )
     if not isinstance(reference.get("scope"), Mapping):
         raise PipelineError(
             "reference_invalid", "scope must be an object", f"{where}.scope"
@@ -179,12 +201,36 @@ def _unit(reference: Mapping[str, Any]) -> _Unit:
     )
 
 
+def _natural(reference_id: str) -> list[Any]:
+    """Sort key that puts "#a2.2" before "#a2.10"."""
+    return [
+        int(part) if part.isdigit() else part
+        for part in re.split(r"(\d+)", reference_id)
+    ]
+
+
+def combine_texts(texts: Sequence[str]) -> str:
+    """The text of a heading read with its sub-points, one sentence each.
+
+    Each part is kept exactly; a part without closing punctuation is followed
+    by a full stop, so a short heading ("Guest") is never read as part of the
+    next sub-point.
+    """
+    out = texts[0]
+    for text in texts[1:]:
+        out += (" " if out.rstrip()[-1:] in tuple(".!?:;") else ". ") + text
+    return out
+
+
 def _units(usable: Sequence[Mapping[str, Any]]) -> list[_Unit]:
     """Each usable passage, plus each action read together with its usable sub-points.
 
     Guidelines often state a rule as a heading and a list ("Ask for 3 out of 4
     items below" / "Zip Code" / "Phone number" ...); only the two together say it.
+    Sub-points are read in reference-id order, so the input order never changes
+    a result.
     """
+    usable = sorted(usable, key=lambda r: _natural(r["reference_id"]))
     units = [_unit(r) for r in usable]
     children: dict[str, list[Mapping[str, Any]]] = {}
     for reference in usable:
@@ -195,7 +241,7 @@ def _units(usable: Sequence[Mapping[str, Any]]) -> list[_Unit]:
         if kids:
             combined = {
                 **reference,
-                "text": " ".join([reference["text"], *(k["text"] for k in kids)]),
+                "text": combine_texts([reference["text"], *(k["text"] for k in kids)]),
                 "combined_from": [
                     reference["reference_id"],
                     *(k["reference_id"] for k in kids),
@@ -228,13 +274,99 @@ def _support(claim_subject: set[str], reference_subject: set[str]) -> float:
     return len(claim_subject & reference_subject) / len(claim_subject)
 
 
+_HELPERS = frozenset(
+    [
+        "be",
+        "been",
+        "being",
+        "able",
+        "to",
+        "do",
+        "does",
+        "did",
+        "have",
+        "has",
+        "had",
+        "ever",
+        "even",
+        "always",
+        "really",
+        "actually",
+        "just",
+        "yet",
+        "also",
+        "the",
+        "a",
+        "an",
+        "any",
+        "your",
+        "their",
+        "our",
+        "my",
+        "his",
+        "her",
+        "its",
+    ]
+)
+_CLAUSE = re.compile(r"[,;:]|\bbut\b|\bhowever\b", re.IGNORECASE)
+
+
+def negated_predicates(text: str) -> tuple[set[str], set[str]]:
+    """(words a negation applies to, every content word), clause by clause.
+
+    Only the first content word after a negation counts as negated ("cannot
+    *use* promo codes"), and a negation never reaches past a comma or "but", so
+    "codes never expire, you can use them" negates "expire" and not "use".
+    """
+    negated: set[str] = set()
+    for clause in _CLAUSE.split(tx.normalise(text)):
+        tokens = tx.words(tx._NOT_NEGATION.sub(" ", clause))
+        for i, token in enumerate(tokens):
+            if token in tx.NEGATIONS or token.endswith("n't"):
+                for following in tokens[i + 1 :]:
+                    # Skip helpers ("be able to"), never the verb itself, even a
+                    # common one: "cannot get their password" negates "get".
+                    if following in _HELPERS or following in tx.NEGATIONS:
+                        continue
+                    negated.add(tx.stem(tx.SYNONYMS.get(following, following)))
+                    break
+    return negated, set(tx.content_terms(text))
+
+
+def _polarity_clash(claim_text: str, reference_text: str) -> set[str]:
+    """Words one side negates and the other states without a negation."""
+    claim_negated, claim_terms = negated_predicates(claim_text)
+    ref_negated, ref_terms = negated_predicates(reference_text)
+    return (claim_negated & (ref_terms - ref_negated)) | (
+        ref_negated & (claim_terms - claim_negated)
+    )
+
+
 def _contradiction(claim, unit: _Unit) -> str | None:
     """A reason the reference contradicts the claim, or None."""
     ref_claim = unit.claim
     shared = claim.subject & ref_claim.subject
+    on_topic = bool(claim.subject & unit.topic)
+    # Opposite answers about the same thing, whatever else is in the sentence
+    # (hedges, time words, or a negation on both sides about different verbs).
+    clash = _polarity_clash(claim.text, ref_claim.text)
+    if (
+        clash
+        and len(shared) >= 2
+        and tx.jaccard(claim.subject, ref_claim.subject) >= 0.3
+        and not (
+            claim.levels and ref_claim.levels and not claim.levels & ref_claim.levels
+        )
+    ):
+        return f"The reference says the opposite about {', '.join(sorted(clash))}."
     clash = claim.allowed & ref_claim.denied
-    if clash and claim.subject & unit.topic:
+    if clash and on_topic:
         return f"The reference excludes {', '.join(sorted(clash))}, which the claim includes."
+    clash = claim.denied & ref_claim.allowed
+    # A level the reference merely mentions ("enter the member level, even if just
+    # a Guest") is not an allowance; it has to talk about the same thing.
+    if clash and len(shared) >= 2:
+        return f"The reference includes {', '.join(sorted(clash))}, which the claim excludes."
     for measure in sorted(claim.quantities.keys() & ref_claim.quantities.keys()):
         if (
             not claim.quantities[measure] & ref_claim.quantities[measure]
@@ -251,8 +383,26 @@ def _contradiction(claim, unit: _Unit) -> str | None:
                 f"the claim gives {sorted(claim.quantities[measure])}."
             )
     finding = _compare(claim, ref_claim, ConflictConfig())
-    if finding and finding.kind == "polarity" and finding.status == "possible_conflict":
-        return "The reference says the opposite."
+    if finding and finding.status == "possible_conflict":
+        return f"The reference says otherwise: {finding.explanation}"
+    return None
+
+
+def _uncertain_clash(claim, unit: _Unit) -> str | None:
+    """A disagreement too hedged or time-bound to call a contradiction.
+
+    It still rules out "supported": a reference that may say the opposite is
+    not support.
+    """
+    finding = _compare(claim, unit.claim, ConflictConfig())
+    # Only hedged or time-bound wording counts here; a clash that is uncertain
+    # merely because the claims overlap little is too weak to hold support back.
+    if (
+        finding
+        and finding.status == "unresolved"
+        and any(r.startswith(("hedged", "time-bound")) for r in finding.uncertainty)
+    ):
+        return f"The reference may say otherwise: {finding.explanation}"
     return None
 
 
@@ -261,11 +411,21 @@ def _claim_result(
 ) -> dict[str, Any]:
     scored = []
     contradictions = []
+    uncertain = []
     for unit in units:
         reference, ref_claim = unit.reference, unit.claim
         reason = _contradiction(claim, unit)
         if reason:
             contradictions.append(
+                {
+                    **_citation(reference, _support(claim.subject, ref_claim.subject)),
+                    "reason": reason,
+                }
+            )
+            continue
+        reason = _uncertain_clash(claim, unit)
+        if reason:
+            uncertain.append(
                 {
                     **_citation(reference, _support(claim.subject, ref_claim.subject)),
                     "reason": reason,
@@ -295,17 +455,25 @@ def _claim_result(
         scored.append((support, reference, ref_claim, specificity))
     scored.sort(key=lambda s: (-s[0], -s[3], s[1]["reference_id"]))
     best = scored[0][0] if scored else 0.0
+    # The same passage can score once alone and once inside a combined unit;
+    # cite each reference once, keeping its best reading.
+    citations = []
+    cited: set[str] = set()
+    for support, reference, _, _ in scored:
+        if support < config.partial_threshold or reference["reference_id"] in cited:
+            continue
+        cited.add(reference["reference_id"])
+        citations.append(_citation(reference, support))
+        if len(citations) == 3:
+            break
     if contradictions:
         status = "contradicted"
-    elif best >= config.support_threshold:
+    elif best >= config.support_threshold and best > 0 and citations and not uncertain:
         status = "supported"
-    elif best >= config.partial_threshold:
+    elif best >= config.partial_threshold and best > 0 and citations:
         status = "partially_supported"
     else:
         status = "unverifiable"
-    citations = [
-        _citation(r, s) for s, r, _, _ in scored[:3] if s >= config.partial_threshold
-    ]
     missing = {}
 
     def add_missing(source, condition):
@@ -368,6 +536,7 @@ def _claim_result(
         "best_support": round(best, 4),
         "citations": citations,
         "contradicted_by": contradictions,
+        "possibly_contradicted_by": uncertain,
         "missing_conditions": list(missing.values()),
     }
 
@@ -395,6 +564,8 @@ def check_drafts(
         )
     as_of_date = None
     if as_of is not None:
+        if not isinstance(as_of, str):
+            raise invalid("as_of", "must be an ISO date string (YYYY-MM-DD)")
         try:
             as_of_date = dt.date.fromisoformat(as_of)
         except ValueError as error:
@@ -407,27 +578,37 @@ def check_drafts(
         for draft_id in group.get("member_draft_ids", []):
             supporting[draft_id] = list(group.get("source_keys", []))
     conflicts_of: dict[str, list[dict[str, Any]]] = {}
-    for item in (conflicts or {}).get("possible_conflicts", []):
-        affected = set(item.get("affected_draft_ids", [])) | {
-            item[side].get("draft_id") for side in ("a", "b")
-        }
-        for draft_id in affected:
-            if draft_id:
-                conflicts_of.setdefault(draft_id, []).append(
-                    {
-                        "conflict_id": item["conflict_id"],
-                        "status": item["status"],
-                        "kind": item["kind"],
-                        "explanation": item["explanation"],
-                    }
-                )
+    try:
+        for item in (conflicts or {}).get("possible_conflicts", []):
+            affected = set(item.get("affected_draft_ids", [])) | {
+                item[side].get("draft_id") for side in ("a", "b")
+            }
+            for draft_id in affected:
+                if draft_id:
+                    conflicts_of.setdefault(draft_id, []).append(
+                        {
+                            "conflict_id": item["conflict_id"],
+                            "status": item["status"],
+                            "kind": item["kind"],
+                            "explanation": item["explanation"],
+                        }
+                    )
+    except (KeyError, TypeError, AttributeError) as error:
+        raise invalid("conflicts", "must be the output of find_conflicts") from error
 
     packets = []
     for owner, draft in zip(owners, drafts, strict=True):
-        in_scope = [r for r in checked if _applies(r, owner.scope)]
+        # Another company's references are never looked at, not even to list them.
+        in_scope = [
+            r
+            for r in checked
+            if r.get("company_id") == company_id and _applies(r, owner.scope)
+        ]
         usable, ignored = [], []
         for reference in in_scope:
-            reason = _ineligible(reference, company_id, as_of_date)
+            reason = _ineligible(reference, company_id, as_of_date) or _framing(
+                reference
+            )
             if reason:
                 ignored.append(
                     {
@@ -510,6 +691,10 @@ def _packet(
             requirements.append(
                 f"Resolve the contradiction with {claim['contradicted_by'][0]['reference_id']}: {claim['claim']!r}"
             )
+        for doubt in claim["possibly_contradicted_by"]:
+            requirements.append(
+                f"Check whether {doubt['reference_id']} contradicts: {claim['claim']!r}"
+            )
         for missing in claim["missing_conditions"]:
             requirements.append(
                 f"State the {missing['condition']} the reference {missing['reference_id']} sets."
@@ -528,16 +713,8 @@ def _packet(
         overall, advice = "partially_supported", "needs_more_evidence"
     else:
         overall, advice = "unverifiable", "cannot_be_verified"
-    if (
-        not config.require_every_claim
-        and overall == "partially_supported"
-        and "unverifiable" not in statuses
-        and "supported" in statuses
-    ):
-        overall, advice = "supported", "supported_by_references"
-    blocking = any(c["missing_conditions"] for c in claims) or any(
-        c["status"] == "possible_conflict" for c in draft_conflicts
-    )
+    # Any open conflict, resolved or not, keeps a draft from being recommended.
+    blocking = any(c["missing_conditions"] for c in claims) or bool(draft_conflicts)
     if advice == "supported_by_references" and blocking:
         advice = "needs_more_evidence"
     return {

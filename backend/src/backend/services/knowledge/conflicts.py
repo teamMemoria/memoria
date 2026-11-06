@@ -30,16 +30,17 @@ from typing import Any
 
 from . import text as tx
 from .errors import PipelineError, invalid
-from .grouping import scope_key
+from .grouping import MAX_DRAFTS, MAX_EXISTING_ENTRIES, scope_key
 
 CONFLICTS_SCHEMA_VERSION = "knowledge-conflicts/1"
-MAX_ITEMS = 5_000
 MEMBER_LEVELS = frozenset({"gold", "silver", "bronze"})
 ALL_LEVELS = MEMBER_LEVELS | {"guest"}
 
 _HEDGE = re.compile(
     r"\b(i think|i believe|i'?m not (completely |totally |entirely )?sure|not sure|might|maybe|perhaps|possibly"
-    r"|probably|usually|typically|generally|normally|sometimes|often|around|about|roughly|approximately)\b",
+    r"|probably|usually|typically|generally|normally|sometimes|often)\b"
+    # "about" and "around" only hedge a figure ("about 5 days"), not "sorry about that".
+    r"|\b(around|about|roughly|approximately)\s+(\$|£|€)?\d",
     re.IGNORECASE,
 )
 _TIME_BOUND = re.compile(
@@ -49,6 +50,11 @@ _TIME_BOUND = re.compile(
 )
 _EXCEPTION = re.compile(
     r"\b(unless|except(?: for| when| if)?|other than|apart from)\b(?P<rest>[^.;!?]*)",
+    re.IGNORECASE,
+)
+_ONLY_LEVEL = re.compile(
+    r"\bonly\b(?:\s+(?:to|for|our|existing|the|a|an))*\s+(?:gold|silver|bronze|guest)s?\b"
+    r"|\b(?:gold|silver|bronze|guest)s?(?:\s+members?)?\s+only\b",
     re.IGNORECASE,
 )
 _ONLY_MEMBERS = re.compile(
@@ -197,7 +203,9 @@ def _claim(
     negated = tx.is_negated(text)
     exclusive = (
         bool(_ONLY_MEMBERS.search(text))
-        or bool(re.search(r"\bonly\b", text, re.IGNORECASE) and levels)
+        # "only" has to be about the level ("only gold members", "members only"),
+        # not about something else in the sentence ("if they are only 1 day late").
+        or bool(_ONLY_LEVEL.search(text))
         or bool(_IF_LEVEL.search(text))
     )
     if not levels and _ONLY_MEMBERS.search(text):
@@ -251,13 +259,22 @@ def _draft_owner(draft: Any, index: int, company_id: str) -> _Owner:
     passages = draft.get("answer_passages")
     if not isinstance(passages, list) or not passages:
         raise invalid(f"{where}.answer_passages", "must be a non-empty array")
-    scope = draft.get("scope") or {}
+    scope = draft.get("scope")
+    if not isinstance(scope, Mapping):
+        raise invalid(f"{where}.scope", "must be an object")
+    raw_conditions = draft.get("conditions") or []
+    if not isinstance(raw_conditions, list):
+        raise invalid(f"{where}.conditions", "must be an array")
     conditions = [
         c["text"]
-        for c in draft.get("conditions", [])
+        for c in raw_conditions
         if isinstance(c, Mapping) and isinstance(c.get("text"), str)
     ]
-    source = draft.get("source") or {}
+    source = draft.get("source")
+    if not isinstance(source, Mapping) or not isinstance(source.get("source_key"), str):
+        raise invalid(f"{where}.source.source_key", "is required")
+    if not isinstance(draft.get("draft_id"), str) or not draft["draft_id"]:
+        raise invalid(f"{where}.draft_id", "must be a non-empty string")
     owner = _Owner(
         kind="draft",
         owner_id=str(draft.get("draft_id")),
@@ -304,9 +321,14 @@ def _entry_owner(entry: Any, index: int, company_id: str) -> _Owner | None:
     if entry["company_id"] != company_id:
         return None
     scope = entry.get("scope") or {}
+    if not isinstance(scope, Mapping):
+        raise invalid(f"{where}.scope", "must be an object")
+    raw_conditions = entry.get("conditions") or []
+    if not isinstance(raw_conditions, list):
+        raise invalid(f"{where}.conditions", "must be an array")
     conditions = [
         c if isinstance(c, str) else str(c.get("text", ""))
-        for c in entry.get("conditions", [])
+        for c in raw_conditions
         if isinstance(c, str | Mapping)
     ]
     owner = _Owner(
@@ -477,19 +499,22 @@ def _conditions(claim: _Claim) -> dict[str, Any]:
     }
 
 
+def _side_key(claim: _Claim) -> list[str]:
+    """What identifies one side: its owner, the version and the exact claim text.
+
+    Entry passages have no turn id, so the version and a hash of the text are
+    what tell two versions of one entry apart.
+    """
+    return [
+        claim.owner.owner_id,
+        str(claim.owner.info.get("version")),
+        json.dumps([claim.passage.get("turn_id"), claim.passage.get("span")]),
+        hashlib.sha256(claim.text.encode("utf-8")).hexdigest()[:16],
+    ]
+
+
 def _conflict_id(company_id: str, a: _Claim, b: _Claim) -> str:
-    key = sorted(
-        [
-            [
-                a.owner.owner_id,
-                json.dumps(a.passage.get("turn_id") or a.passage.get("span")),
-            ],
-            [
-                b.owner.owner_id,
-                json.dumps(b.passage.get("turn_id") or b.passage.get("span")),
-            ],
-        ]
-    )
+    key = sorted([_side_key(a), _side_key(b)])
     return (
         "conflict_"
         + hashlib.sha256(json.dumps([company_id, key]).encode()).hexdigest()[:20]
@@ -515,24 +540,45 @@ def find_conflicts(
         existing_entries, list | tuple
     ):
         raise invalid("drafts", "drafts and existing_entries must be arrays")
-    if len(drafts) + len(existing_entries) > MAX_ITEMS:
+    # The same limits as grouping, so a batch that groups also gets compared.
+    if len(drafts) > MAX_DRAFTS:
+        raise PipelineError(
+            "oversized_input", f"more than {MAX_DRAFTS} drafts in one call", "drafts"
+        )
+    if len(existing_entries) > MAX_EXISTING_ENTRIES:
         raise PipelineError(
             "oversized_input",
-            f"more than {MAX_ITEMS} drafts and entries in one call",
-            "drafts",
+            f"more than {MAX_EXISTING_ENTRIES} entries in one call",
+            "existing_entries",
         )
     owners: dict[str, _Owner] = {}
     for index, draft in enumerate(drafts):
         owner = _draft_owner(draft, index, company_id)
         owners.setdefault(owner.owner_id, owner)
-    entries = [
-        o
-        for i, e in enumerate(existing_entries)
-        if (o := _entry_owner(e, i, company_id))
-    ]
+    entries: list[_Owner] = []
+    seen_entries: set[tuple[str, str]] = set()
+    for index, entry in enumerate(existing_entries):
+        owner = _entry_owner(entry, index, company_id)
+        # The same entry version sent twice is one entry, compared once.
+        if (
+            owner is None
+            or (key := (owner.owner_id, str(owner.info.get("version")))) in seen_entries
+        ):
+            continue
+        seen_entries.add(key)
+        entries.append(owner)
+    entries.sort(key=lambda o: (o.owner_id, str(o.info.get("version"))))
     group_of: dict[str, str] = {}
-    if groups:
+    if groups is not None:
+        if not isinstance(groups, Mapping) or not isinstance(
+            groups.get("groups", []), list
+        ):
+            raise invalid("groups", "must be the output of group_drafts")
         for group in groups.get("groups", []):
+            if not isinstance(group, Mapping) or not isinstance(
+                group.get("group_id"), str
+            ):
+                raise invalid("groups", "every group needs a group_id")
             for draft_id in group.get("member_draft_ids", []):
                 group_of[draft_id] = group["group_id"]
 
@@ -544,6 +590,8 @@ def find_conflicts(
 
     conflicts: list[dict[str, Any]] = []
     explained: list[dict[str, Any]] = []
+    # Many drafts saying exactly the same two things are one disagreement, not
+    # one per pair: the first pair is kept and the others are counted.
     by_statement: dict[tuple[str, ...], dict[str, Any]] = {}
     for key in sorted(buckets):
         members = buckets[key]
@@ -562,8 +610,16 @@ def find_conflicts(
                     and first.info["source_key"] == second.info["source_key"]
                 ):
                     continue  # one conversation read twice does not disagree with itself
+                # A claim that the other side also states itself is not a point
+                # they disagree on: identical drafts never "conflict" with each other.
+                first_says = {_said(c) for c in first.claims}
+                second_says = {_said(c) for c in second.claims}
                 for a in first.claims:
+                    if _said(a) in second_says:
+                        continue
                     for b in second.claims:
+                        if _said(b) in first_says:
+                            continue
                         finding = _compare(a, b, config)
                         if finding is None:
                             continue

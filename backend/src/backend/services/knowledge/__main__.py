@@ -14,14 +14,21 @@ from typing import Any
 
 from .conflicts import find_conflicts
 from .errors import PipelineError
+from .evaluation import evaluate, render_markdown
 from .extraction import ModelExtractor, RuleExtractor, extract_drafts
 from .grouping import group_drafts
 from .llm import OpenAICompatibleClient
+from .pipeline import run_pipeline
 from .verification import check_drafts, load_reference_snapshot
 
 
 def _read(path: str) -> Any:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise PipelineError(
+            "invalid_input", f"cannot read {path} as JSON: {type(error).__name__}", path
+        ) from error
 
 
 def _write(value: Any, path: str | None) -> None:
@@ -108,6 +115,41 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    payload = _read(args.payload)
+    if isinstance(payload, dict) and "conversation_files" in payload:
+        # Convenience for local files (paths relative to the working directory),
+        # as in examples/knowledge/pipeline/. The backend sends conversations inline.
+        files = payload.pop("conversation_files")
+        payload["conversations"] = [
+            *payload.get("conversations", []),
+            *(_read(f) for f in files),
+        ]
+    output = run_pipeline(
+        payload, extractor=_extractor(args.extractor), include_timings=args.timings
+    )
+    _write(output, args.out)
+    if output["status"] == "error":
+        return 1
+    return 0 if output["release_checks"]["release_allowed"] else 3
+
+
+def cmd_evaluate(args: argparse.Namespace) -> int:
+    backend = Path(__file__).resolve().parents[4]
+    report = evaluate(args.split, backend, extractor=_extractor(args.extractor))
+    report["notes"] += args.note or []
+    out = Path(args.out_dir) if args.out_dir else backend / "results" / "knowledge"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"eval-{args.split}.json").write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    (out / f"eval-{args.split}.md").write_text(
+        render_markdown(report), encoding="utf-8"
+    )
+    sys.stdout.write(render_markdown(report))
+    return 0 if report["release_checks"]["release_allowed"] else 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m backend.services.knowledge")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -159,12 +201,43 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--as-of", help="ISO date used for reference expiry")
     verify.add_argument("--out")
     verify.set_defaults(func=cmd_verify)
+
+    run = sub.add_parser(
+        "run",
+        help="run the whole pipeline on one payload file, with release checks (#20)",
+    )
+    run.add_argument(
+        "payload",
+        help="JSON: {company_id, conversations, existing_entries?, references?, as_of?, config?}",
+    )
+    run.add_argument("--extractor", choices=["rule", "model"], default="rule")
+    run.add_argument("--timings", action="store_true")
+    run.add_argument("--out")
+    run.set_defaults(func=cmd_run)
+
+    evaluation = sub.add_parser(
+        "evaluate", help="score the pipeline against labelled cases (#20)"
+    )
+    evaluation.add_argument("--split", choices=["dev", "heldout"], default="dev")
+    evaluation.add_argument("--extractor", choices=["rule", "model"], default="rule")
+    evaluation.add_argument("--out-dir", help="default: backend/results/knowledge")
+    evaluation.add_argument(
+        "--note", action="append", help="add a note to the report (repeatable)"
+    )
+    evaluation.set_defaults(func=cmd_evaluate)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except PipelineError as error:
+        # Unreadable input files and the like: a typed error, never a traceback.
+        _write(
+            {"status": "error", "errors": [error.to_dict()]}, getattr(args, "out", None)
+        )
+        return 1
 
 
 if __name__ == "__main__":

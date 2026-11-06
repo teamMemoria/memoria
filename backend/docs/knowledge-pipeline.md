@@ -13,7 +13,8 @@ Code lives in `src/backend/services/knowledge/`.
 | Extract knowledge drafts | #16 | `extract_drafts` | done |
 | Group drafts and find duplicates | #17 | `group_drafts` | done |
 | Find possible knowledge conflicts | #18 | `find_conflicts` | done |
-| Check drafts against approved sources | #19 | `check_drafts` | this PR |
+| Check drafts against approved sources | #19 | `check_drafts` | done |
+| Test the knowledge pipeline | #20 | `run_pipeline`, `release_checks`, `evaluate` | this PR |
 
 ## Running it
 
@@ -25,6 +26,8 @@ uv run python -m backend.services.knowledge extract data/abcd/conversations --co
 uv run python -m backend.services.knowledge group /tmp/drafts.json --company acme --out /tmp/groups.json
 uv run python -m backend.services.knowledge conflicts /tmp/drafts.json --company acme --groups /tmp/groups.json --out /tmp/conflicts.json
 uv run python -m backend.services.knowledge verify /tmp/drafts.json --company acme --references data/references/abcd-guidelines.snapshot.json --conflicts /tmp/conflicts.json --groups /tmp/groups.json --as-of 2026-10-22
+uv run python -m backend.services.knowledge run examples/knowledge/pipeline/01-handoff.input.json --out /tmp/run.json
+uv run python -m backend.services.knowledge evaluate --split dev        # writes results/knowledge/eval-dev.{json,md}
 uv run python scripts/knowledge_examples.py        # rewrite examples/knowledge/ after a deliberate change
 ```
 
@@ -46,6 +49,12 @@ result.errors          # set whenever status is "error"
   `data/abcd/conversations/`;
 - the raw ABCD v1.1 shape (`convo_id`, `scenario`, `original`, `delexed`).
 
+A curated record must carry `customer_record`, using only the fields the
+redactor knows (`customer_name`, `member_level`, `phone`, `email`, `username`,
+`account_id`, `address`, `order`). Use `{}` when there are no personal details.
+A missing, non-object or renamed record is refused with `invalid_input`,
+because redaction depends on it.
+
 Both are read straight from JSON (`abcd.py`). The reader keeps the source and
 its version (`source.version`, `source.dataset_version`), the turns in order
 with stable IDs (`ABCD-0041#t21`), the recorded agent actions paired with
@@ -60,6 +69,12 @@ curated file or from the raw dump, so it is never counted twice.
   conversation ID, turn ID, speaker, character span and the exact quoted text.
   `check_draft_citations(draft, conversation)` re-reads the conversation and
   confirms every quote is the text at its span.
+  - **The span and quote index the masked turn, not the raw one.** The turn is
+    NFC-normalised and has personal details replaced by placeholders such as
+    `[CUSTOMER_NAME]` before anything is quoted. So `quote` is the exact text at
+    `span` of that masked turn. A consumer comparing against stored turns must
+    apply the same masking (`Redactor`) first, or match the quote and not the
+    offsets.
 - `conditions`. These are the parts the answer depends on: membership levels,
   time limits, exceptions and requirements. Each one cites its passage and its
   basis: `agent_statement`, `customer_statement` or `recorded_action`.
@@ -77,8 +92,11 @@ out-of-order turns and unknown speakers return `invalid_input`. Over 400
 turns, over 4,000 characters in one turn, or over 120,000 characters in total
 returns `oversized_input`. A model that fails, times out or replies with
 something other than JSON returns `model_failure`, and a reply in the wrong
-shape returns `model_output_invalid`. In every error case `drafts` is empty
-and `status` is `"error"`. A conversation with nothing reusable is the other
+shape returns `model_output_invalid`. An unexpected bug inside an extractor
+returns `internal_error`. Configuration is validated too: `topics` given as a
+plain string, or `max_drafts_per_conversation: 0`, is refused rather than
+quietly producing no drafts. In every error case `drafts` is empty and
+`status` is `"error"`. A conversation with nothing reusable is the other
 case: it returns `status: "ok"`, no drafts, and a `no_draft_reason`
 (`no_reusable_answer`, `no_customer_request` or `topic_not_selected`).
 
@@ -171,7 +189,8 @@ company is ignored. Knowledge bases never mix.
 ABCD subflow (`scope_level="flow"` widens this to the flow). A draft joins a
 group when its similarity to the group's members is at least
 `group_threshold` **and** its conditions are compatible with every member's.
-Conditions are compatible unless one of these holds:
+Conditions (the draft's conditions, plus any membership level its answer
+names) are compatible unless one of these holds:
 
 - the membership levels named are disjoint (gold vs guest);
 - only one of the two depends on membership at all;
@@ -244,6 +263,8 @@ from backend.services.knowledge import find_conflicts
 result = find_conflicts(drafts, company_id="acme", existing_entries=entries, groups=groups)
 result["possible_conflicts"]     # status "possible_conflict" or "unresolved"
 result["explained_differences"]  # looked contradictory, explained by conditions or an exception
+# Drafts saying exactly the same two things are one record; "repeated_pairs"
+# counts the other pairs of drafts that say them.
 ```
 
 **What is compared.** Each answer passage of a draft is one claim, and so is
@@ -407,10 +428,11 @@ passage.
 
 - **Who approves verification sources**, and where that is recorded (in
   this file or in the backend).
-- **Whether every claim needs support.** `VerificationConfig(require_every_claim=True)`
-  is the default. Small talk that slipped into an answer ("Thank you for
-  contacting us") then keeps a draft at `partially_supported`. That is
-  deliberately strict.
+- **Whether every claim needs support.** Today it does: a draft is only
+  `supported` when every claim is. Small talk that slipped into an answer
+  ("Thank you for contacting us") therefore keeps a draft at
+  `partially_supported`. That is deliberately strict. Relaxing it would be a
+  code change, with the release check changed to match.
 - **How to approve and credit adapted ABCD guidelines.** Passages are kept
   verbatim with their source commit and SHA-256. An adapted version should be
   a new snapshot with its own version.
@@ -418,9 +440,178 @@ passage.
 ### Known limits
 
 - Support is lexical. A claim that paraphrases a guideline in very different
-  words comes out `partially_supported` or `unverifiable`, never wrongly
-  `supported`. The error is on the safe side, but it does create reviewer
-  work.
+  words usually comes out `partially_supported` or `unverifiable`, which errs
+  on the safe side but creates reviewer work. Lexical matching can still be
+  wrong in the other direction. The first held-out run and the code review
+  each found a way a claim could be wrongly supported, and both are fixed
+  with regression tests. Every supported claim keeps its citation, so the
+  reviewer can check it.
 - "Or" conditions in guidelines (within 90 days *or* with a receipt *or* in
   original packaging) are read as separate limits. A draft that states only
   one alternative is flagged as missing the others.
+
+## #20: Test the knowledge pipeline
+
+**One function.** `run_pipeline(payload)` takes `{company_id, conversations,
+existing_entries?, references?, as_of?, config?}` and runs extraction,
+grouping, conflicts and verification. It returns all of their outputs plus
+`counts`. The output is fixed JSON: running it twice gives identical results,
+and so does sending every conversation twice. `status` is one of:
+
+- `ok`;
+- `completed_with_failures`, when some conversations failed. They are listed
+  in `technical_failures`, such as `invalid_input` or `model_failure`, and
+  the rest still ran;
+- `error`, only when the payload itself is unusable.
+
+A draft that just has no reference shows up as `unverifiable` in
+`verification`. That is never counted as a failure. The backend handoff
+example is `examples/knowledge/pipeline/01-handoff.*`. It shows one supported
+draft, one contradicted draft and one unverifiable draft, each with
+`decision: null`. The backend sends conversations inline. The example lists
+them by path under `conversation_files` instead, to keep ABCD records in
+`data/abcd/`. The CLI `run` command accepts either form.
+
+**Release checks.** `release_checks(output, payload)` must pass before
+anything is shown to people. `run_pipeline` attaches its result as
+`release_checks`, and the CLI exits with code 3 when it doesn't pass.
+
+The checks are run against the payload, never against values copied into the
+output: an edited output cannot vouch for itself. For rule-extracted output
+they also re-run the pipeline and require the same result.
+Model output must have the complete report structure; its grouping, conflicts
+and verification are recomputed from the cited drafts without another model call.
+Counts are derived from assessment data.
+
+| Check | Fails when |
+|---|---|
+| `counts_match_assessment` | counts differ from the assessment or contain values other than nonnegative integers |
+| `no_fabricated_citations` | any passage anywhere in the output (drafts, group representatives, conflict sides, verification claims) isn't the exact text at an in-range integer span of its turn; a verbatim draft's `question`, `answer` or condition text isn't the text of its passages; a representative differs from its draft; a conflict side quotes a passage or entry version that wasn't supplied; or a citation's quote, version, approval or eligibility differs from the payload's reference (combined units are rebuilt from their parts) |
+| `no_unsupported_verified_claims` | a `supported` claim has no citation that the payload shows is approved, eligible, for this company and current on `as_of`; a reference contradicts it; or a draft is `supported` while one of its claims isn't |
+| `no_personal_data_leaks` | any value from any input customer record (full name, any name part, email, username, address, city, zip, order id, purchase date, phone) appears as a whole word in a text field of the output, or an email, card number, phone number, street address or long number appears at all, found by pattern with no record needed. The check is Unicode-normalised. Ids and versions are not text fields |
+| `ml_approves_nothing` | any status is outside its allowed values: drafts `draft` and `not_verified`, groups and representatives `draft`, conflicts `possible_conflict`/`unresolved`/`explained_difference`, conflict sides unchanged from their draft or entry, verdicts and recommendations from their fixed lists, `decision` present and `null`; or an approval field appears outside a citation |
+| `matches_a_fresh_run` / `matches_validated_drafts` | rule output differs from a fresh run, or model output differs from deterministic checks of its cited drafts |
+| `repeat_processing` (in `evaluate`) | assessment content differs, excluding usage/timing measurements, or doubled input changes a group or count |
+
+**Labelled cases, split.** All case files carry `labelled_by` and
+`human_reviewed: false`. They still need a second person's review before they
+count as human-labelled.
+
+- **Dev** (`tests/knowledge/labels/*.json`). Covers extraction (24 cases),
+  grouping (5), conflicts (16) and verification (11). Uses ABCD train/dev-split
+  conversations and made-up `SYN-*` ones. Rules and thresholds were tuned
+  against these.
+- **Held-out** (`tests/knowledge/labels/heldout/*.json`). Covers extraction
+  (16), grouping (4), conflicts (6) and verification (10). Uses only ABCD
+  test-split conversations and nine made-up `SYN-H*` conversations, written
+  after the rules were fixed. Labels were written from the conversations and
+  the guidelines before any run. A test keeps the two sets disjoint and the
+  ABCD splits intact. Honest caveat: the extractor's wording rules were
+  developed while reading its output over all 100 curated records, test
+  split included, so the ABCD held-out numbers are optimistic. The `SYN-H`
+  cases are the clean part.
+
+**Authored tests** (`tests/knowledge/test_pipeline.py`):
+
+- **Repeated wrong answers.** Three conversations give guests a replacement
+  code. The group reaches its source threshold, and every draft is still
+  `contradicted`.
+- **Missing, stale, disputed, unreviewed or expired references.** Nothing
+  verifies.
+- **Changed conditions.** The v1 reference (7 days) expires and v2 says 14
+  days, so the 7-day draft is contradicted by v2 and v1 is listed as stale.
+  Before the change, the same draft is supported.
+- **Personal information.** No value from any customer record reaches the
+  output.
+- **Tampering.** Fake quotes, unsupported "supported", a leaked name, an
+  approved status or a decision each block release.
+
+**Results** (`results/knowledge/`, generated). A report has each stage's
+counts and rates next to the labels, release checks, technical failures
+separate from missing verification, ms per conversation, and model calls and
+tokens. The rule extractor costs nothing, since it makes no model calls.
+Current numbers:
+
+| | Dev | Held-out run 1 (blind) | Held-out after fixes (not blind) |
+|---|---|---|---|
+| Extraction draft/no-draft | 1.00 | 1.00 | 1.00 |
+| Extraction answer phrases / conditions | 1.00 / 1.00 | 0.75 / 1.00 | 0.75 / 1.00 |
+| Exact citations, privacy errors | 1.00, 0 | 1.00, 0 | 1.00, 0 |
+| Grouping same-group / kept apart | 1.00 / 1.00 | 0.67 / 1.00 | 0.67 / 1.00 |
+| Conflicts accuracy (missed, false alarms) | 1.00 (0, 0) | 1.00 (0, 0) | 1.00 (0, 0) |
+| Verification status accuracy | 1.00 | 0.50 | 0.70 |
+| Unsupported claims marked supported | 0 | 0 | 0 |
+| Release checks | pass | pass | pass |
+
+Dev is perfect because the rules were tuned on it. Only run 1 is a blind
+held-out estimate. The last column is after fixing bugs that run 1 and two code
+reviews found, so it is no longer blind: it shows the fixes did not overfit the
+labels, which were not changed, but it is not a fresh measurement. Run 1 found two bugs, now fixed with regression tests:
+
+- "Silver members get an extension if they are only 1 day late" was read as
+  "*only* silver", which falsely contradicted a correct gold-member draft.
+- FAQ instruction lines, which are lists of topics, were counted as support.
+  That one was a false support of a claim that isn't in any guideline.
+
+An independent code review found more, also fixed with regression tests
+(`tests/knowledge/test_review_fixes.py`):
+
+- A claim could be "supported" by a reference that says the opposite ("Gold
+  members cannot ..." against "Gold members can ...").
+- Model-written text (a no-draft reason, a made-up turn id) could carry
+  personal data, and the leak check was too narrow to catch it.
+- Several malformed inputs crashed instead of returning errors.
+- Customer names close to ordinary words ("Gould" against "Gold") could
+  replace those words.
+- Conflict ids could collide.
+- Unresolved conflicts didn't hold back a recommendation.
+- Other companies' reference ids were listed in the output.
+
+After the fixes the held-out set is no longer blind. The remaining misses are
+documented, not tuned away:
+
+- The extractor drops instructions phrased as questions ("Can you try
+  logging out ...?") or starting "Let's try ...". That costs answer recall and
+  one grouping pair.
+- Verification is strict on loosely worded claims, which come out
+  `partially_supported` rather than `supported`.
+
+### Still to agree (#20)
+
+- **Sample size and annotation capacity.** 92 labelled cases exist today:
+  56 dev and 36 held-out, across the four stages. A real held-out set should
+  be larger and labelled by someone who hasn't seen the output.
+- **Release checks.** The four blocking checks above are the proposal.
+  Add more as needed.
+- **Final blind review.** This is a release check, not a dependency on
+  Nick's tickets. A real deployment needs broader testing on real
+  (consented, redacted) transcripts.
+
+A second independent review found more, fixed with regression tests in
+`tests/knowledge/test_second_review_fixes.py`:
+
+- A hedged or time-bound claim ("Sorry about that, ...", "I think ...",
+  "Right now ..."), or one with a negation on both sides about different verbs,
+  could be "supported" by a reference saying the opposite. Verification now
+  compares what each side negates, clause by clause, and a hedged clash keeps a
+  claim from being supported (`possibly_contradicted_by`).
+- The release checks trusted values copied into the output. They now check the
+  payload, cover every passage and status in the output, and re-run the
+  pipeline.
+- Personal data: a missing or renamed customer record silently turned redaction
+  off; names that are ordinary words ("Will", "May"), short forms of a name
+  ("Joe") and house numbers ("change this to 7873") were kept. The record is now
+  required and checked, those forms are removed, and the leak check also looks
+  for personal-data patterns without the record.
+- A guideline heading and its sub-points were joined in input order, so the
+  order of references could change a verdict. They are now read in id order, a
+  sentence each.
+- Identical drafts produced a conflict for every pair of their own sentences.
+  Repeats of the same disagreement are now one record with a `repeated_pairs`
+  count. Conflict ids include the entry version and claim text.
+- The same conversation read curated and raw got two draft ids. Draft ids now
+  use the source key and turn numbers.
+- A model whose every draft was rejected looked like "no knowledge here"; it is
+  now a `model_output_invalid` failure. Malformed input (bad JSON, a lone
+  surrogate, a malformed reference or conflicts file) is a typed error, not a
+  crash.

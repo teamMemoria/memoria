@@ -2,7 +2,7 @@
 
 Every failure is reported as a ``PipelineError`` with a stable ``code``. Callers
 never receive an empty "successful" result in place of an error: invalid input,
-oversized input and model failures all raise (or, in the batch helpers, are
+oversized input, model failures and unexpected internal errors all raise (or, in the batch helpers, are
 returned in an ``errors`` list next to an explicit ``status: "error"``).
 """
 
@@ -17,6 +17,7 @@ OVERSIZED_INPUT = "oversized_input"
 MODEL_FAILURE = "model_failure"
 MODEL_OUTPUT_INVALID = "model_output_invalid"
 REFERENCE_INVALID = "reference_invalid"
+INTERNAL_ERROR = "internal_error"
 
 ERROR_CODES = frozenset(
     {
@@ -25,6 +26,7 @@ ERROR_CODES = frozenset(
         MODEL_FAILURE,
         MODEL_OUTPUT_INVALID,
         REFERENCE_INVALID,
+        INTERNAL_ERROR,
     }
 )
 

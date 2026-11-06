@@ -10,7 +10,7 @@
   },
   "possible_conflicts": [
     {
-      "conflict_id": "conflict_445780f9b7c7097a9bdb",
+      "conflict_id": "conflict_957997c36158c3d3edff",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -22,7 +22,7 @@
       "uncertainty": [],
       "a": {
         "type": "draft",
-        "draft_id": "draft_ae32e8c290618a962673",
+        "draft_id": "draft_29a4372aabc3b963c871",
         "status": "draft",
         "source_key": "ABCD:1686",
         "source_version": "genesys-curated@c39d2e061041",
@@ -47,11 +47,11 @@
           "it was issued about 8 days ago",
           "im a guest"
         ],
-        "group_id": "group_7b79cb06d20a9307ad25"
+        "group_id": "group_5195d18aef3d52bd6cd6"
       },
       "b": {
         "type": "draft",
-        "draft_id": "draft_f37d2ae30b7026614eea",
+        "draft_id": "draft_3b076c43b2a4a602f272",
         "status": "draft",
         "source_key": "ABCD:5326",
         "source_version": "genesys-curated@c39d2e061041",
@@ -74,7 +74,7 @@
           "Look man, I'm just a Guest",
           "Membership level of guest has been noted."
         ],
-        "group_id": "group_90690808a8d53ad9102d"
+        "group_id": "group_1be9ee524798e80d5cb5"
       },
       "compared_conditions": {
         "a": {
@@ -112,100 +112,7 @@
       "repeated_pairs": 0
     },
     {
-      "conflict_id": "conflict_60238c411669518626d2",
-      "company_id": "acme",
-      "scope": {
-        "flow": "purchase_dispute",
-        "subflow": "promo_code_invalid"
-      },
-      "kind": "eligibility",
-      "status": "possible_conflict",
-      "explanation": "One says this applies to guest; the other says it does not.",
-      "uncertainty": [],
-      "a": {
-        "type": "draft",
-        "draft_id": "draft_f37d2ae30b7026614eea",
-        "status": "draft",
-        "source_key": "ABCD:5326",
-        "source_version": "genesys-curated@c39d2e061041",
-        "dataset_version": "abcd_v1.1@6b8700ce67c6",
-        "reference_status": "unverified draft",
-        "passage": {
-          "conversation_id": "ABCD-0046",
-          "source_key": "ABCD:5326",
-          "turn_id": "ABCD-0046#t11",
-          "speaker": "system_action",
-          "span": [
-            0,
-            30
-          ],
-          "quote": "A promo code has been created.",
-          "source_version": "genesys-curated@c39d2e061041"
-        },
-        "claim": "A promo code has been created.",
-        "conditions": [
-          "Look man, I'm just a Guest",
-          "Membership level of guest has been noted."
-        ],
-        "group_id": "group_90690808a8d53ad9102d"
-      },
-      "b": {
-        "type": "draft",
-        "draft_id": "draft_f6a83fedf44af9593110",
-        "status": "draft",
-        "source_key": "SYNTHETIC:SYN-G06",
-        "source_version": "authored",
-        "dataset_version": "authored",
-        "reference_status": "unverified draft",
-        "passage": {
-          "conversation_id": "SYN-G06",
-          "source_key": "SYNTHETIC:SYN-G06",
-          "turn_id": "SYN-G06#t3",
-          "speaker": "agent",
-          "span": [
-            0,
-            43
-          ],
-          "quote": "Guests cannot get a replacement promo code.",
-          "source_version": "authored"
-        },
-        "claim": "Guests cannot get a replacement promo code.",
-        "conditions": [
-          "Guests cannot get a replacement promo code."
-        ],
-        "group_id": "group_c44745a43ad0143b3aa3"
-      },
-      "compared_conditions": {
-        "a": {
-          "membership_levels": [
-            "guest"
-          ],
-          "allowed_levels": [
-            "guest"
-          ],
-          "excluded_levels": [],
-          "quantities": {},
-          "negative": false,
-          "exceptions": []
-        },
-        "b": {
-          "membership_levels": [
-            "guest"
-          ],
-          "allowed_levels": [],
-          "excluded_levels": [
-            "guest"
-          ],
-          "quantities": {},
-          "negative": true,
-          "exceptions": []
-        }
-      },
-      "subject_overlap": 0.5,
-      "repeated_pairs": 0
-    },
-    {
-      "conflict_id": "conflict_8d63b3bdf45704ff1b0a",
+      "conflict_id": "conflict_e23e6ca7041f054bd989",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -217,7 +124,7 @@
       "uncertainty": [],
       "a": {
         "type": "draft",
-        "draft_id": "draft_954ed71b8367ec8b7941",
+        "draft_id": "draft_3fd0b8b6683911e8e4ab",
         "status": "draft",
         "source_key": "SYNTHETIC:SYN-G01",
         "source_version": "authored",
@@ -239,7 +146,7 @@
         "conditions": [
           "Promo codes are valid for 7 days after they are issued."
         ],
-        "group_id": "group_0b96ef86b33dc5fed06d"
+        "group_id": "group_fb8a83ada36a2bb4dd8e"
       },
       "b": {
         "type": "existing_entry",
@@ -290,7 +197,100 @@
       "repeated_pairs": 0
     },
     {
-      "conflict_id": "conflict_2e8e5aeabce4d86008df",
+      "conflict_id": "conflict_e2df8708a288fa3729a1",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "kind": "eligibility",
+      "status": "possible_conflict",
+      "explanation": "One says this applies to guest; the other says it does not.",
+      "uncertainty": [],
+      "a": {
+        "type": "draft",
+        "draft_id": "draft_1919c42c77e1931fffaa",
+        "status": "draft",
+        "source_key": "SYNTHETIC:SYN-G06",
+        "source_version": "authored",
+        "dataset_version": "authored",
+        "reference_status": "unverified draft",
+        "passage": {
+          "conversation_id": "SYN-G06",
+          "source_key": "SYNTHETIC:SYN-G06",
+          "turn_id": "SYN-G06#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            43
+          ],
+          "quote": "Guests cannot get a replacement promo code.",
+          "source_version": "authored"
+        },
+        "claim": "Guests cannot get a replacement promo code.",
+        "conditions": [
+          "Guests cannot get a replacement promo code."
+        ],
+        "group_id": "group_d281cb4c5b9b86cbb68f"
+      },
+      "b": {
+        "type": "draft",
+        "draft_id": "draft_3b076c43b2a4a602f272",
+        "status": "draft",
+        "source_key": "ABCD:5326",
+        "source_version": "genesys-curated@c39d2e061041",
+        "dataset_version": "abcd_v1.1@6b8700ce67c6",
+        "reference_status": "unverified draft",
+        "passage": {
+          "conversation_id": "ABCD-0046",
+          "source_key": "ABCD:5326",
+          "turn_id": "ABCD-0046#t11",
+          "speaker": "system_action",
+          "span": [
+            0,
+            30
+          ],
+          "quote": "A promo code has been created.",
+          "source_version": "genesys-curated@c39d2e061041"
+        },
+        "claim": "A promo code has been created.",
+        "conditions": [
+          "Look man, I'm just a Guest",
+          "Membership level of guest has been noted."
+        ],
+        "group_id": "group_1be9ee524798e80d5cb5"
+      },
+      "compared_conditions": {
+        "a": {
+          "membership_levels": [
+            "guest"
+          ],
+          "allowed_levels": [],
+          "excluded_levels": [
+            "guest"
+          ],
+          "quantities": {},
+          "negative": true,
+          "exceptions": []
+        },
+        "b": {
+          "membership_levels": [
+            "guest"
+          ],
+          "allowed_levels": [
+            "guest"
+          ],
+          "excluded_levels": [],
+          "quantities": {},
+          "negative": false,
+          "exceptions": []
+        }
+      },
+      "subject_overlap": 0.5,
+      "repeated_pairs": 0
+    },
+    {
+      "conflict_id": "conflict_04dc39f21e8ab703687f",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -298,13 +298,13 @@
       },
       "kind": "value",
       "status": "unresolved",
-      "explanation": "Different figures for the same thing: ['14'] vs ['30'] days.",
+      "explanation": "Different figures for the same thing: ['14'] vs ['7'] days.",
       "uncertainty": [
         "hedged wording (usually / I think / might ...)"
       ],
       "a": {
         "type": "draft",
-        "draft_id": "draft_da63ef8bbd19c0dac2c2",
+        "draft_id": "draft_23875247b17e1b48c93b",
         "status": "draft",
         "source_key": "SYNTHETIC:SYN-C04",
         "source_version": "authored",
@@ -326,7 +326,101 @@
         "conditions": [
           "I think promo codes are usually valid for 14 days, but I'm not completely sure."
         ],
-        "group_id": "group_2db60aad6f488871a479"
+        "group_id": "group_c69033a0c16422682589"
+      },
+      "b": {
+        "type": "draft",
+        "draft_id": "draft_3fd0b8b6683911e8e4ab",
+        "status": "draft",
+        "source_key": "SYNTHETIC:SYN-G01",
+        "source_version": "authored",
+        "dataset_version": "authored",
+        "reference_status": "unverified draft",
+        "passage": {
+          "conversation_id": "SYN-G01",
+          "source_key": "SYNTHETIC:SYN-G01",
+          "turn_id": "SYN-G01#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            55
+          ],
+          "quote": "Promo codes are valid for 7 days after they are issued.",
+          "source_version": "authored"
+        },
+        "claim": "Promo codes are valid for 7 days after they are issued.",
+        "conditions": [
+          "Promo codes are valid for 7 days after they are issued."
+        ],
+        "group_id": "group_fb8a83ada36a2bb4dd8e"
+      },
+      "compared_conditions": {
+        "a": {
+          "membership_levels": [],
+          "allowed_levels": [],
+          "excluded_levels": [],
+          "quantities": {
+            "days": [
+              "14"
+            ]
+          },
+          "negative": true,
+          "exceptions": []
+        },
+        "b": {
+          "membership_levels": [],
+          "allowed_levels": [],
+          "excluded_levels": [],
+          "quantities": {
+            "days": [
+              "7"
+            ]
+          },
+          "negative": false,
+          "exceptions": []
+        }
+      },
+      "subject_overlap": 0.4444,
+      "repeated_pairs": 0
+    },
+    {
+      "conflict_id": "conflict_2f1c8e5fe59faa099f7e",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "kind": "value",
+      "status": "unresolved",
+      "explanation": "Different figures for the same thing: ['14'] vs ['30'] days.",
+      "uncertainty": [
+        "hedged wording (usually / I think / might ...)"
+      ],
+      "a": {
+        "type": "draft",
+        "draft_id": "draft_23875247b17e1b48c93b",
+        "status": "draft",
+        "source_key": "SYNTHETIC:SYN-C04",
+        "source_version": "authored",
+        "dataset_version": "authored",
+        "reference_status": "unverified draft",
+        "passage": {
+          "conversation_id": "SYN-C04",
+          "source_key": "SYNTHETIC:SYN-C04",
+          "turn_id": "SYN-C04#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            79
+          ],
+          "quote": "I think promo codes are usually valid for 14 days, but I'm not completely sure.",
+          "source_version": "authored"
+        },
+        "claim": "I think promo codes are usually valid for 14 days, but I'm not completely sure.",
+        "conditions": [
+          "I think promo codes are usually valid for 14 days, but I'm not completely sure."
+        ],
+        "group_id": "group_c69033a0c16422682589"
       },
       "b": {
         "type": "existing_entry",
@@ -375,105 +469,11 @@
       },
       "subject_overlap": 0.4444,
       "repeated_pairs": 0
-    },
-    {
-      "conflict_id": "conflict_921290ab640a5e8869a4",
-      "company_id": "acme",
-      "scope": {
-        "flow": "purchase_dispute",
-        "subflow": "promo_code_invalid"
-      },
-      "kind": "value",
-      "status": "unresolved",
-      "explanation": "Different figures for the same thing: ['7'] vs ['14'] days.",
-      "uncertainty": [
-        "hedged wording (usually / I think / might ...)"
-      ],
-      "a": {
-        "type": "draft",
-        "draft_id": "draft_954ed71b8367ec8b7941",
-        "status": "draft",
-        "source_key": "SYNTHETIC:SYN-G01",
-        "source_version": "authored",
-        "dataset_version": "authored",
-        "reference_status": "unverified draft",
-        "passage": {
-          "conversation_id": "SYN-G01",
-          "source_key": "SYNTHETIC:SYN-G01",
-          "turn_id": "SYN-G01#t3",
-          "speaker": "agent",
-          "span": [
-            0,
-            55
-          ],
-          "quote": "Promo codes are valid for 7 days after they are issued.",
-          "source_version": "authored"
-        },
-        "claim": "Promo codes are valid for 7 days after they are issued.",
-        "conditions": [
-          "Promo codes are valid for 7 days after they are issued."
-        ],
-        "group_id": "group_0b96ef86b33dc5fed06d"
-      },
-      "b": {
-        "type": "draft",
-        "draft_id": "draft_da63ef8bbd19c0dac2c2",
-        "status": "draft",
-        "source_key": "SYNTHETIC:SYN-C04",
-        "source_version": "authored",
-        "dataset_version": "authored",
-        "reference_status": "unverified draft",
-        "passage": {
-          "conversation_id": "SYN-C04",
-          "source_key": "SYNTHETIC:SYN-C04",
-          "turn_id": "SYN-C04#t3",
-          "speaker": "agent",
-          "span": [
-            0,
-            79
-          ],
-          "quote": "I think promo codes are usually valid for 14 days, but I'm not completely sure.",
-          "source_version": "authored"
-        },
-        "claim": "I think promo codes are usually valid for 14 days, but I'm not completely sure.",
-        "conditions": [
-          "I think promo codes are usually valid for 14 days, but I'm not completely sure."
-        ],
-        "group_id": "group_2db60aad6f488871a479"
-      },
-      "compared_conditions": {
-        "a": {
-          "membership_levels": [],
-          "allowed_levels": [],
-          "excluded_levels": [],
-          "quantities": {
-            "days": [
-              "7"
-            ]
-          },
-          "negative": false,
-          "exceptions": []
-        },
-        "b": {
-          "membership_levels": [],
-          "allowed_levels": [],
-          "excluded_levels": [],
-          "quantities": {
-            "days": [
-              "14"
-            ]
-          },
-          "negative": true,
-          "exceptions": []
-        }
-      },
-      "subject_overlap": 0.4444,
-      "repeated_pairs": 0
     }
   ],
   "explained_differences": [
     {
-      "conflict_id": "conflict_5dfa348492306e516481",
+      "conflict_id": "conflict_364ecf3e4d2d250839de",
       "company_id": "acme",
       "scope": {
         "flow": "purchase_dispute",
@@ -481,37 +481,11 @@
       },
       "kind": "polarity",
       "status": "explained_difference",
-      "explanation": "Opposite answers for different membership levels (['bronze', 'gold', 'silver'] vs ['guest']).",
+      "explanation": "Opposite answers for different membership levels (['guest'] vs ['bronze', 'gold', 'silver']).",
       "uncertainty": [],
       "a": {
         "type": "draft",
-        "draft_id": "draft_593212d1464c49e73aba",
-        "status": "draft",
-        "source_key": "SYNTHETIC:SYN-G05",
-        "source_version": "authored",
-        "dataset_version": "authored",
-        "reference_status": "unverified draft",
-        "passage": {
-          "conversation_id": "SYN-G05",
-          "source_key": "SYNTHETIC:SYN-G05",
-          "turn_id": "SYN-G05#t3",
-          "speaker": "agent",
-          "span": [
-            0,
-            65
-          ],
-          "quote": "Gold, silver and bronze members can get a replacement promo code.",
-          "source_version": "authored"
-        },
-        "claim": "Gold, silver and bronze members can get a replacement promo code.",
-        "conditions": [
-          "Gold, silver and bronze members can get a replacement promo code."
-        ],
-        "group_id": "group_5a3d2e6972e9a97d9f95"
-      },
-      "b": {
-        "type": "draft",
-        "draft_id": "draft_f6a83fedf44af9593110",
+        "draft_id": "draft_1919c42c77e1931fffaa",
         "status": "draft",
         "source_key": "SYNTHETIC:SYN-G06",
         "source_version": "authored",
@@ -533,10 +507,48 @@
         "conditions": [
           "Guests cannot get a replacement promo code."
         ],
-        "group_id": "group_c44745a43ad0143b3aa3"
+        "group_id": "group_d281cb4c5b9b86cbb68f"
+      },
+      "b": {
+        "type": "draft",
+        "draft_id": "draft_ca42a8643b0d39a9c319",
+        "status": "draft",
+        "source_key": "SYNTHETIC:SYN-G05",
+        "source_version": "authored",
+        "dataset_version": "authored",
+        "reference_status": "unverified draft",
+        "passage": {
+          "conversation_id": "SYN-G05",
+          "source_key": "SYNTHETIC:SYN-G05",
+          "turn_id": "SYN-G05#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            65
+          ],
+          "quote": "Gold, silver and bronze members can get a replacement promo code.",
+          "source_version": "authored"
+        },
+        "claim": "Gold, silver and bronze members can get a replacement promo code.",
+        "conditions": [
+          "Gold, silver and bronze members can get a replacement promo code."
+        ],
+        "group_id": "group_fc5d82fbb9b6631ae865"
       },
       "compared_conditions": {
         "a": {
+          "membership_levels": [
+            "guest"
+          ],
+          "allowed_levels": [],
+          "excluded_levels": [
+            "guest"
+          ],
+          "quantities": {},
+          "negative": true,
+          "exceptions": []
+        },
+        "b": {
           "membership_levels": [
             "bronze",
             "gold",
@@ -550,18 +562,6 @@
           "excluded_levels": [],
           "quantities": {},
           "negative": false,
-          "exceptions": []
-        },
-        "b": {
-          "membership_levels": [
-            "guest"
-          ],
-          "allowed_levels": [],
-          "excluded_levels": [
-            "guest"
-          ],
-          "quantities": {},
-          "negative": true,
           "exceptions": []
         }
       },

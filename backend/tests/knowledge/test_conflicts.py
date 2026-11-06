@@ -140,7 +140,7 @@ def test_ml_never_changes_entry_or_draft_state():
     before = copy.deepcopy((drafts, entry))
     result = find_conflicts(drafts, COMPANY, existing_entries=[entry])
     assert (drafts, entry) == before
-    text = json.dumps(result)
+    text = json.dumps(result, ensure_ascii=False)
     for forbidden in (
         '"disputed"',
         '"replaced_by"',
@@ -194,3 +194,23 @@ def test_config_validation():
         ConflictConfig(claim_overlap=2)
     with pytest.raises(PipelineError):
         find_conflicts("nope", COMPANY)
+
+
+@pytest.mark.parametrize(
+    ("text", "exclusive"),
+    [
+        ("Silver members get a refund if they are only 2 days late.", False),
+        ("Only gold members get free shipping.", True),
+        ("Free shipping is for gold members only.", True),
+        ("I could only issue a new code to our existing members.", True),
+    ],
+)
+def test_only_must_be_about_the_level(text, exclusive):
+    # Regression: found by the first held-out run ("... if they are only 1 day late" read as "only silver").
+    from backend.services.knowledge.conflicts import _claim, _Owner
+
+    owner = _Owner("draft", "d", {}, set(), set(), [], {})
+    claim = _claim(owner, text, {}, from_action=False)
+    assert claim.exclusive is exclusive
+    if not exclusive:
+        assert not claim.denied

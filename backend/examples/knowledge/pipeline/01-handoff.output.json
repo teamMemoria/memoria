@@ -1,0 +1,2214 @@
+{
+  "schema": "knowledge-pipeline/1",
+  "status": "ok",
+  "company_id": "acme",
+  "counts": {
+    "conversations": 3,
+    "technical_failures": 0,
+    "no_draft": 0,
+    "drafts": 3,
+    "groups": 3,
+    "possible_conflicts": 0,
+    "unresolved_conflicts": 0,
+    "verification": {
+      "contradicted": 1,
+      "supported": 1,
+      "unverifiable": 1
+    }
+  },
+  "extraction": [
+    {
+      "conversation_id": "SYN-0006",
+      "source_key": "SYNTHETIC:SYN-0006",
+      "status": "ok",
+      "drafts": [
+        {
+          "schema": "knowledge-draft/1",
+          "draft_id": "draft_d38af4dc259890b6b90a",
+          "kind": "knowledge_draft",
+          "status": "draft",
+          "trusted": false,
+          "audit_eligible": false,
+          "company_id": "acme",
+          "scope": {
+            "company_id": "acme",
+            "flow": "purchase_dispute",
+            "subflow": "promo_code_invalid"
+          },
+          "topic": "purchase_dispute/promo_code_invalid",
+          "question": "Why does my promo code say invalid?",
+          "answer": "Promo codes usually last 7 days, so a code issued longer ago than that has expired. If you are a gold, silver or bronze member I can issue you a new code. A promo code has been created. I've sent you a new code, it is for 20% off your next purchase.",
+          "wording": "verbatim",
+          "question_passages": [
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t2",
+              "speaker": "customer",
+              "span": [
+                0,
+                35
+              ],
+              "quote": "Why does my promo code say invalid?",
+              "source_version": "authored"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                83
+              ],
+              "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t4",
+              "speaker": "agent",
+              "span": [
+                0,
+                70
+              ],
+              "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t7",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t8",
+              "speaker": "agent",
+              "span": [
+                0,
+                63
+              ],
+              "quote": "I've sent you a new code, it is for 20% off your next purchase.",
+              "source_version": "authored"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t3",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  83
+                ],
+                "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "If you are a gold, silver or bronze member I can issue you a new code.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t4",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  70
+                ],
+                "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "I'm gold.",
+              "basis": "customer_statement",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t5",
+                "speaker": "customer",
+                "span": [
+                  0,
+                  9
+                ],
+                "quote": "I'm gold.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "Membership level of gold has been noted.",
+              "basis": "recorded_action",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t6",
+                "speaker": "system_action",
+                "span": [
+                  0,
+                  40
+                ],
+                "quote": "Membership level of gold has been noted.",
+                "source_version": "authored"
+              }
+            }
+          ],
+          "procedure": [
+            {
+              "name": "membership",
+              "order": 1,
+              "turn_id": "SYN-0006#t6"
+            },
+            {
+              "name": "promo-code",
+              "order": 2,
+              "turn_id": "SYN-0006#t7"
+            }
+          ],
+          "source": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "dataset": "SYNTHETIC",
+            "original_id": "SYN-0006",
+            "version": "authored",
+            "dataset_version": "authored",
+            "split": null,
+            "licence": "MIT (this repository)"
+          },
+          "evidence_coverage": {
+            "source_turns": 8,
+            "turns_kept": 8,
+            "speakers": {
+              "agent": 4,
+              "customer": 2,
+              "system_action": 2
+            },
+            "actions_recorded": 2,
+            "actions_aligned_to_turns": 2,
+            "turns_cited": 7,
+            "cited_share": 0.875
+          },
+          "privacy": {
+            "redactions": {}
+          },
+          "extractor": {
+            "name": "rule-extractor",
+            "version": "1"
+          },
+          "verification": {
+            "status": "not_verified",
+            "note": "Observed in a conversation. Observing an answer does not verify it."
+          }
+        }
+      ],
+      "no_draft_reason": null,
+      "rejected_drafts": [],
+      "errors": []
+    },
+    {
+      "conversation_id": "ABCD-0046",
+      "source_key": "ABCD:5326",
+      "status": "ok",
+      "drafts": [
+        {
+          "schema": "knowledge-draft/1",
+          "draft_id": "draft_3b076c43b2a4a602f272",
+          "kind": "knowledge_draft",
+          "status": "draft",
+          "trusted": false,
+          "audit_eligible": false,
+          "company_id": "acme",
+          "scope": {
+            "company_id": "acme",
+            "flow": "purchase_dispute",
+            "subflow": "promo_code_invalid"
+          },
+          "topic": "purchase_dispute/promo_code_invalid",
+          "question": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+          "answer": "A promo code has been created.",
+          "wording": "verbatim",
+          "question_passages": [
+            {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t1",
+              "speaker": "customer",
+              "span": [
+                0,
+                76
+              ],
+              "quote": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+              "source_version": "genesys-curated@c39d2e061041"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t11",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "genesys-curated@c39d2e061041"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Look man, I'm just a Guest",
+              "basis": "customer_statement",
+              "passage": {
+                "conversation_id": "ABCD-0046",
+                "source_key": "ABCD:5326",
+                "turn_id": "ABCD-0046#t8",
+                "speaker": "customer",
+                "span": [
+                  0,
+                  26
+                ],
+                "quote": "Look man, I'm just a Guest",
+                "source_version": "genesys-curated@c39d2e061041"
+              }
+            },
+            {
+              "text": "Membership level of guest has been noted.",
+              "basis": "recorded_action",
+              "passage": {
+                "conversation_id": "ABCD-0046",
+                "source_key": "ABCD:5326",
+                "turn_id": "ABCD-0046#t10",
+                "speaker": "system_action",
+                "span": [
+                  0,
+                  41
+                ],
+                "quote": "Membership level of guest has been noted.",
+                "source_version": "genesys-curated@c39d2e061041"
+              }
+            }
+          ],
+          "procedure": [
+            {
+              "name": "pull-up-account",
+              "order": 1,
+              "turn_id": "ABCD-0046#t5"
+            },
+            {
+              "name": "ask-the-oracle",
+              "order": 2,
+              "turn_id": "ABCD-0046#t6"
+            },
+            {
+              "name": "membership",
+              "order": 3,
+              "turn_id": "ABCD-0046#t10"
+            },
+            {
+              "name": "promo-code",
+              "order": 4,
+              "turn_id": "ABCD-0046#t11"
+            }
+          ],
+          "source": {
+            "conversation_id": "ABCD-0046",
+            "source_key": "ABCD:5326",
+            "dataset": "ABCD",
+            "original_id": "5326",
+            "version": "genesys-curated@c39d2e061041",
+            "dataset_version": "abcd_v1.1@6b8700ce67c6",
+            "split": null,
+            "licence": "MIT"
+          },
+          "evidence_coverage": {
+            "source_turns": 14,
+            "turns_kept": 14,
+            "speakers": {
+              "agent": 4,
+              "customer": 6,
+              "system_action": 4
+            },
+            "actions_recorded": 4,
+            "actions_aligned_to_turns": 4,
+            "turns_cited": 4,
+            "cited_share": 0.2857
+          },
+          "privacy": {
+            "redactions": {
+              "CODE": 1,
+              "CUSTOMER_NAME": 2
+            }
+          },
+          "extractor": {
+            "name": "rule-extractor",
+            "version": "1"
+          },
+          "verification": {
+            "status": "not_verified",
+            "note": "Observed in a conversation. Observing an answer does not verify it."
+          }
+        }
+      ],
+      "no_draft_reason": null,
+      "rejected_drafts": [],
+      "errors": []
+    },
+    {
+      "conversation_id": "SYN-0004",
+      "source_key": "SYNTHETIC:SYN-0004",
+      "status": "ok",
+      "drafts": [
+        {
+          "schema": "knowledge-draft/1",
+          "draft_id": "draft_251b6b40404a12573aae",
+          "kind": "knowledge_draft",
+          "status": "draft",
+          "trusted": false,
+          "audit_eligible": false,
+          "company_id": "acme",
+          "scope": {
+            "company_id": "acme",
+            "flow": "storewide_query",
+            "subflow": "policy_1"
+          },
+          "topic": "storewide_query/policy_1",
+          "question": "What is your return policy for gold members?",
+          "answer": "Gold members can return items at any time. Bronze members can return items within 90 days of purchase, unless the item was on final sale. Guests can return items within 30 days with a receipt.",
+          "wording": "verbatim",
+          "question_passages": [
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t2",
+              "speaker": "customer",
+              "span": [
+                0,
+                44
+              ],
+              "quote": "What is your return policy for gold members?",
+              "source_version": "authored"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                42
+              ],
+              "quote": "Gold members can return items at any time.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t4",
+              "speaker": "agent",
+              "span": [
+                0,
+                94
+              ],
+              "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t6",
+              "speaker": "agent",
+              "span": [
+                0,
+                54
+              ],
+              "quote": "Guests can return items within 30 days with a receipt.",
+              "source_version": "authored"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Gold members can return items at any time.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0004",
+                "source_key": "SYNTHETIC:SYN-0004",
+                "turn_id": "SYN-0004#t3",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  42
+                ],
+                "quote": "Gold members can return items at any time.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0004",
+                "source_key": "SYNTHETIC:SYN-0004",
+                "turn_id": "SYN-0004#t4",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  94
+                ],
+                "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "Guests can return items within 30 days with a receipt.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0004",
+                "source_key": "SYNTHETIC:SYN-0004",
+                "turn_id": "SYN-0004#t6",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  54
+                ],
+                "quote": "Guests can return items within 30 days with a receipt.",
+                "source_version": "authored"
+              }
+            }
+          ],
+          "procedure": [],
+          "source": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "dataset": "SYNTHETIC",
+            "original_id": "SYN-0004",
+            "version": "authored",
+            "dataset_version": "authored",
+            "split": null,
+            "licence": "MIT (this repository)"
+          },
+          "evidence_coverage": {
+            "source_turns": 7,
+            "turns_kept": 7,
+            "speakers": {
+              "agent": 4,
+              "customer": 3
+            },
+            "actions_recorded": 0,
+            "actions_aligned_to_turns": 0,
+            "turns_cited": 4,
+            "cited_share": 0.5714
+          },
+          "privacy": {
+            "redactions": {}
+          },
+          "extractor": {
+            "name": "rule-extractor",
+            "version": "1"
+          },
+          "verification": {
+            "status": "not_verified",
+            "note": "Observed in a conversation. Observing an answer does not verify it."
+          }
+        }
+      ],
+      "no_draft_reason": null,
+      "rejected_drafts": [],
+      "errors": []
+    }
+  ],
+  "technical_failures": [],
+  "drafts": [
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_d38af4dc259890b6b90a",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "acme",
+      "scope": {
+        "company_id": "acme",
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "topic": "purchase_dispute/promo_code_invalid",
+      "question": "Why does my promo code say invalid?",
+      "answer": "Promo codes usually last 7 days, so a code issued longer ago than that has expired. If you are a gold, silver or bronze member I can issue you a new code. A promo code has been created. I've sent you a new code, it is for 20% off your next purchase.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "SYN-0006",
+          "source_key": "SYNTHETIC:SYN-0006",
+          "turn_id": "SYN-0006#t2",
+          "speaker": "customer",
+          "span": [
+            0,
+            35
+          ],
+          "quote": "Why does my promo code say invalid?",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "SYN-0006",
+          "source_key": "SYNTHETIC:SYN-0006",
+          "turn_id": "SYN-0006#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            83
+          ],
+          "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0006",
+          "source_key": "SYNTHETIC:SYN-0006",
+          "turn_id": "SYN-0006#t4",
+          "speaker": "agent",
+          "span": [
+            0,
+            70
+          ],
+          "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0006",
+          "source_key": "SYNTHETIC:SYN-0006",
+          "turn_id": "SYN-0006#t7",
+          "speaker": "system_action",
+          "span": [
+            0,
+            30
+          ],
+          "quote": "A promo code has been created.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0006",
+          "source_key": "SYNTHETIC:SYN-0006",
+          "turn_id": "SYN-0006#t8",
+          "speaker": "agent",
+          "span": [
+            0,
+            63
+          ],
+          "quote": "I've sent you a new code, it is for 20% off your next purchase.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [
+        {
+          "text": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              83
+            ],
+            "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "If you are a gold, silver or bronze member I can issue you a new code.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t4",
+            "speaker": "agent",
+            "span": [
+              0,
+              70
+            ],
+            "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "I'm gold.",
+          "basis": "customer_statement",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t5",
+            "speaker": "customer",
+            "span": [
+              0,
+              9
+            ],
+            "quote": "I'm gold.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "Membership level of gold has been noted.",
+          "basis": "recorded_action",
+          "passage": {
+            "conversation_id": "SYN-0006",
+            "source_key": "SYNTHETIC:SYN-0006",
+            "turn_id": "SYN-0006#t6",
+            "speaker": "system_action",
+            "span": [
+              0,
+              40
+            ],
+            "quote": "Membership level of gold has been noted.",
+            "source_version": "authored"
+          }
+        }
+      ],
+      "procedure": [
+        {
+          "name": "membership",
+          "order": 1,
+          "turn_id": "SYN-0006#t6"
+        },
+        {
+          "name": "promo-code",
+          "order": 2,
+          "turn_id": "SYN-0006#t7"
+        }
+      ],
+      "source": {
+        "conversation_id": "SYN-0006",
+        "source_key": "SYNTHETIC:SYN-0006",
+        "dataset": "SYNTHETIC",
+        "original_id": "SYN-0006",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "MIT (this repository)"
+      },
+      "evidence_coverage": {
+        "source_turns": 8,
+        "turns_kept": 8,
+        "speakers": {
+          "agent": 4,
+          "customer": 2,
+          "system_action": 2
+        },
+        "actions_recorded": 2,
+        "actions_aligned_to_turns": 2,
+        "turns_cited": 7,
+        "cited_share": 0.875
+      },
+      "privacy": {
+        "redactions": {}
+      },
+      "extractor": {
+        "name": "rule-extractor",
+        "version": "1"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    },
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_3b076c43b2a4a602f272",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "acme",
+      "scope": {
+        "company_id": "acme",
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "topic": "purchase_dispute/promo_code_invalid",
+      "question": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+      "answer": "A promo code has been created.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "ABCD-0046",
+          "source_key": "ABCD:5326",
+          "turn_id": "ABCD-0046#t1",
+          "speaker": "customer",
+          "span": [
+            0,
+            76
+          ],
+          "quote": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+          "source_version": "genesys-curated@c39d2e061041"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "ABCD-0046",
+          "source_key": "ABCD:5326",
+          "turn_id": "ABCD-0046#t11",
+          "speaker": "system_action",
+          "span": [
+            0,
+            30
+          ],
+          "quote": "A promo code has been created.",
+          "source_version": "genesys-curated@c39d2e061041"
+        }
+      ],
+      "conditions": [
+        {
+          "text": "Look man, I'm just a Guest",
+          "basis": "customer_statement",
+          "passage": {
+            "conversation_id": "ABCD-0046",
+            "source_key": "ABCD:5326",
+            "turn_id": "ABCD-0046#t8",
+            "speaker": "customer",
+            "span": [
+              0,
+              26
+            ],
+            "quote": "Look man, I'm just a Guest",
+            "source_version": "genesys-curated@c39d2e061041"
+          }
+        },
+        {
+          "text": "Membership level of guest has been noted.",
+          "basis": "recorded_action",
+          "passage": {
+            "conversation_id": "ABCD-0046",
+            "source_key": "ABCD:5326",
+            "turn_id": "ABCD-0046#t10",
+            "speaker": "system_action",
+            "span": [
+              0,
+              41
+            ],
+            "quote": "Membership level of guest has been noted.",
+            "source_version": "genesys-curated@c39d2e061041"
+          }
+        }
+      ],
+      "procedure": [
+        {
+          "name": "pull-up-account",
+          "order": 1,
+          "turn_id": "ABCD-0046#t5"
+        },
+        {
+          "name": "ask-the-oracle",
+          "order": 2,
+          "turn_id": "ABCD-0046#t6"
+        },
+        {
+          "name": "membership",
+          "order": 3,
+          "turn_id": "ABCD-0046#t10"
+        },
+        {
+          "name": "promo-code",
+          "order": 4,
+          "turn_id": "ABCD-0046#t11"
+        }
+      ],
+      "source": {
+        "conversation_id": "ABCD-0046",
+        "source_key": "ABCD:5326",
+        "dataset": "ABCD",
+        "original_id": "5326",
+        "version": "genesys-curated@c39d2e061041",
+        "dataset_version": "abcd_v1.1@6b8700ce67c6",
+        "split": null,
+        "licence": "MIT"
+      },
+      "evidence_coverage": {
+        "source_turns": 14,
+        "turns_kept": 14,
+        "speakers": {
+          "agent": 4,
+          "customer": 6,
+          "system_action": 4
+        },
+        "actions_recorded": 4,
+        "actions_aligned_to_turns": 4,
+        "turns_cited": 4,
+        "cited_share": 0.2857
+      },
+      "privacy": {
+        "redactions": {
+          "CODE": 1,
+          "CUSTOMER_NAME": 2
+        }
+      },
+      "extractor": {
+        "name": "rule-extractor",
+        "version": "1"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    },
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_251b6b40404a12573aae",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "acme",
+      "scope": {
+        "company_id": "acme",
+        "flow": "storewide_query",
+        "subflow": "policy_1"
+      },
+      "topic": "storewide_query/policy_1",
+      "question": "What is your return policy for gold members?",
+      "answer": "Gold members can return items at any time. Bronze members can return items within 90 days of purchase, unless the item was on final sale. Guests can return items within 30 days with a receipt.",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t2",
+          "speaker": "customer",
+          "span": [
+            0,
+            44
+          ],
+          "quote": "What is your return policy for gold members?",
+          "source_version": "authored"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t3",
+          "speaker": "agent",
+          "span": [
+            0,
+            42
+          ],
+          "quote": "Gold members can return items at any time.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t4",
+          "speaker": "agent",
+          "span": [
+            0,
+            94
+          ],
+          "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+          "source_version": "authored"
+        },
+        {
+          "conversation_id": "SYN-0004",
+          "source_key": "SYNTHETIC:SYN-0004",
+          "turn_id": "SYN-0004#t6",
+          "speaker": "agent",
+          "span": [
+            0,
+            54
+          ],
+          "quote": "Guests can return items within 30 days with a receipt.",
+          "source_version": "authored"
+        }
+      ],
+      "conditions": [
+        {
+          "text": "Gold members can return items at any time.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "turn_id": "SYN-0004#t3",
+            "speaker": "agent",
+            "span": [
+              0,
+              42
+            ],
+            "quote": "Gold members can return items at any time.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "turn_id": "SYN-0004#t4",
+            "speaker": "agent",
+            "span": [
+              0,
+              94
+            ],
+            "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+            "source_version": "authored"
+          }
+        },
+        {
+          "text": "Guests can return items within 30 days with a receipt.",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "SYN-0004",
+            "source_key": "SYNTHETIC:SYN-0004",
+            "turn_id": "SYN-0004#t6",
+            "speaker": "agent",
+            "span": [
+              0,
+              54
+            ],
+            "quote": "Guests can return items within 30 days with a receipt.",
+            "source_version": "authored"
+          }
+        }
+      ],
+      "procedure": [],
+      "source": {
+        "conversation_id": "SYN-0004",
+        "source_key": "SYNTHETIC:SYN-0004",
+        "dataset": "SYNTHETIC",
+        "original_id": "SYN-0004",
+        "version": "authored",
+        "dataset_version": "authored",
+        "split": null,
+        "licence": "MIT (this repository)"
+      },
+      "evidence_coverage": {
+        "source_turns": 7,
+        "turns_kept": 7,
+        "speakers": {
+          "agent": 4,
+          "customer": 3
+        },
+        "actions_recorded": 0,
+        "actions_aligned_to_turns": 0,
+        "turns_cited": 4,
+        "cited_share": 0.5714
+      },
+      "privacy": {
+        "redactions": {}
+      },
+      "extractor": {
+        "name": "rule-extractor",
+        "version": "1"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    }
+  ],
+  "groups": {
+    "schema": "knowledge-groups/1",
+    "status": "ok",
+    "company_id": "acme",
+    "config": {
+      "group_threshold": 0.25,
+      "duplicate_threshold": 0.8,
+      "existing_match_threshold": 0.45,
+      "scope_level": "subflow",
+      "min_distinct_conversations": 3,
+      "question_weight": 0.4
+    },
+    "draft_count": 3,
+    "duplicate_input_drafts": 0,
+    "groups": [
+      {
+        "group_id": "group_1be9ee524798e80d5cb5",
+        "company_id": "acme",
+        "scope": {
+          "flow": "purchase_dispute",
+          "subflow": "promo_code_invalid"
+        },
+        "scope_key": "purchase_dispute/promo_code_invalid",
+        "status": "draft",
+        "member_draft_ids": [
+          "draft_3b076c43b2a4a602f272"
+        ],
+        "representative_draft_id": "draft_3b076c43b2a4a602f272",
+        "representative": {
+          "draft_id": "draft_3b076c43b2a4a602f272",
+          "question": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+          "answer": "A promo code has been created.",
+          "question_passages": [
+            {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t1",
+              "speaker": "customer",
+              "span": [
+                0,
+                76
+              ],
+              "quote": "This is ridiculous! I got a promo code 2 days ago and it's already invalid?!",
+              "source_version": "genesys-curated@c39d2e061041"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t11",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "genesys-curated@c39d2e061041"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Look man, I'm just a Guest",
+              "basis": "customer_statement",
+              "passage": {
+                "conversation_id": "ABCD-0046",
+                "source_key": "ABCD:5326",
+                "turn_id": "ABCD-0046#t8",
+                "speaker": "customer",
+                "span": [
+                  0,
+                  26
+                ],
+                "quote": "Look man, I'm just a Guest",
+                "source_version": "genesys-curated@c39d2e061041"
+              }
+            },
+            {
+              "text": "Membership level of guest has been noted.",
+              "basis": "recorded_action",
+              "passage": {
+                "conversation_id": "ABCD-0046",
+                "source_key": "ABCD:5326",
+                "turn_id": "ABCD-0046#t10",
+                "speaker": "system_action",
+                "span": [
+                  0,
+                  41
+                ],
+                "quote": "Membership level of guest has been noted.",
+                "source_version": "genesys-curated@c39d2e061041"
+              }
+            }
+          ],
+          "status": "draft"
+        },
+        "draft_count": 1,
+        "distinct_conversation_count": 1,
+        "source_keys": [
+          "ABCD:5326"
+        ],
+        "meets_source_threshold": false,
+        "membership_levels": [
+          "guest"
+        ],
+        "duplicates": [],
+        "existing_matches": []
+      },
+      {
+        "group_id": "group_34599bc9ef13ec35124f",
+        "company_id": "acme",
+        "scope": {
+          "flow": "purchase_dispute",
+          "subflow": "promo_code_invalid"
+        },
+        "scope_key": "purchase_dispute/promo_code_invalid",
+        "status": "draft",
+        "member_draft_ids": [
+          "draft_d38af4dc259890b6b90a"
+        ],
+        "representative_draft_id": "draft_d38af4dc259890b6b90a",
+        "representative": {
+          "draft_id": "draft_d38af4dc259890b6b90a",
+          "question": "Why does my promo code say invalid?",
+          "answer": "Promo codes usually last 7 days, so a code issued longer ago than that has expired. If you are a gold, silver or bronze member I can issue you a new code. A promo code has been created. I've sent you a new code, it is for 20% off your next purchase.",
+          "question_passages": [
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t2",
+              "speaker": "customer",
+              "span": [
+                0,
+                35
+              ],
+              "quote": "Why does my promo code say invalid?",
+              "source_version": "authored"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                83
+              ],
+              "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t4",
+              "speaker": "agent",
+              "span": [
+                0,
+                70
+              ],
+              "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t7",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t8",
+              "speaker": "agent",
+              "span": [
+                0,
+                63
+              ],
+              "quote": "I've sent you a new code, it is for 20% off your next purchase.",
+              "source_version": "authored"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t3",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  83
+                ],
+                "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "If you are a gold, silver or bronze member I can issue you a new code.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t4",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  70
+                ],
+                "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "I'm gold.",
+              "basis": "customer_statement",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t5",
+                "speaker": "customer",
+                "span": [
+                  0,
+                  9
+                ],
+                "quote": "I'm gold.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "Membership level of gold has been noted.",
+              "basis": "recorded_action",
+              "passage": {
+                "conversation_id": "SYN-0006",
+                "source_key": "SYNTHETIC:SYN-0006",
+                "turn_id": "SYN-0006#t6",
+                "speaker": "system_action",
+                "span": [
+                  0,
+                  40
+                ],
+                "quote": "Membership level of gold has been noted.",
+                "source_version": "authored"
+              }
+            }
+          ],
+          "status": "draft"
+        },
+        "draft_count": 1,
+        "distinct_conversation_count": 1,
+        "source_keys": [
+          "SYNTHETIC:SYN-0006"
+        ],
+        "meets_source_threshold": false,
+        "membership_levels": [
+          "bronze",
+          "gold",
+          "silver"
+        ],
+        "duplicates": [],
+        "existing_matches": []
+      },
+      {
+        "group_id": "group_8c646eeccf6df4a2044e",
+        "company_id": "acme",
+        "scope": {
+          "flow": "storewide_query",
+          "subflow": "policy_1"
+        },
+        "scope_key": "storewide_query/policy_1",
+        "status": "draft",
+        "member_draft_ids": [
+          "draft_251b6b40404a12573aae"
+        ],
+        "representative_draft_id": "draft_251b6b40404a12573aae",
+        "representative": {
+          "draft_id": "draft_251b6b40404a12573aae",
+          "question": "What is your return policy for gold members?",
+          "answer": "Gold members can return items at any time. Bronze members can return items within 90 days of purchase, unless the item was on final sale. Guests can return items within 30 days with a receipt.",
+          "question_passages": [
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t2",
+              "speaker": "customer",
+              "span": [
+                0,
+                44
+              ],
+              "quote": "What is your return policy for gold members?",
+              "source_version": "authored"
+            }
+          ],
+          "answer_passages": [
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                42
+              ],
+              "quote": "Gold members can return items at any time.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t4",
+              "speaker": "agent",
+              "span": [
+                0,
+                94
+              ],
+              "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+              "source_version": "authored"
+            },
+            {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t6",
+              "speaker": "agent",
+              "span": [
+                0,
+                54
+              ],
+              "quote": "Guests can return items within 30 days with a receipt.",
+              "source_version": "authored"
+            }
+          ],
+          "conditions": [
+            {
+              "text": "Gold members can return items at any time.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0004",
+                "source_key": "SYNTHETIC:SYN-0004",
+                "turn_id": "SYN-0004#t3",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  42
+                ],
+                "quote": "Gold members can return items at any time.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0004",
+                "source_key": "SYNTHETIC:SYN-0004",
+                "turn_id": "SYN-0004#t4",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  94
+                ],
+                "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+                "source_version": "authored"
+              }
+            },
+            {
+              "text": "Guests can return items within 30 days with a receipt.",
+              "basis": "agent_statement",
+              "passage": {
+                "conversation_id": "SYN-0004",
+                "source_key": "SYNTHETIC:SYN-0004",
+                "turn_id": "SYN-0004#t6",
+                "speaker": "agent",
+                "span": [
+                  0,
+                  54
+                ],
+                "quote": "Guests can return items within 30 days with a receipt.",
+                "source_version": "authored"
+              }
+            }
+          ],
+          "status": "draft"
+        },
+        "draft_count": 1,
+        "distinct_conversation_count": 1,
+        "source_keys": [
+          "SYNTHETIC:SYN-0004"
+        ],
+        "meets_source_threshold": false,
+        "membership_levels": [
+          "bronze",
+          "gold",
+          "guest"
+        ],
+        "duplicates": [],
+        "existing_matches": []
+      }
+    ],
+    "note": "Groups, counts and matches are review aids. None of them verifies or approves an answer."
+  },
+  "conflicts": {
+    "schema": "knowledge-conflicts/1",
+    "status": "ok",
+    "company_id": "acme",
+    "config": {
+      "claim_overlap": 0.3,
+      "polarity_overlap": 0.5,
+      "question_overlap": 0.1,
+      "scope_level": "subflow"
+    },
+    "possible_conflicts": [],
+    "explained_differences": [],
+    "note": "Possible conflicts are for an authorized reviewer. This step does not mark entries disputed, remove them from use, replace them or change earlier audits."
+  },
+  "verification": {
+    "schema": "knowledge-verification/1",
+    "status": "ok",
+    "company_id": "acme",
+    "as_of": "2026-10-22",
+    "config": {
+      "support_threshold": 0.6,
+      "partial_threshold": 0.35
+    },
+    "results": [
+      {
+        "draft_id": "draft_d38af4dc259890b6b90a",
+        "company_id": "acme",
+        "scope": {
+          "flow": "purchase_dispute",
+          "subflow": "promo_code_invalid"
+        },
+        "verification_status": "supported",
+        "ml_recommendation": "needs_more_evidence",
+        "decision": null,
+        "claims": [
+          {
+            "claim": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+            "passage": {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                83
+              ],
+              "quote": "Promo codes usually last 7 days, so a code issued longer ago than that has expired.",
+              "source_version": "authored"
+            },
+            "status": "supported",
+            "best_support": 0.9667,
+            "citations": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+                "combined_from": [
+                  "abcd:purchase_dispute/promo_code_invalid#a2",
+                  "abcd:purchase_dispute/promo_code_invalid#a2.1",
+                  "abcd:purchase_dispute/promo_code_invalid#a2.2"
+                ],
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work. If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'. Both flows follow the same instructions below.",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "N/A",
+                  "type": "communication"
+                },
+                "support": 0.9667
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "N/A",
+                  "type": "communication"
+                },
+                "support": 0.6333
+              }
+            ],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+                "condition": "if the code was issued a long time ago",
+                "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work."
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
+                "condition": "if the promo code is more than 7 days",
+                "quote": "If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'"
+              }
+            ]
+          },
+          {
+            "claim": "If you are a gold, silver or bronze member I can issue you a new code.",
+            "passage": {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t4",
+              "speaker": "agent",
+              "span": [
+                0,
+                70
+              ],
+              "quote": "If you are a gold, silver or bronze member I can issue you a new code.",
+              "source_version": "authored"
+            },
+            "status": "supported",
+            "best_support": 0.75,
+            "citations": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member.",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Membership Privileges",
+                  "type": "faq/policy"
+                },
+                "support": 0.75
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+                "combined_from": [
+                  "abcd:purchase_dispute/promo_code_invalid#a4",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.1",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.2",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.4"
+                ],
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "If the customer is wrong (Oracle says No), then: Ask the customer for their membership level. Enter the member level (even if just a Guest) into [Membership Privileges] and submit. Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member. Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Membership Privileges",
+                  "type": "faq/policy"
+                },
+                "support": 0.75
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work.",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "N/A",
+                  "type": "communication"
+                },
+                "support": 0.5
+              }
+            ],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                "condition": "if their promo code is not valid for whatever reason",
+                "quote": "Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member."
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+                "condition": "if the customer is wrong (oracle says no)",
+                "quote": "If the customer is wrong (Oracle says No), then:"
+              }
+            ]
+          },
+          {
+            "claim": "A promo code has been created.",
+            "passage": {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t7",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "authored"
+            },
+            "status": "supported",
+            "best_support": 0.6667,
+            "citations": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.2",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Click on [Promo Code]",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Promo Code",
+                  "type": "interaction"
+                },
+                "support": 0.6667
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Generate the promo code and share that with them",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Promo Code",
+                  "type": "interaction"
+                },
+                "support": 0.6667
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.4",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "If the customer is right (Oracle says Yes), skip to the Promo Code step below",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Ask the Oracle",
+                  "type": "kb query"
+                },
+                "support": 0.6667
+              }
+            ],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": []
+          },
+          {
+            "claim": "I've sent you a new code, it is for 20% off your next purchase.",
+            "passage": {
+              "conversation_id": "SYN-0006",
+              "source_key": "SYNTHETIC:SYN-0006",
+              "turn_id": "SYN-0006#t8",
+              "speaker": "agent",
+              "span": [
+                0,
+                63
+              ],
+              "quote": "I've sent you a new code, it is for 20% off your next purchase.",
+              "source_version": "authored"
+            },
+            "status": "supported",
+            "best_support": 0.8,
+            "citations": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+                "combined_from": [
+                  "abcd:purchase_dispute/promo_code_invalid#a5",
+                  "abcd:purchase_dispute/promo_code_invalid#a5.1",
+                  "abcd:purchase_dispute/promo_code_invalid#a5.2",
+                  "abcd:purchase_dispute/promo_code_invalid#a5.3"
+                ],
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Generate the promo code and share that with them. No need to enter anything into the form. Click on [Promo Code]. If the customer asks, you can say it is for 20% off their next purchase.",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Promo Code",
+                  "type": "interaction"
+                },
+                "support": 0.8
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.3",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "If the customer asks, you can say it is for 20% off their next purchase.",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Promo Code",
+                  "type": "interaction"
+                },
+                "support": 0.6333
+              }
+            ],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.3",
+                "condition": "if the customer asks",
+                "quote": "If the customer asks, you can say it is for 20% off their next purchase."
+              }
+            ]
+          }
+        ],
+        "possible_conflicts": [],
+        "supporting_conversations": {
+          "source_keys": [
+            "SYNTHETIC:SYN-0006"
+          ],
+          "note": "Conversations that repeat the answer. Repetition is not verification."
+        },
+        "references_considered": 18,
+        "ignored_references": [
+          {
+            "reference_id": "abcd:purchase_dispute/promo_code_invalid#i1",
+            "version": "abcd-guidelines@6b8700ce67c6",
+            "reason": "instruction line: frames the flow, does not state policy"
+          },
+          {
+            "reference_id": "abcd:purchase_dispute/promo_code_invalid#i2",
+            "version": "abcd-guidelines@6b8700ce67c6",
+            "reason": "instruction line: frames the flow, does not state policy"
+          }
+        ],
+        "requirements_remaining": [
+          "State the if the code was issued a long time ago the reference abcd:purchase_dispute/promo_code_invalid#a2 sets.",
+          "State the if the promo code is more than 7 days the reference abcd:purchase_dispute/promo_code_invalid#a2.1 sets.",
+          "State the if their promo code is not valid for whatever reason the reference abcd:purchase_dispute/promo_code_invalid#a4.3 sets.",
+          "State the if the customer is wrong (oracle says no) the reference abcd:purchase_dispute/promo_code_invalid#a4 sets.",
+          "State the if the customer asks the reference abcd:purchase_dispute/promo_code_invalid#a5.3 sets.",
+          "An authorized person must review the evidence and record the verification decision in the backend."
+        ]
+      },
+      {
+        "draft_id": "draft_3b076c43b2a4a602f272",
+        "company_id": "acme",
+        "scope": {
+          "flow": "purchase_dispute",
+          "subflow": "promo_code_invalid"
+        },
+        "verification_status": "contradicted",
+        "ml_recommendation": "contradicted_by_references",
+        "decision": null,
+        "claims": [
+          {
+            "claim": "A promo code has been created.",
+            "passage": {
+              "conversation_id": "ABCD-0046",
+              "source_key": "ABCD:5326",
+              "turn_id": "ABCD-0046#t11",
+              "speaker": "system_action",
+              "span": [
+                0,
+                30
+              ],
+              "quote": "A promo code has been created.",
+              "source_version": "genesys-curated@c39d2e061041"
+            },
+            "status": "contradicted",
+            "best_support": 0.6667,
+            "citations": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.2",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Click on [Promo Code]",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Promo Code",
+                  "type": "interaction"
+                },
+                "support": 0.6667
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Generate the promo code and share that with them",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Promo Code",
+                  "type": "interaction"
+                },
+                "support": 0.6667
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.4",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "If the customer is right (Oracle says Yes), skip to the Promo Code step below",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Ask the Oracle",
+                  "type": "kb query"
+                },
+                "support": 0.6667
+              }
+            ],
+            "contradicted_by": [
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.4",
+                "combined_from": null,
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Membership Privileges",
+                  "type": "faq/policy"
+                },
+                "support": 0.0,
+                "reason": "The reference excludes guest, which the claim includes."
+              },
+              {
+                "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+                "combined_from": [
+                  "abcd:purchase_dispute/promo_code_invalid#a4",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.1",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.2",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.3",
+                  "abcd:purchase_dispute/promo_code_invalid#a4.4"
+                ],
+                "version": "abcd-guidelines@6b8700ce67c6",
+                "snapshot_id": "abcd-guidelines@6b8700ce67c6",
+                "quote": "If the customer is wrong (Oracle says No), then: Ask the customer for their membership level. Enter the member level (even if just a Guest) into [Membership Privileges] and submit. Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member. Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+                "approval": {
+                  "status": "approved",
+                  "approved_by": "example-reviewer",
+                  "approved_at": "2026-10-01"
+                },
+                "eligibility": {
+                  "status": "eligible",
+                  "valid_until": null,
+                  "reason": null
+                },
+                "guideline": {
+                  "flow": "Purchase Dispute",
+                  "subflow": "Promo Code Invalid",
+                  "button": "Membership Privileges",
+                  "type": "faq/policy"
+                },
+                "support": 0.6667,
+                "reason": "The reference excludes guest, which the claim includes."
+              }
+            ],
+            "possibly_contradicted_by": [],
+            "missing_conditions": []
+          }
+        ],
+        "possible_conflicts": [],
+        "supporting_conversations": {
+          "source_keys": [
+            "ABCD:5326"
+          ],
+          "note": "Conversations that repeat the answer. Repetition is not verification."
+        },
+        "references_considered": 18,
+        "ignored_references": [
+          {
+            "reference_id": "abcd:purchase_dispute/promo_code_invalid#i1",
+            "version": "abcd-guidelines@6b8700ce67c6",
+            "reason": "instruction line: frames the flow, does not state policy"
+          },
+          {
+            "reference_id": "abcd:purchase_dispute/promo_code_invalid#i2",
+            "version": "abcd-guidelines@6b8700ce67c6",
+            "reason": "instruction line: frames the flow, does not state policy"
+          }
+        ],
+        "requirements_remaining": [
+          "Resolve the contradiction with abcd:purchase_dispute/promo_code_invalid#a4.4: 'A promo code has been created.'",
+          "An authorized person must review the evidence and record the verification decision in the backend."
+        ]
+      },
+      {
+        "draft_id": "draft_251b6b40404a12573aae",
+        "company_id": "acme",
+        "scope": {
+          "flow": "storewide_query",
+          "subflow": "policy_1"
+        },
+        "verification_status": "unverifiable",
+        "ml_recommendation": "cannot_be_verified",
+        "decision": null,
+        "claims": [
+          {
+            "claim": "Gold members can return items at any time.",
+            "passage": {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t3",
+              "speaker": "agent",
+              "span": [
+                0,
+                42
+              ],
+              "quote": "Gold members can return items at any time.",
+              "source_version": "authored"
+            },
+            "status": "unverifiable",
+            "best_support": 0.0,
+            "citations": [],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": []
+          },
+          {
+            "claim": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+            "passage": {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t4",
+              "speaker": "agent",
+              "span": [
+                0,
+                94
+              ],
+              "quote": "Bronze members can return items within 90 days of purchase, unless the item was on final sale.",
+              "source_version": "authored"
+            },
+            "status": "unverifiable",
+            "best_support": 0.0,
+            "citations": [],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": []
+          },
+          {
+            "claim": "Guests can return items within 30 days with a receipt.",
+            "passage": {
+              "conversation_id": "SYN-0004",
+              "source_key": "SYNTHETIC:SYN-0004",
+              "turn_id": "SYN-0004#t6",
+              "speaker": "agent",
+              "span": [
+                0,
+                54
+              ],
+              "quote": "Guests can return items within 30 days with a receipt.",
+              "source_version": "authored"
+            },
+            "status": "unverifiable",
+            "best_support": 0.0,
+            "citations": [],
+            "contradicted_by": [],
+            "possibly_contradicted_by": [],
+            "missing_conditions": []
+          }
+        ],
+        "possible_conflicts": [],
+        "supporting_conversations": {
+          "source_keys": [
+            "SYNTHETIC:SYN-0004"
+          ],
+          "note": "Conversations that repeat the answer. Repetition is not verification."
+        },
+        "references_considered": 13,
+        "ignored_references": [
+          {
+            "reference_id": "abcd:storewide_query/policy_faq#i1",
+            "version": "abcd-guidelines@6b8700ce67c6",
+            "reason": "instruction line: frames the flow, does not state policy"
+          },
+          {
+            "reference_id": "abcd:storewide_query/policy_faq#i2",
+            "version": "abcd-guidelines@6b8700ce67c6",
+            "reason": "instruction line: frames the flow, does not state policy"
+          }
+        ],
+        "requirements_remaining": [
+          "Find an authoritative passage for: 'Gold members can return items at any time.'",
+          "Find an authoritative passage for: 'Bronze members can return items within 90 days of purchase, unless the item was on final sale.'",
+          "Find an authoritative passage for: 'Guests can return items within 30 days with a receipt.'",
+          "An authorized person must review the evidence and record the verification decision in the backend."
+        ]
+      }
+    ],
+    "note": "Findings for an authorized reviewer. Nothing here approves, rejects or replaces an entry, renews a verification date or makes a draft available for audit use."
+  },
+  "model_usage": {
+    "model": null,
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "note": "Unapproved drafts and findings for an authorized reviewer. The pipeline never approves, rejects, disputes or replaces knowledge and never changes a backend status.",
+  "release_checks": {
+    "release_allowed": true,
+    "checks": [
+      {
+        "check": "counts_match_assessment",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_fabricated_citations",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_unsupported_verified_claims",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_personal_data_leaks",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "ml_approves_nothing",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "matches_a_fresh_run",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      }
+    ]
+  }
+}

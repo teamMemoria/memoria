@@ -66,7 +66,9 @@ def test_every_abcd_draft_cites_exactly_and_leaks_nothing(abcd_records):
         for draft in extract_drafts(record, COMPANY).drafts:
             drafts += 1
             assert check_draft_citations(draft, conversation) == [], draft["draft_id"]
-            assert redactor.leaks(json.dumps(draft)) == [], draft["draft_id"]
+            assert redactor.leaks(json.dumps(draft, ensure_ascii=False)) == [], draft[
+                "draft_id"
+            ]
     assert drafts >= 80  # the baseline extracts from most of the 100 records
 
 
@@ -210,9 +212,10 @@ def test_model_draft_is_rejected_when_unsupported(override, reason):
         FakeModelClient([{"drafts": [_model_draft(**override)]}])
     )
     result = extract_drafts(abcd("ABCD-0041"), COMPANY, extractor=extractor)
-    assert result.status == "ok"
+    # Nothing usable from the model is a model failure, not "no knowledge here".
+    assert result.status == "error"
+    assert result.errors[0]["code"] == "model_output_invalid"
     assert result.drafts == []
-    assert result.no_draft_reason == "model: every proposed draft was rejected"
     assert reason in result.rejected[0]["reason"]
 
 
@@ -240,7 +243,7 @@ def _case_output(case):
 )
 def test_labelled_case_has_no_personal_data(case):
     _, result = _case_output(case)
-    output = json.dumps(result.to_dict()).lower()
+    output = json.dumps(result.to_dict(), ensure_ascii=False).lower()
     for value in case.get("must_not_include", []):
         assert value.lower() not in output, value
 

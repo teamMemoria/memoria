@@ -6,6 +6,7 @@ Stages (each usable on its own with local JSON, no backend or database):
 * :func:`group_drafts` -- issue #17, groups, duplicates and existing-entry matches.
 * :func:`find_conflicts` -- issue #18, possible conflicts with both passages.
 * :func:`check_drafts` -- issue #19, claim-by-claim checks against approved references.
+* :func:`run_pipeline` / :func:`release_checks` -- issue #20, everything in one call and the release gate.
 
 The pipeline never approves anything. Every output is a draft or a finding
 for an authorized human to act on through the backend.
@@ -24,6 +25,7 @@ from .extraction import (
 )
 from .grouping import GroupingConfig, group_drafts
 from .llm import FakeModelClient, ModelClient, OpenAICompatibleClient
+from .pipeline import release_checks, run_pipeline
 from .verification import VerificationConfig, check_drafts, load_reference_snapshot
 
 __all__ = [
@@ -47,4 +49,6 @@ __all__ = [
     "load_reference_snapshot",
     "read_conversation",
     "read_conversations",
+    "release_checks",
+    "run_pipeline",
 ]

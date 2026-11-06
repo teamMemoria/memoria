@@ -114,12 +114,20 @@ class OpenAICompatibleClient:
             ) from error
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise _failure(f"could not reach the model server: {error}") from error
-        except json.JSONDecodeError as error:
-            raise _failure("model server reply was not JSON") from error
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise _failure("model server reply was not UTF-8 JSON") from error
+        if not isinstance(payload, Mapping):
+            raise _failure("model server reply was not a JSON object")
         self.usage.calls += 1
-        usage = payload.get("usage") or {}
-        self.usage.input_tokens += int(usage.get("prompt_tokens") or 0)
-        self.usage.output_tokens += int(usage.get("completion_tokens") or 0)
+        usage = payload.get("usage")
+        if isinstance(usage, Mapping):
+            for attr, key in (
+                ("input_tokens", "prompt_tokens"),
+                ("output_tokens", "completion_tokens"),
+            ):
+                value = usage.get(key)
+                if isinstance(value, int) and value >= 0:
+                    setattr(self.usage, attr, getattr(self.usage, attr) + value)
         try:
             if payload["choices"][0].get("finish_reason") != "stop":
                 raise _failure("model reply did not finish normally")

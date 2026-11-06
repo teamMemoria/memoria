@@ -17,6 +17,7 @@ reviewer's time.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -91,7 +92,11 @@ class _Item:
 
     @property
     def levels(self) -> set[str]:
-        return tx.membership_levels(self.condition_text)
+        # Levels named in the answer count too: "gold members can get a new code"
+        # and "guests can get a new code" are different answers.
+        return tx.membership_levels(self.condition_text) | tx.membership_levels(
+            self.answer
+        )
 
     @property
     def quantities(self) -> set[tuple[str, str]]:
@@ -141,7 +146,9 @@ def _draft_item(draft: Any, index: int, company_id: str) -> _Item:
     for key in ("draft_id", "question", "answer"):
         if not isinstance(draft.get(key), str) or not draft[key]:
             raise invalid(f"{where}.{key}", "must be a non-empty string")
-    conditions = draft.get("conditions", [])
+    conditions = draft.get("conditions") or []
+    if not isinstance(conditions, list):
+        raise invalid(f"{where}.conditions", "must be an array")
     condition_text = " ".join(
         c.get("text", "")
         for c in conditions
@@ -176,7 +183,9 @@ def _entry_item(entry: Any, index: int, company_id: str) -> _Item | None:
     scope = entry.get("scope") or {}
     if not isinstance(scope, Mapping):
         raise invalid(f"{where}.scope", "must be an object")
-    conditions = entry.get("conditions", [])
+    conditions = entry.get("conditions") or []
+    if not isinstance(conditions, list):
+        raise invalid(f"{where}.conditions", "must be an array")
     condition_text = " ".join(
         c if isinstance(c, str) else c.get("text", "")
         for c in conditions
@@ -470,9 +479,10 @@ def _describe(
             "draft_id": representative.item_id,
             "question": rep["question"],
             "answer": rep["answer"],
-            "question_passages": rep.get("question_passages", []),
-            "answer_passages": rep.get("answer_passages", []),
-            "conditions": rep.get("conditions", []),
+            # Copies, so changing the group never changes the draft it came from.
+            "question_passages": copy.deepcopy(rep.get("question_passages", [])),
+            "answer_passages": copy.deepcopy(rep.get("answer_passages", [])),
+            "conditions": copy.deepcopy(rep.get("conditions", [])),
             "status": "draft",
         },
         "draft_count": len(members),

@@ -1,0 +1,64 @@
+{
+  "id": "SYN-R03",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-R03",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "customer_record": {},
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, how can I help?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "My promo code is invalid, can I get a replacement promo code?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "What is your membership level?"
+    },
+    {
+      "n": 4,
+      "speaker": "customer",
+      "text": "guest"
+    },
+    {
+      "n": 5,
+      "speaker": "system_action",
+      "text": "Membership level of guest has been noted."
+    },
+    {
+      "n": 6,
+      "speaker": "agent",
+      "text": "Yes, guests can always get a replacement promo code."
+    },
+    {
+      "n": 7,
+      "speaker": "system_action",
+      "text": "A promo code has been created."
+    },
+    {
+      "n": 8,
+      "speaker": "customer",
+      "text": "Thanks!"
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": [
+      "membership",
+      "promo-code"
+    ]
+  },
+  "note": "Repeated wrong answer (3 of 3)."
+}

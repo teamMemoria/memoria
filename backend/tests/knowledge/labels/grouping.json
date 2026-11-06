@@ -1,5 +1,6 @@
 {
   "label_set": "grouping",
+  "split": "dev",
   "version": 1,
   "labelled_by": "ritvikagg",
   "human_reviewed": false,
@@ -148,5 +149,6 @@
       ],
       "note": "A guest refused (0041), a gold member given a code (0044), a guest given a code (0046) and a system error fixed with a code (0050) are different answers."
     }
-  ]
+  ],
+  "split_note": "Dev cases use ABCD train/dev-split conversations and SYN cases only; ABCD test-split conversations are kept for the held-out set."
 }
