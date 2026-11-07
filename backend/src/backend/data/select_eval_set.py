@@ -3,17 +3,20 @@
 Usage (from backend/, after import-conversations and assign-topics):
 
     uv run select-eval-set [--per-dataset 14] [--seed 31] [--out evaluation/scoring_template.csv]
+                           [--overwrite]
 
 Picks the same number of conversations from each dataset, covering every
 topic and every agent first, then spreading the rest across the least-used
 topics. The same seed always picks the same conversations. The scoring
-columns are left empty for people to fill in.
+columns are left empty for people to fill in. An existing file is never
+replaced unless --overwrite is given, so recorded scores aren't lost.
 """
 
 import argparse
 import asyncio
 import csv
 import random
+import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -69,9 +72,13 @@ def template_columns() -> list[str]:
     return columns
 
 
-def write_template(selection: list[Candidate], out: Path) -> None:
+def write_template(
+    selection: list[Candidate], out: Path, overwrite: bool = False
+) -> None:
+    """Write the template, refusing to replace an existing file unless told to."""
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", newline="", encoding="utf-8") as f:
+    # "x" fails if the file exists, so recorded scores can't be wiped by accident.
+    with out.open("w" if overwrite else "x", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=template_columns())
         writer.writeheader()
         for c in selection:
@@ -122,11 +129,21 @@ def main() -> None:
     parser.add_argument("--per-dataset", type=int, default=DEFAULT_PER_DATASET)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="replace --out if it exists (this discards any scores in it)",
+    )
     args = parser.parse_args()
+    if args.out.exists() and not args.overwrite:
+        sys.exit(
+            f"{args.out} already exists and may hold recorded scores. "
+            "Pass a different --out, or --overwrite to replace it."
+        )
 
     candidates = asyncio.run(load_candidates())
     selection = select_eval_set(candidates, args.per_dataset, args.seed)
-    write_template(selection, args.out)
+    write_template(selection, args.out, overwrite=args.overwrite)
 
     print(f"Wrote {len(selection)} conversations to {args.out}")
     for dataset in sorted({c.source_dataset for c in selection}):

@@ -2,6 +2,8 @@ import csv
 import random
 from pathlib import Path
 
+import pytest
+
 from backend.data.select_eval_set import (
     Candidate,
     select_balanced,
@@ -77,6 +79,18 @@ def test_template_has_two_scorer_columns_per_category(tmp_path):
     assert [r["curated_id"] for r in rows] == ["HVB-0000", "HVB-0001"]
     # Scores are left for people to fill in.
     assert all(r[f"{c.value}_scorer1"] == "" for r in rows for c in FindingCategory)
+
+
+def test_template_does_not_replace_an_existing_sheet(tmp_path):
+    out = tmp_path / "template.csv"
+    out.write_text("recorded scores\n")
+
+    with pytest.raises(FileExistsError):
+        write_template(candidates("HVB", 2, 2, 2), out)
+    assert out.read_text() == "recorded scores\n"
+
+    write_template(candidates("HVB", 2, 2, 2), out, overwrite=True)
+    assert out.read_text().startswith("curated_id,")
 
 
 def test_rubric_values_match_finding_results():
