@@ -49,12 +49,18 @@ generated (fixed seed, so always the same) and stored in
 
     uv run assign-synthetic-dates
 
-## Hand-scored evaluation set
+## Evaluation set
 
 `evaluation/` holds the scoring rubric and the score sheet for the
-hand-scored evaluation set. The conversations in the sheet were picked with:
+evaluation set. The scores in the sheet so far are AI-generated, not human
+(see `evaluation/README.md`). The conversations in the sheet were picked by
+`select-eval-set`. To check the selection again without touching the sheet,
+write it somewhere else:
 
-    uv run select-eval-set
+    uv run select-eval-set --out evaluation/new_selection.csv
+
+`select-eval-set` won't replace an existing file, so it can't wipe recorded
+scores. Pass `--overwrite` only when you mean to start the sheet again.
 
 ## Provenance manifests
 
