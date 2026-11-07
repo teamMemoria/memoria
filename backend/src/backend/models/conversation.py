@@ -2,7 +2,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,7 +42,15 @@ class Topic(Base):
 
 class Conversation(Base):
     __tablename__ = "conversations"
-    __table_args__ = (UniqueConstraint("source_dataset", "original_id"),)
+    __table_args__ = (
+        UniqueConstraint("source_dataset", "original_id"),
+        Index(
+            "ix_conversations_agent_started_topic",
+            "agent_id",
+            "synthetic_started_at",
+            "topic_id",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     source_dataset: Mapped[str] = mapped_column(String(50))
