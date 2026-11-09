@@ -1,8 +1,11 @@
 from backend.models.audit import (
     Audit,
+    FeedbackFlag,
     Finding,
     FindingCategory,
     FindingResult,
+    ManagerReview,
+    ManagerReviewOutcome,
     finding_evidence,
 )
 from backend.models.conversation import Agent, Conversation, Speaker, Topic, Turn
@@ -24,12 +27,15 @@ __all__ = [
     "Conversation",
     "DraftStatus",
     "EntryStatus",
+    "FeedbackFlag",
     "Finding",
     "FindingCategory",
     "FindingResult",
     "KnowledgeDraft",
     "KnowledgeEntry",
     "KnowledgeReview",
+    "ManagerReview",
+    "ManagerReviewOutcome",
     "ReviewAction",
     "Speaker",
     "Topic",
