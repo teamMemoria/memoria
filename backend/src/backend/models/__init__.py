@@ -1,3 +1,10 @@
+from backend.models.audit import (
+    Audit,
+    Finding,
+    FindingCategory,
+    FindingResult,
+    finding_evidence,
+)
 from backend.models.conversation import Agent, Conversation, Speaker, Topic, Turn
 from backend.models.knowledge import (
     EMBEDDING_DIM,
@@ -13,9 +20,13 @@ from backend.models.knowledge import (
 __all__ = [
     "EMBEDDING_DIM",
     "Agent",
+    "Audit",
     "Conversation",
     "DraftStatus",
     "EntryStatus",
+    "Finding",
+    "FindingCategory",
+    "FindingResult",
     "KnowledgeDraft",
     "KnowledgeEntry",
     "KnowledgeReview",
@@ -23,5 +34,6 @@ __all__ = [
     "Speaker",
     "Topic",
     "Turn",
+    "finding_evidence",
     "knowledge_draft_conversations",
 ]

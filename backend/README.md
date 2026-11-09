@@ -26,6 +26,42 @@ the database running:
 
     uv run pytest
 
+## Importing the curated conversations
+
+The conversation data lives in the
+[uoft-ftli-2026-genesys-docs](https://github.com/marcomarchesanogenesys/uoft-ftli-2026-genesys-docs)
+repo, not here. Clone it next to this repo, then from `backend/` with the database
+migrated:
+
+    uv run import-conversations ../../uoft-ftli-2026-genesys-docs/curated/conversations
+
+It is safe to run again; existing conversations and turns are updated in place.
+Don't copy the dataset files into this repo.
+
+Then give every conversation a topic. The label-to-topic mapping is in
+`src/backend/data/topic_mapping.toml`; edit it and re-run to change topics:
+
+    uv run assign-topics
+
+Finally, spread the conversations over an 8-week timeline. These times are
+generated (fixed seed, so always the same) and stored in
+`synthetic_started_at`, separate from any real source date:
+
+    uv run assign-synthetic-dates
+
+## Evaluation set
+
+`evaluation/` holds the scoring rubric and the score sheet for the
+evaluation set. The scores in the sheet so far are AI-generated, not human
+(see `evaluation/README.md`). The conversations in the sheet were picked by
+`select-eval-set`. To check the selection again without touching the sheet,
+write it somewhere else:
+
+    uv run select-eval-set --out evaluation/new_selection.csv
+
+`select-eval-set` won't replace an existing file, so it can't wipe recorded
+scores. Pass `--overwrite` only when you mean to start the sheet again.
+
 ## Provenance manifests
 
 Generated artifacts store their provenance in a JSON sidecar beside the
