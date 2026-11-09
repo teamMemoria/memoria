@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 
-from backend.services.conversation_corpus import (
+from backend.data.conversation_corpus import (
     build_profile,
     format_issue,
     main,
@@ -15,7 +15,7 @@ from backend.services.conversation_corpus import (
 def hvb_record() -> dict[str, object]:
     return {
         "id": "HVB-0001",
-        "source": {"dataset": "HarperValleyBank"},
+        "source": {"dataset": "HarperValleyBank", "original_id": "hvb-1"},
         "modifications": [],
         "channel": "voice",
         "agent_id": "agent-7",
@@ -30,7 +30,7 @@ def hvb_record() -> dict[str, object]:
 def abcd_record() -> dict[str, object]:
     return {
         "id": "ABCD-0001",
-        "source": {"dataset": "ABCD"},
+        "source": {"dataset": "ABCD", "original_id": "abcd-1"},
         "modifications": [],
         "channel": "chat",
         "turns": [
@@ -223,3 +223,124 @@ def test_cli_prints_errors_without_a_partial_profile(tmp_path, capsys):
     assert exit_code == 1
     assert output.out == ""
     assert "invalid.json: turns[0].speaker:" in output.err
+
+
+@pytest.mark.parametrize("change", ["missing", None, 7])
+def test_rejects_turns_without_string_text(tmp_path, change):
+    record = hvb_record()
+    if change == "missing":
+        del record["turns"][1]["text"]
+    else:
+        record["turns"][1]["text"] = change
+    write_json(tmp_path, "bad.json", record)
+
+    result = validate_corpus(tmp_path)
+
+    assert any(issue.field == "turns[1].text" for issue in result.issues)
+
+
+def test_accepts_empty_string_turn_text(tmp_path):
+    # Transcripts can contain empty utterances; only a missing or non-string
+    # text breaks the import.
+    record = hvb_record()
+    record["turns"][1]["text"] = ""
+    write_json(tmp_path, "ok.json", record)
+
+    assert validate_corpus(tmp_path).issues == ()
+
+
+@pytest.mark.parametrize("change", ["missing", None, "", "  ", 123])
+def test_rejects_missing_or_invalid_original_id(tmp_path, change):
+    record = abcd_record()
+    if change == "missing":
+        del record["source"]["original_id"]
+    else:
+        record["source"]["original_id"] = change
+    write_json(tmp_path, "bad.json", record)
+
+    result = validate_corpus(tmp_path)
+
+    assert any(issue.field == "source.original_id" for issue in result.issues)
+
+
+@pytest.mark.parametrize("value", [None, "", 42])
+def test_rejects_invalid_curated_id(tmp_path, value):
+    record = hvb_record()
+    record["id"] = value
+    write_json(tmp_path, "bad.json", record)
+
+    result = validate_corpus(tmp_path)
+
+    assert any(issue.field == "id" for issue in result.issues)
+
+
+def test_rejects_an_empty_turns_list(tmp_path):
+    record = hvb_record()
+    record["turns"] = []
+    write_json(tmp_path, "bad.json", record)
+
+    result = validate_corpus(tmp_path)
+
+    assert any(
+        issue.field == "turns" and "at least one" in issue.message
+        for issue in result.issues
+    )
+
+
+def test_rejects_duplicate_curated_ids_naming_the_first_file(tmp_path):
+    first = hvb_record()
+    second = hvb_record()
+    second["source"]["original_id"] = "hvb-2"
+    write_json(tmp_path, "a.json", first)
+    write_json(tmp_path, "b.json", second)
+
+    result = validate_corpus(tmp_path)
+
+    assert result.records == ()
+    assert [format_issue(issue) for issue in result.issues] == [
+        "b.json: id: duplicates the id in a.json"
+    ]
+
+
+def test_rejects_duplicate_source_records_naming_the_first_file(tmp_path):
+    first = abcd_record()
+    second = abcd_record()
+    second["id"] = "ABCD-0002"
+    write_json(tmp_path, "a.json", first)
+    write_json(tmp_path, "b.json", second)
+
+    result = validate_corpus(tmp_path)
+
+    assert [format_issue(issue) for issue in result.issues] == [
+        "b.json: source.original_id: duplicates the source record in a.json"
+    ]
+
+
+def test_same_original_id_in_different_datasets_is_allowed(tmp_path):
+    hvb = hvb_record()
+    abcd = abcd_record()
+    abcd["source"]["original_id"] = hvb["source"]["original_id"]
+    write_json(tmp_path, "HVB-0001.json", hvb)
+    write_json(tmp_path, "ABCD-0001.json", abcd)
+
+    assert validate_corpus(tmp_path).issues == ()
+
+
+def test_turn_counts_are_ordered_numerically_in_output():
+    records = []
+    for index, turn_total in enumerate([10, 8, 2, 9]):
+        record = hvb_record()
+        record["id"] = f"HVB-{index}"
+        record["turns"] = [
+            {"n": n, "speaker": "agent", "text": "x"} for n in range(1, turn_total + 1)
+        ]
+        records.append(record)
+
+    output = json.loads(serialize_profile(build_profile(records)))
+
+    assert list(output["distributions"]["turn_counts"]["HarperValleyBank"]) == [
+        "2",
+        "8",
+        "9",
+        "10",
+    ]

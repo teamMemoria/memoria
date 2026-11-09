@@ -6,7 +6,7 @@ From the `backend` directory, run the validator against the supplied curated
 conversation directory:
 
 ```bash
-uv run python src/backend/services/conversation_corpus.py /path/to/uoft-ftli-2026-genesys-docs/curated/conversations
+uv run profile-conversations /path/to/uoft-ftli-2026-genesys-docs/curated/conversations
 ```
 
 The command validates every JSON file before printing a deterministic profile.
@@ -51,6 +51,19 @@ generated (fixed seed, so always the same) and stored in
 
 Each data command accepts `--organization <slug>` and defaults to the
 migration-created `default` organization.
+
+## Evaluation set
+
+`evaluation/` holds the scoring rubric and the score sheet for the
+evaluation set. The scores in the sheet so far are AI-generated, not human
+(see `evaluation/README.md`). The conversations in the sheet were picked by
+`select-eval-set`. To check the selection again without touching the sheet,
+write it somewhere else:
+
+    uv run select-eval-set --out evaluation/new_selection.csv
+
+`select-eval-set` won't replace an existing file, so it can't wipe recorded
+scores. Pass `--overwrite` only when you mean to start the sheet again.
 
 ## Provenance manifests
 

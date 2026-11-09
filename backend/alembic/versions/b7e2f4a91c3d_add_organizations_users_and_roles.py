@@ -1,7 +1,7 @@
 """add organizations users and roles
 
 Revision ID: b7e2f4a91c3d
-Revises: 4024e756007c
+Revises: aa37b6c1d0e2
 Create Date: 2026-11-01 23:30:00
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "b7e2f4a91c3d"
-down_revision: str | Sequence[str] | None = "4024e756007c"
+down_revision: str | Sequence[str] | None = "aa37b6c1d0e2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

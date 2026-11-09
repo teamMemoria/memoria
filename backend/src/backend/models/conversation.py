@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -81,6 +82,12 @@ class Conversation(Base):
         ForeignKeyConstraint(
             ["organization_id", "topic_id"],
             ["topics.organization_id", "topics.id"],
+        ),
+        Index(
+            "ix_conversations_agent_started_topic",
+            "agent_id",
+            "synthetic_started_at",
+            "topic_id",
         ),
     )
 
