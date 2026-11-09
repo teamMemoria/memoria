@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -124,6 +125,12 @@ class ManagerReview(Base):
     """A Manager's decision on a flag, separate from the automated finding."""
 
     __tablename__ = "manager_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "(outcome = 'corrected') = (reviewed_result IS NOT NULL)",
+            name="ck_manager_reviews_corrected_result",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     feedback_flag_id: Mapped[int] = mapped_column(
@@ -131,6 +138,9 @@ class ManagerReview(Base):
     )
     outcome: Mapped[ManagerReviewOutcome] = mapped_column(
         str_enum(ManagerReviewOutcome, "manager_review_outcome")
+    )
+    reviewed_result: Mapped[FindingResult | None] = mapped_column(
+        str_enum(FindingResult, "finding_result")
     )
     reviewer: Mapped[str] = mapped_column(String(200))
     reason: Mapped[str] = mapped_column(Text)

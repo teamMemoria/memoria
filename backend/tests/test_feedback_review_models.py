@@ -45,6 +45,7 @@ async def test_agent_flag_and_manager_review_round_trip(session, finding):
         agent_context="The verification happened before the recorded transcript.",
         manager_review=ManagerReview(
             outcome=ManagerReviewOutcome.CORRECTED,
+            reviewed_result=FindingResult.PASS,
             reviewer="manager@example.com",
             reason="The system log confirms the verification.",
             feedback="The procedure passed; no coaching is needed.",
@@ -73,6 +74,7 @@ async def test_agent_flag_and_manager_review_round_trip(session, finding):
     )
     assert isinstance(loaded.flagged_at, datetime)
     assert loaded.manager_review.outcome == ManagerReviewOutcome.CORRECTED
+    assert loaded.manager_review.reviewed_result == FindingResult.PASS
     assert loaded.manager_review.reviewer == "manager@example.com"
     assert isinstance(loaded.manager_review.reviewed_at, datetime)
 
@@ -81,6 +83,9 @@ async def test_agent_flag_and_manager_review_round_trip(session, finding):
 async def test_every_manager_review_outcome_is_stored(session, finding, outcome):
     review = ManagerReview(
         outcome=outcome,
+        reviewed_result=(
+            FindingResult.PASS if outcome == ManagerReviewOutcome.CORRECTED else None
+        ),
         reviewer="manager@example.com",
         reason="Reviewed against the available evidence.",
         feedback="Decision recorded for the Agent.",
@@ -96,6 +101,35 @@ async def test_every_manager_review_outcome_is_stored(session, finding, outcome)
     await session.flush()
 
     assert review.outcome == outcome
+
+
+@pytest.mark.parametrize(
+    ("outcome", "reviewed_result"),
+    [
+        (ManagerReviewOutcome.CORRECTED, None),
+        (ManagerReviewOutcome.CONFIRMED, FindingResult.PASS),
+    ],
+)
+async def test_reviewed_result_is_required_only_for_corrections(
+    session, finding, outcome, reviewed_result
+):
+    session.add(
+        FeedbackFlag(
+            finding=finding,
+            agent=finding.audit.conversation.agent,
+            reason="Please review this finding.",
+            manager_review=ManagerReview(
+                outcome=outcome,
+                reviewed_result=reviewed_result,
+                reviewer="manager@example.com",
+                reason="Reviewed against the available evidence.",
+                feedback="Decision recorded for the Agent.",
+            ),
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        await session.flush()
 
 
 async def test_finding_can_only_be_flagged_once(session, finding):
