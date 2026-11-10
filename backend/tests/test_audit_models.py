@@ -50,6 +50,11 @@ async def conversation(session, organization):
     return c
 
 
+@pytest.fixture
+async def evaluation_version(default_evaluation_version):
+    return default_evaluation_version
+
+
 async def make_entry(session, organization) -> KnowledgeEntry:
     topic = Topic(
         organization=organization,
@@ -83,13 +88,14 @@ async def make_entry(session, organization) -> KnowledgeEntry:
 
 
 async def test_audit_with_four_findings_and_evidence_round_trips(
-    session, organization, conversation
+    session, organization, conversation, evaluation_version
 ):
     entry = await make_entry(session, organization)
     turns = {t.line_number: t for t in conversation.turns}
     audit = Audit(
         organization=organization,
         conversation=conversation,
+        evaluation_form_version=evaluation_version,
         findings=[
             Finding(
                 organization=organization,
@@ -146,11 +152,12 @@ async def test_audit_with_four_findings_and_evidence_round_trips(
 
 
 async def test_cannot_assess_is_stored_separately_from_needs_work(
-    session, organization, conversation
+    session, organization, conversation, evaluation_version
 ):
     audit = Audit(
         organization=organization,
         conversation=conversation,
+        evaluation_form_version=evaluation_version,
         findings=[
             Finding(
                 organization=organization,
@@ -184,22 +191,35 @@ async def test_cannot_assess_is_stored_separately_from_needs_work(
     assert [f.category for f in failures] == [FindingCategory.PROCEDURE]
 
 
-async def test_one_audit_per_conversation(session, organization, conversation):
+async def test_one_audit_per_conversation(
+    session, organization, conversation, evaluation_version
+):
     session.add_all(
         [
-            Audit(organization=organization, conversation=conversation),
-            Audit(organization=organization, conversation=conversation),
+            Audit(
+                organization=organization,
+                conversation=conversation,
+                evaluation_form_version=evaluation_version,
+            ),
+            Audit(
+                organization=organization,
+                conversation=conversation,
+                evaluation_form_version=evaluation_version,
+            ),
         ]
     )
     with pytest.raises(IntegrityError):
         await session.flush()
 
 
-async def test_one_finding_per_category_per_audit(session, organization, conversation):
+async def test_one_finding_per_category_per_audit(
+    session, organization, conversation, evaluation_version
+):
     session.add(
         Audit(
             organization=organization,
             conversation=conversation,
+            evaluation_form_version=evaluation_version,
             findings=[
                 Finding(
                     organization=organization,
@@ -220,8 +240,14 @@ async def test_one_finding_per_category_per_audit(session, organization, convers
         await session.flush()
 
 
-async def test_unknown_result_is_rejected(session, organization, conversation):
-    audit = Audit(organization=organization, conversation=conversation)
+async def test_unknown_result_is_rejected(
+    session, organization, conversation, evaluation_version
+):
+    audit = Audit(
+        organization=organization,
+        conversation=conversation,
+        evaluation_form_version=evaluation_version,
+    )
     session.add(audit)
     await session.flush()
     with pytest.raises(IntegrityError):
@@ -236,7 +262,9 @@ async def test_unknown_result_is_rejected(session, organization, conversation):
         )
 
 
-async def test_finding_cannot_reference_knowledge_from_another_org(session):
+async def test_finding_cannot_reference_knowledge_from_another_org(
+    session, evaluation_version
+):
     northwind = Organization(slug="northwind", name="Northwind")
     harbor = Organization(slug="harbor", name="Harbor")
     northwind_conversation = Conversation(
@@ -253,6 +281,7 @@ async def test_finding_cannot_reference_knowledge_from_another_org(session):
         Audit(
             organization=northwind,
             conversation=northwind_conversation,
+            evaluation_form_version=evaluation_version,
             findings=[
                 Finding(
                     organization=northwind,

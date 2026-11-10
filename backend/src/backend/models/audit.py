@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
@@ -20,6 +21,9 @@ from backend.models.columns import str_enum
 from backend.models.conversation import Agent, Conversation, Turn
 from backend.models.knowledge import KnowledgeEntry
 from backend.models.organization import Organization, OrganizationMembership
+
+if TYPE_CHECKING:
+    from backend.models.evaluation import EvaluationFormVersion
 
 
 class FindingCategory(StrEnum):
@@ -71,6 +75,9 @@ class Audit(Base):
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
     conversation_id: Mapped[int] = mapped_column(unique=True)
+    evaluation_form_version_id: Mapped[int] = mapped_column(
+        ForeignKey("evaluation_form_versions.id", ondelete="RESTRICT"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -78,6 +85,7 @@ class Audit(Base):
     # Composite foreign keys share organization_id across these relationships.
     organization: Mapped[Organization] = relationship(overlaps="conversation")
     conversation: Mapped[Conversation] = relationship(overlaps="organization")
+    evaluation_form_version: Mapped["EvaluationFormVersion"] = relationship()
     findings: Mapped[list["Finding"]] = relationship(
         back_populates="audit",
         cascade="all, delete-orphan",

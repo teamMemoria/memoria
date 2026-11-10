@@ -239,7 +239,9 @@ async def test_manager_can_approve_knowledge(session):
     assert entry.answer_text == draft.answer_text
 
 
-async def test_feedback_flag_cannot_reference_another_organizations_agent(session):
+async def test_feedback_flag_cannot_reference_another_organizations_agent(
+    session, default_evaluation_version
+):
     northwind = organization("northwind")
     harbor = organization("harbor")
     northwind_conversation = conversation(northwind, "northwind")
@@ -255,6 +257,7 @@ async def test_feedback_flag_cannot_reference_another_organizations_agent(sessio
             Audit(
                 organization=northwind,
                 conversation=northwind_conversation,
+                evaluation_form_version=default_evaluation_version,
                 findings=[finding],
             ),
             harbor_agent,
@@ -273,7 +276,9 @@ async def test_feedback_flag_cannot_reference_another_organizations_agent(sessio
         await session.flush()
 
 
-async def test_non_manager_cannot_record_feedback_review(session):
+async def test_non_manager_cannot_record_feedback_review(
+    session, default_evaluation_version
+):
     org = organization("northwind")
     agent_member = membership(org, "agent-alex", UserRole.AGENT)
     call = conversation(org, "feedback")
@@ -292,7 +297,12 @@ async def test_non_manager_cannot_record_feedback_review(session):
     session.add_all(
         [
             agent_member,
-            Audit(organization=org, conversation=call, findings=[finding]),
+            Audit(
+                organization=org,
+                conversation=call,
+                evaluation_form_version=default_evaluation_version,
+                findings=[finding],
+            ),
             flag,
         ]
     )
@@ -309,7 +319,9 @@ async def test_non_manager_cannot_record_feedback_review(session):
         )
 
 
-async def test_manager_review_cannot_use_another_organizations_manager(session):
+async def test_manager_review_cannot_use_another_organizations_manager(
+    session, default_evaluation_version
+):
     northwind = organization("northwind")
     harbor = organization("harbor")
     call = conversation(northwind, "review")
@@ -329,7 +341,12 @@ async def test_manager_review_cannot_use_another_organizations_manager(session):
     session.add_all(
         [
             harbor_manager,
-            Audit(organization=northwind, conversation=call, findings=[finding]),
+            Audit(
+                organization=northwind,
+                conversation=call,
+                evaluation_form_version=default_evaluation_version,
+                findings=[finding],
+            ),
             flag,
         ]
     )

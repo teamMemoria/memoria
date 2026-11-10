@@ -16,6 +16,11 @@ from backend.models.conversation import (
     Topic,
     Turn,
 )
+from backend.models.evaluation import (
+    EvaluationCriterion,
+    EvaluationForm,
+    EvaluationFormVersion,
+)
 from backend.models.knowledge import (
     EMBEDDING_DIM,
     DraftStatus,
@@ -41,6 +46,9 @@ __all__ = [
     "ConversationMetric",
     "DraftStatus",
     "EntryStatus",
+    "EvaluationCriterion",
+    "EvaluationForm",
+    "EvaluationFormVersion",
     "FeedbackFlag",
     "Finding",
     "FindingCategory",

@@ -21,6 +21,7 @@ dependencies = [
 backend = "backend:main"
 import-conversations = "backend.data.import_conversations:main"
 assign-topics = "backend.data.assign_topics:main"
+create-splits = "backend.data.create_splits:main"
 select-eval-set = "backend.data.select_eval_set:main"
 assign-synthetic-dates = "backend.data.assign_synthetic_dates:main"
 profile-conversations = "backend.data.conversation_corpus:main"

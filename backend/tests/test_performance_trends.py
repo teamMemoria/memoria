@@ -26,6 +26,7 @@ async def add_audited_conversation(
     original_id: str,
     started_at: datetime,
     results: dict[FindingCategory, FindingResult],
+    evaluation_version,
 ) -> None:
     conversation = Conversation(
         organization=agent.organization,
@@ -40,7 +41,11 @@ async def add_audited_conversation(
         source_fields={},
         customer_record=None,
     )
-    audit = Audit(organization=agent.organization, conversation=conversation)
+    audit = Audit(
+        organization=agent.organization,
+        conversation=conversation,
+        evaluation_form_version=evaluation_version,
+    )
     audit.findings = [
         Finding(
             organization=agent.organization,
@@ -55,7 +60,9 @@ async def add_audited_conversation(
 
 
 @pytest.mark.asyncio
-async def test_trends_group_results_by_week_category_and_topic_in_order(session):
+async def test_trends_group_results_by_week_category_and_topic_in_order(
+    session, default_evaluation_version
+):
     org = Organization(slug="trends", name="Trends")
     agent = Agent(organization=org, external_id="agent-37", name="Agent 37")
     other_agent = Agent(organization=org, external_id="agent-other", name="Other")
@@ -76,6 +83,7 @@ async def test_trends_group_results_by_week_category_and_topic_in_order(session)
             FindingCategory.PROCEDURE: FindingResult.NEEDS_WORK,
             FindingCategory.COMPLETENESS: FindingResult.CANNOT_ASSESS,
         },
+        evaluation_version=default_evaluation_version,
     )
     await add_audited_conversation(
         session,
@@ -84,6 +92,7 @@ async def test_trends_group_results_by_week_category_and_topic_in_order(session)
         original_id="week-1-b",
         started_at=utc(2026, 1, 8),
         results={FindingCategory.PROCEDURE: FindingResult.PASS},
+        evaluation_version=default_evaluation_version,
     )
     await add_audited_conversation(
         session,
@@ -92,6 +101,7 @@ async def test_trends_group_results_by_week_category_and_topic_in_order(session)
         original_id="week-2",
         started_at=utc(2026, 1, 13),
         results={FindingCategory.PROCEDURE: FindingResult.PASS},
+        evaluation_version=default_evaluation_version,
     )
     await add_audited_conversation(
         session,
@@ -100,6 +110,7 @@ async def test_trends_group_results_by_week_category_and_topic_in_order(session)
         original_id="other-agent",
         started_at=utc(2026, 1, 7),
         results={FindingCategory.PROCEDURE: FindingResult.NEEDS_WORK},
+        evaluation_version=default_evaluation_version,
     )
 
     trends = await get_agent_performance_trends(
@@ -128,7 +139,9 @@ async def test_trends_group_results_by_week_category_and_topic_in_order(session)
 
 
 @pytest.mark.asyncio
-async def test_comparison_uses_half_open_windows_and_excludes_cannot_assess(session):
+async def test_comparison_uses_half_open_windows_and_excludes_cannot_assess(
+    session, default_evaluation_version
+):
     org = Organization(slug="comparison", name="Comparison")
     agent = Agent(organization=org, external_id="compare-agent", name=None)
     topic = Topic(
@@ -147,6 +160,7 @@ async def test_comparison_uses_half_open_windows_and_excludes_cannot_assess(sess
             original_id=original_id,
             started_at=started_at,
             results={FindingCategory.ANSWER_SUPPORT: result},
+            evaluation_version=default_evaluation_version,
         )
 
     comparison = await compare_agent_performance_windows(
