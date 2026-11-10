@@ -13,6 +13,7 @@ from backend.models import (
     EvaluationForm,
     EvaluationFormVersion,
     FindingCategory,
+    Organization,
 )
 
 
@@ -133,6 +134,7 @@ async def test_invalid_weight_or_threshold_is_rejected(session, weight, threshol
 
 
 async def test_audit_retains_the_form_version_used_for_scoring(session):
+    organization = Organization(slug="historical-scoring", name="Historical scoring")
     form = EvaluationForm(
         name="Historical scoring",
         versions=[
@@ -141,12 +143,14 @@ async def test_audit_retains_the_form_version_used_for_scoring(session):
         ],
     )
     conversation = Conversation(
+        organization=organization,
         source_dataset="HarperValleyBank",
         original_id="historical-audit",
         channel="voice",
-        agent=Agent(external_id="historical-agent"),
+        agent=Agent(organization=organization, external_id="historical-agent"),
     )
     audit = Audit(
+        organization=organization,
         conversation=conversation,
         evaluation_form_version=form.versions[0],
     )
@@ -179,6 +183,7 @@ async def test_audit_retains_the_form_version_used_for_scoring(session):
     ],
 )
 async def test_audited_version_cannot_be_changed(session, change):
+    organization = Organization(slug="protected-version", name="Protected version")
     version = EvaluationFormVersion(
         form=EvaluationForm(name="Protected version"),
         version_number=1,
@@ -187,11 +192,13 @@ async def test_audited_version_cannot_be_changed(session, change):
     session.add(version)
     await session.flush()
     audit = Audit(
+        organization=organization,
         conversation=Conversation(
+            organization=organization,
             source_dataset="HarperValleyBank",
             original_id="protected-version",
             channel="voice",
-            agent=Agent(external_id="protected-agent"),
+            agent=Agent(organization=organization, external_id="protected-agent"),
         ),
         evaluation_form_version=version,
     )

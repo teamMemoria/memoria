@@ -11,6 +11,7 @@ from backend.db.performance_trends import (
 )
 from backend.models.audit import Audit, Finding, FindingCategory, FindingResult
 from backend.models.conversation import Agent, Conversation, Topic
+from backend.models.organization import Organization
 
 
 def utc(year: int, month: int, day: int) -> datetime:
@@ -28,6 +29,7 @@ async def add_audited_conversation(
     evaluation_version,
 ) -> None:
     conversation = Conversation(
+        organization=agent.organization,
         source_dataset="test",
         original_id=original_id,
         channel="voice",
@@ -39,9 +41,18 @@ async def add_audited_conversation(
         source_fields={},
         customer_record=None,
     )
-    audit = Audit(conversation=conversation, evaluation_form_version=evaluation_version)
+    audit = Audit(
+        organization=agent.organization,
+        conversation=conversation,
+        evaluation_form_version=evaluation_version,
+    )
     audit.findings = [
-        Finding(category=category, result=result, feedback="test")
+        Finding(
+            organization=agent.organization,
+            category=category,
+            result=result,
+            feedback="test",
+        )
         for category, result in results.items()
     ]
     session.add(audit)
@@ -52,10 +63,15 @@ async def add_audited_conversation(
 async def test_trends_group_results_by_week_category_and_topic_in_order(
     session, default_evaluation_version
 ):
-    agent = Agent(external_id="agent-37", name="Agent 37")
-    other_agent = Agent(external_id="agent-other", name="Other")
-    billing = Topic(source_dataset="test", name="Billing", description=None)
-    account = Topic(source_dataset="test", name="Account", description=None)
+    org = Organization(slug="trends", name="Trends")
+    agent = Agent(organization=org, external_id="agent-37", name="Agent 37")
+    other_agent = Agent(organization=org, external_id="agent-other", name="Other")
+    billing = Topic(
+        organization=org, source_dataset="test", name="Billing", description=None
+    )
+    account = Topic(
+        organization=org, source_dataset="test", name="Account", description=None
+    )
 
     await add_audited_conversation(
         session,
@@ -126,8 +142,11 @@ async def test_trends_group_results_by_week_category_and_topic_in_order(
 async def test_comparison_uses_half_open_windows_and_excludes_cannot_assess(
     session, default_evaluation_version
 ):
-    agent = Agent(external_id="compare-agent", name=None)
-    topic = Topic(source_dataset="test", name="Support", description=None)
+    org = Organization(slug="comparison", name="Comparison")
+    agent = Agent(organization=org, external_id="compare-agent", name=None)
+    topic = Topic(
+        organization=org, source_dataset="test", name="Support", description=None
+    )
     for original_id, started_at, result in [
         ("early-pass", utc(2026, 2, 1), FindingResult.PASS),
         ("early-na", utc(2026, 2, 8), FindingResult.CANNOT_ASSESS),

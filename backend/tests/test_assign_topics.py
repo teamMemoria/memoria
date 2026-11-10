@@ -8,7 +8,7 @@ from backend.data.assign_topics import (
     topic_counts,
     topic_for,
 )
-from backend.models import Agent, Conversation, Topic
+from backend.models import Agent, Conversation, Organization, Topic
 
 MAPPING = load_mapping()
 
@@ -83,8 +83,9 @@ def test_unmapped_labels_raise(dataset, fields):
         topic_for(dataset, fields, MAPPING)
 
 
-def conversation(dataset, original_id, agent, **fields):
+def conversation(organization, dataset, original_id, agent, **fields):
     return Conversation(
+        organization=organization,
         source_dataset=dataset,
         original_id=original_id,
         channel="voice",
@@ -95,26 +96,58 @@ def conversation(dataset, original_id, agent, **fields):
 
 @pytest.fixture
 async def imported(session):
+    organization = Organization(slug="topic-tests", name="Topic Tests")
     hvb, abcd = (
-        Agent(external_id="hvb-speaker-1"),
-        Agent(external_id="abcd-unknown-agent"),
+        Agent(organization=organization, external_id="hvb-speaker-1"),
+        Agent(organization=organization, external_id="abcd-unknown-agent"),
     )
     session.add_all(
         [
-            conversation("HarperValleyBank", "1", hvb, task_assigned=["pay bill"]),
-            conversation("HarperValleyBank", "2", hvb, task_assigned=["pay bill"]),
-            conversation("HarperValleyBank", "3", hvb, task_assigned=["replace card"]),
             conversation(
-                "ABCD", "1", abcd, flow="product_defect", subflow="refund_initiate"
+                organization,
+                "HarperValleyBank",
+                "1",
+                hvb,
+                task_assigned=["pay bill"],
             ),
-            conversation("ABCD", "2", abcd, flow="shipping_issue", subflow="status"),
+            conversation(
+                organization,
+                "HarperValleyBank",
+                "2",
+                hvb,
+                task_assigned=["pay bill"],
+            ),
+            conversation(
+                organization,
+                "HarperValleyBank",
+                "3",
+                hvb,
+                task_assigned=["replace card"],
+            ),
+            conversation(
+                organization,
+                "ABCD",
+                "1",
+                abcd,
+                flow="product_defect",
+                subflow="refund_initiate",
+            ),
+            conversation(
+                organization,
+                "ABCD",
+                "2",
+                abcd,
+                flow="shipping_issue",
+                subflow="status",
+            ),
         ]
     )
     await session.flush()
+    return organization
 
 
 async def test_every_conversation_gets_exactly_one_topic(session, imported):
-    await assign_topics(session, MAPPING)
+    await assign_topics(session, MAPPING, imported.id)
 
     assert (
         await session.scalar(
@@ -122,7 +155,7 @@ async def test_every_conversation_gets_exactly_one_topic(session, imported):
         )
         == 0
     )
-    assert await topic_counts(session) == {
+    assert await topic_counts(session, imported.id) == {
         ("HarperValleyBank", "Bill payment"): 2,
         ("HarperValleyBank", "Card replacement"): 1,
         ("ABCD", "Refunds"): 1,
@@ -131,11 +164,11 @@ async def test_every_conversation_gets_exactly_one_topic(session, imported):
 
 
 async def test_rerun_reuses_existing_topics(session, imported):
-    await assign_topics(session, MAPPING)
+    await assign_topics(session, MAPPING, imported.id)
     first = (
         await session.execute(select(Topic.id, Topic.name).order_by(Topic.id))
     ).all()
-    await assign_topics(session, MAPPING)
+    await assign_topics(session, MAPPING, imported.id)
     assert (
         await session.execute(select(Topic.id, Topic.name).order_by(Topic.id))
     ).all() == first
@@ -146,10 +179,16 @@ async def test_unmapped_label_writes_nothing(session, imported):
         select(Agent).where(Agent.external_id == "hvb-speaker-1")
     )
     session.add(
-        conversation("HarperValleyBank", "4", agent, task_assigned=["open account"])
+        conversation(
+            imported,
+            "HarperValleyBank",
+            "4",
+            agent,
+            task_assigned=["open account"],
+        )
     )
     await session.flush()
 
     with pytest.raises(UnmappedLabelError, match="open account"):
-        await assign_topics(session, MAPPING)
+        await assign_topics(session, MAPPING, imported.id)
     assert await session.scalar(select(func.count(Topic.id))) == 0

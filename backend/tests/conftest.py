@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import psycopg
@@ -13,6 +14,7 @@ from backend.core.config import get_settings
 from backend.models.evaluation import EvaluationForm, EvaluationFormVersion
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+SOURCE_DIR = BACKEND_DIR / "src"
 
 # The disposable database the suite drops, recreates and migrates on every run.
 # Point TEST_DATABASE_URL at any scratch database to isolate a run.
@@ -58,9 +60,13 @@ def migrated_database():
     with psycopg.connect(TEST_DB_DIRECT_URL, autocommit=True) as conn:
         conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
     subprocess.run(
-        ["alembic", "upgrade", "head"],
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=BACKEND_DIR,
-        env={**os.environ, "DATABASE_URL": TEST_DATABASE_URL},
+        env={
+            **os.environ,
+            "DATABASE_URL": TEST_DATABASE_URL,
+            "PYTHONPATH": str(SOURCE_DIR),
+        },
         check=True,
         capture_output=True,
     )
