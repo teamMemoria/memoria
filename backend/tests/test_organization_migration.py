@@ -103,14 +103,33 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
                 "INSERT INTO audits (conversation_id) VALUES (%s) RETURNING id",
                 (conversation_id,),
             ).fetchone()[0]
-            conn.execute(
+            finding_id = conn.execute(
                 """
                 INSERT INTO findings (
                     audit_id, category, result, feedback, knowledge_entry_id
                 )
                 VALUES (%s, 'answer_support', 'pass', 'Supported', %s)
+                RETURNING id
                 """,
                 (audit_id, entry_id),
+            ).fetchone()[0]
+
+        run_alembic("c75d2d9e41af")
+        with psycopg.connect(MIGRATION_URL, autocommit=True) as conn:
+            flag_id = conn.execute(
+                """
+                INSERT INTO feedback_flags (finding_id, agent_id, reason)
+                VALUES (%s, %s, 'Please review') RETURNING id
+                """,
+                (finding_id, agent_id),
+            ).fetchone()[0]
+            conn.execute(
+                """
+                INSERT INTO manager_reviews (
+                    feedback_flag_id, outcome, reviewer, reason, feedback
+                ) VALUES (%s, 'confirmed', 'Legacy Feedback Manager', 'Reviewed', 'Confirmed')
+                """,
+                (flag_id,),
             )
 
         run_alembic("head")
@@ -129,6 +148,8 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
                 "knowledge_entries",
                 "audits",
                 "findings",
+                "feedback_flags",
+                "manager_reviews",
             ):
                 assert conn.execute(
                     f"SELECT DISTINCT organization_id FROM {table}"
@@ -143,6 +164,14 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
                 JOIN users AS u ON u.id = om.user_id
                 """
             ).fetchall() == [("Legacy Manager", "manager")]
+            assert conn.execute(
+                """
+                SELECT u.display_name, om.role
+                FROM manager_reviews AS mr
+                JOIN organization_memberships AS om ON om.id = mr.reviewer_membership_id
+                JOIN users AS u ON u.id = om.user_id
+                """
+            ).fetchall() == [("Legacy Feedback Manager", "manager")]
 
         subprocess.run(
             [sys.executable, "-m", "alembic", "downgrade", "-1"],
@@ -154,6 +183,9 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
             assert conn.execute(
                 "SELECT reviewer FROM knowledge_reviews"
             ).fetchall() == [("Legacy Manager",)]
+            assert conn.execute("SELECT reviewer FROM manager_reviews").fetchall() == [
+                ("Legacy Feedback Manager",)
+            ]
         run_alembic("head")
     finally:
         with psycopg.connect(ADMIN_URL, autocommit=True) as conn:

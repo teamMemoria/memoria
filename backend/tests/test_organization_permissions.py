@@ -3,10 +3,17 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.models import (
     Agent,
+    Audit,
     Conversation,
+    FeedbackFlag,
+    Finding,
+    FindingCategory,
+    FindingResult,
     KnowledgeDraft,
     KnowledgeEntry,
     KnowledgeReview,
+    ManagerReview,
+    ManagerReviewOutcome,
     Organization,
     OrganizationMembership,
     ReviewAction,
@@ -14,6 +21,7 @@ from backend.models import (
     User,
     UserRole,
 )
+from backend.services.feedback_review import record_manager_review
 from backend.services.knowledge_approval import approve_draft
 from backend.services.organization_scope import (
     conversations_for,
@@ -229,3 +237,112 @@ async def test_manager_can_approve_knowledge(session):
     assert draft.status.value == "approved"
     assert entry.approved_review.reviewer_membership is manager
     assert entry.answer_text == draft.answer_text
+
+
+async def test_feedback_flag_cannot_reference_another_organizations_agent(session):
+    northwind = organization("northwind")
+    harbor = organization("harbor")
+    northwind_conversation = conversation(northwind, "northwind")
+    harbor_agent = Agent(organization=harbor, external_id="agent-harbor")
+    finding = Finding(
+        organization=northwind,
+        category=FindingCategory.PROCEDURE,
+        result=FindingResult.NEEDS_WORK,
+        feedback="Check identity",
+    )
+    session.add_all(
+        [
+            Audit(
+                organization=northwind,
+                conversation=northwind_conversation,
+                findings=[finding],
+            ),
+            harbor_agent,
+        ]
+    )
+    await session.flush()
+    session.add(
+        FeedbackFlag(
+            organization_id=northwind.id,
+            finding_id=finding.id,
+            agent_id=harbor_agent.id,
+            reason="Please review",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await session.flush()
+
+
+async def test_non_manager_cannot_record_feedback_review(session):
+    org = organization("northwind")
+    agent_member = membership(org, "agent-alex", UserRole.AGENT)
+    call = conversation(org, "feedback")
+    finding = Finding(
+        organization=org,
+        category=FindingCategory.PROCEDURE,
+        result=FindingResult.NEEDS_WORK,
+        feedback="Check identity",
+    )
+    flag = FeedbackFlag(
+        organization=org,
+        finding=finding,
+        agent=call.agent,
+        reason="Please review",
+    )
+    session.add_all(
+        [
+            agent_member,
+            Audit(organization=org, conversation=call, findings=[finding]),
+            flag,
+        ]
+    )
+    await session.flush()
+    with pytest.raises(PermissionError, match="feedback review"):
+        await record_manager_review(
+            session,
+            flag,
+            agent_member,
+            outcome=ManagerReviewOutcome.CONFIRMED,
+            reviewed_result=None,
+            reason="Reviewed",
+            feedback="Confirmed",
+        )
+
+
+async def test_manager_review_cannot_use_another_organizations_manager(session):
+    northwind = organization("northwind")
+    harbor = organization("harbor")
+    call = conversation(northwind, "review")
+    harbor_manager = membership(harbor, "manager-harbor", UserRole.MANAGER)
+    finding = Finding(
+        organization=northwind,
+        category=FindingCategory.PROCEDURE,
+        result=FindingResult.NEEDS_WORK,
+        feedback="Check identity",
+    )
+    flag = FeedbackFlag(
+        organization=northwind,
+        finding=finding,
+        agent=call.agent,
+        reason="Please review",
+    )
+    session.add_all(
+        [
+            harbor_manager,
+            Audit(organization=northwind, conversation=call, findings=[finding]),
+            flag,
+        ]
+    )
+    await session.flush()
+    session.add(
+        ManagerReview(
+            organization_id=northwind.id,
+            feedback_flag_id=flag.id,
+            reviewer_membership_id=harbor_manager.id,
+            outcome=ManagerReviewOutcome.CONFIRMED,
+            reason="Reviewed",
+            feedback="Confirmed",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await session.flush()

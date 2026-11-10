@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -16,9 +17,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
 from backend.models.columns import str_enum
-from backend.models.conversation import Conversation, Turn
+from backend.models.conversation import Agent, Conversation, Turn
 from backend.models.knowledge import KnowledgeEntry
-from backend.models.organization import Organization
+from backend.models.organization import Organization, OrganizationMembership
 
 
 class FindingCategory(StrEnum):
@@ -32,6 +33,13 @@ class FindingResult(StrEnum):
     PASS = "pass"
     NEEDS_WORK = "needs_work"
     # Not enough in the transcript to judge. Not a failure.
+    CANNOT_ASSESS = "cannot_assess"
+
+
+class ManagerReviewOutcome(StrEnum):
+    CONFIRMED = "confirmed"
+    CORRECTED = "corrected"
+    DISMISSED = "dismissed"
     CANNOT_ASSESS = "cannot_assess"
 
 
@@ -121,4 +129,101 @@ class Finding(Base):
     )
     knowledge_entry: Mapped[KnowledgeEntry | None] = relationship(
         overlaps="audit,findings,organization"
+    )
+    feedback_flag: Mapped["FeedbackFlag | None"] = relationship(
+        back_populates="finding",
+        cascade="all, delete-orphan",
+        uselist=False,
+        overlaps="organization,audit",
+    )
+
+
+class FeedbackFlag(Base):
+    """An Agent's request for a Manager to review an automated finding."""
+
+    __tablename__ = "feedback_flags"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "id"),
+        ForeignKeyConstraint(
+            ["organization_id", "finding_id"],
+            ["findings.organization_id", "findings.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "agent_id"],
+            ["agents.organization_id", "agents.id"],
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    finding_id: Mapped[int] = mapped_column(unique=True)
+    agent_id: Mapped[int] = mapped_column(index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    agent_context: Mapped[str | None] = mapped_column(Text)
+    flagged_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    organization: Mapped[Organization] = relationship(overlaps="finding,agent")
+    finding: Mapped[Finding] = relationship(
+        back_populates="feedback_flag", overlaps="organization,agent,feedback_flag"
+    )
+    agent: Mapped[Agent] = relationship(overlaps="organization,finding,feedback_flag")
+    manager_review: Mapped["ManagerReview | None"] = relationship(
+        back_populates="feedback_flag",
+        cascade="all, delete-orphan",
+        uselist=False,
+        overlaps="organization",
+    )
+
+
+class ManagerReview(Base):
+    """A Manager's decision on a flag, separate from the automated finding."""
+
+    __tablename__ = "manager_reviews"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["organization_id", "feedback_flag_id"],
+            ["feedback_flags.organization_id", "feedback_flags.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "reviewer_membership_id"],
+            ["organization_memberships.organization_id", "organization_memberships.id"],
+        ),
+        CheckConstraint(
+            "(outcome = 'corrected') = (reviewed_result IS NOT NULL)",
+            name="ck_manager_reviews_corrected_result",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    feedback_flag_id: Mapped[int] = mapped_column(unique=True)
+    outcome: Mapped[ManagerReviewOutcome] = mapped_column(
+        str_enum(ManagerReviewOutcome, "manager_review_outcome")
+    )
+    reviewed_result: Mapped[FindingResult | None] = mapped_column(
+        str_enum(FindingResult, "finding_result")
+    )
+    reviewer_membership_id: Mapped[int] = mapped_column(index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    feedback: Mapped[str] = mapped_column(Text)
+    reviewed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    organization: Mapped[Organization] = relationship(
+        overlaps="feedback_flag,reviewer_membership"
+    )
+    feedback_flag: Mapped[FeedbackFlag] = relationship(
+        back_populates="manager_review", overlaps="organization,reviewer_membership"
+    )
+    reviewer_membership: Mapped[OrganizationMembership] = relationship(
+        overlaps="organization,feedback_flag,manager_review"
     )

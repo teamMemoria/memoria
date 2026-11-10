@@ -1,7 +1,7 @@
 """add organizations users and roles
 
 Revision ID: b7e2f4a91c3d
-Revises: aa37b6c1d0e2
+Revises: c75d2d9e41af
 Create Date: 2026-11-01 23:30:00
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "b7e2f4a91c3d"
-down_revision: str | Sequence[str] | None = "aa37b6c1d0e2"
+down_revision: str | Sequence[str] | None = "c75d2d9e41af"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -282,7 +282,11 @@ def upgrade() -> None:
         SELECT
             'legacy-reviewer-' || row_number() OVER (ORDER BY reviewer),
             reviewer
-        FROM (SELECT DISTINCT reviewer FROM knowledge_reviews) AS reviewers
+        FROM (
+            SELECT reviewer FROM knowledge_reviews
+            UNION
+            SELECT reviewer FROM manager_reviews
+        ) AS reviewers
         """
     )
     op.execute(
@@ -492,8 +496,174 @@ def upgrade() -> None:
         unique=False,
     )
 
+    op.add_column("feedback_flags", sa.Column("organization_id", sa.Integer()))
+    op.execute(
+        """
+        UPDATE feedback_flags AS ff
+        SET organization_id = f.organization_id
+        FROM findings AS f
+        WHERE ff.finding_id = f.id
+        """
+    )
+    op.alter_column("feedback_flags", "organization_id", nullable=False)
+    op.drop_constraint(
+        "feedback_flags_finding_id_fkey", "feedback_flags", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "feedback_flags_agent_id_fkey", "feedback_flags", type_="foreignkey"
+    )
+    op.create_foreign_key(
+        "fk_feedback_flags_organization_id",
+        "feedback_flags",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_feedback_flags_organization_finding",
+        "feedback_flags",
+        "findings",
+        ["organization_id", "finding_id"],
+        ["organization_id", "id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_feedback_flags_organization_agent",
+        "feedback_flags",
+        "agents",
+        ["organization_id", "agent_id"],
+        ["organization_id", "id"],
+    )
+    op.create_unique_constraint(
+        "uq_feedback_flags_organization_id", "feedback_flags", ["organization_id", "id"]
+    )
+    op.create_index(
+        op.f("ix_feedback_flags_organization_id"), "feedback_flags", ["organization_id"]
+    )
+
+    op.add_column("manager_reviews", sa.Column("organization_id", sa.Integer()))
+    op.add_column("manager_reviews", sa.Column("reviewer_membership_id", sa.Integer()))
+    op.execute(
+        """
+        UPDATE manager_reviews AS mr
+        SET organization_id = ff.organization_id
+        FROM feedback_flags AS ff
+        WHERE mr.feedback_flag_id = ff.id
+        """
+    )
+    op.execute(
+        """
+        UPDATE manager_reviews AS mr
+        SET reviewer_membership_id = om.id
+        FROM organization_memberships AS om
+        JOIN users AS u ON u.id = om.user_id
+        WHERE mr.organization_id = om.organization_id
+          AND u.display_name = mr.reviewer
+        """
+    )
+    op.alter_column("manager_reviews", "organization_id", nullable=False)
+    op.alter_column("manager_reviews", "reviewer_membership_id", nullable=False)
+    op.drop_column("manager_reviews", "reviewer")
+    op.drop_constraint(
+        "manager_reviews_feedback_flag_id_fkey", "manager_reviews", type_="foreignkey"
+    )
+    op.create_foreign_key(
+        "fk_manager_reviews_organization_id",
+        "manager_reviews",
+        "organizations",
+        ["organization_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_manager_reviews_organization_flag",
+        "manager_reviews",
+        "feedback_flags",
+        ["organization_id", "feedback_flag_id"],
+        ["organization_id", "id"],
+        ondelete="CASCADE",
+    )
+    op.create_foreign_key(
+        "fk_manager_reviews_organization_membership",
+        "manager_reviews",
+        "organization_memberships",
+        ["organization_id", "reviewer_membership_id"],
+        ["organization_id", "id"],
+    )
+    op.create_index(
+        op.f("ix_manager_reviews_organization_id"),
+        "manager_reviews",
+        ["organization_id"],
+    )
+    op.create_index(
+        op.f("ix_manager_reviews_reviewer_membership_id"),
+        "manager_reviews",
+        ["reviewer_membership_id"],
+    )
+
 
 def downgrade() -> None:
+    op.drop_index(
+        op.f("ix_manager_reviews_reviewer_membership_id"), table_name="manager_reviews"
+    )
+    op.drop_index(
+        op.f("ix_manager_reviews_organization_id"), table_name="manager_reviews"
+    )
+    op.drop_constraint(
+        "fk_manager_reviews_organization_membership",
+        "manager_reviews",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "fk_manager_reviews_organization_flag", "manager_reviews", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "fk_manager_reviews_organization_id", "manager_reviews", type_="foreignkey"
+    )
+    op.add_column("manager_reviews", sa.Column("reviewer", sa.String(length=200)))
+    op.execute(
+        """
+        UPDATE manager_reviews AS mr
+        SET reviewer = u.display_name
+        FROM organization_memberships AS om
+        JOIN users AS u ON u.id = om.user_id
+        WHERE mr.reviewer_membership_id = om.id
+        """
+    )
+    op.alter_column("manager_reviews", "reviewer", nullable=False)
+    op.drop_column("manager_reviews", "reviewer_membership_id")
+    op.drop_column("manager_reviews", "organization_id")
+    op.create_foreign_key(
+        None,
+        "manager_reviews",
+        "feedback_flags",
+        ["feedback_flag_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+
+    op.drop_index(
+        op.f("ix_feedback_flags_organization_id"), table_name="feedback_flags"
+    )
+    op.drop_constraint(
+        "uq_feedback_flags_organization_id", "feedback_flags", type_="unique"
+    )
+    op.drop_constraint(
+        "fk_feedback_flags_organization_agent", "feedback_flags", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "fk_feedback_flags_organization_finding", "feedback_flags", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "fk_feedback_flags_organization_id", "feedback_flags", type_="foreignkey"
+    )
+    op.drop_column("feedback_flags", "organization_id")
+    op.create_foreign_key(
+        None, "feedback_flags", "findings", ["finding_id"], ["id"], ondelete="CASCADE"
+    )
+    op.create_foreign_key(None, "feedback_flags", "agents", ["agent_id"], ["id"])
+
     op.drop_index(op.f("ix_findings_organization_id"), table_name="findings")
     op.drop_constraint("uq_findings_organization_id", "findings", type_="unique")
     op.drop_constraint(
