@@ -2,7 +2,8 @@
 
 Usage (from backend/):
 
-    uv run import-conversations ../../uoft-ftli-2026-genesys-docs/curated/conversations
+    uv run import-conversations ../../uoft-ftli-2026-genesys-docs/curated/conversations \
+        [--organization default]
 
 Safe to re-run: conversations are matched on (source dataset, original ID) and
 turns on (conversation, line number), so existing rows are updated in place
@@ -22,7 +23,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation, Turn
+from backend.models import Agent, Conversation, Organization, Turn
 
 REQUIRED_KEYS = ("id", "source", "channel", "turns", "source_fields")
 
@@ -72,19 +73,27 @@ def load_directory(path: Path) -> list[CuratedConversation]:
     return [parse_file(f) for f in files]
 
 
-async def upsert_agent(session: AsyncSession, external_id: str) -> int:
-    stmt = insert(Agent).values(external_id=external_id)
+async def upsert_agent(
+    session: AsyncSession, organization_id: int, external_id: str
+) -> int:
+    stmt = insert(Agent).values(
+        organization_id=organization_id, external_id=external_id
+    )
     stmt = stmt.on_conflict_do_update(
-        index_elements=[Agent.external_id],
+        index_elements=[Agent.organization_id, Agent.external_id],
         set_={"external_id": stmt.excluded.external_id},
     ).returning(Agent.id)
     return await session.scalar(stmt)
 
 
 async def upsert_conversation(
-    session: AsyncSession, convo: CuratedConversation, agent_id: int
+    session: AsyncSession,
+    convo: CuratedConversation,
+    agent_id: int,
+    organization_id: int,
 ) -> None:
     stmt = insert(Conversation).values(
+        organization_id=organization_id,
         source_dataset=convo.source_dataset,
         original_id=convo.original_id,
         curated_id=convo.curated_id,
@@ -97,7 +106,11 @@ async def upsert_conversation(
     # later steps survive a re-import.
     updated = ("curated_id", "channel", "agent_id", "source_fields", "customer_record")
     stmt = stmt.on_conflict_do_update(
-        index_elements=[Conversation.source_dataset, Conversation.original_id],
+        index_elements=[
+            Conversation.organization_id,
+            Conversation.source_dataset,
+            Conversation.original_id,
+        ],
         set_={col: stmt.excluded[col] for col in updated},
     ).returning(Conversation.id)
     conversation_id = await session.scalar(stmt)
@@ -120,17 +133,21 @@ async def upsert_conversation(
 
 
 async def import_conversations(
-    session: AsyncSession, conversations: list[CuratedConversation]
+    session: AsyncSession,
+    conversations: list[CuratedConversation],
+    organization_id: int,
 ) -> None:
     agent_ids: dict[str, int] = {}
     for convo in conversations:
         key = convo.agent_external_id
         if key not in agent_ids:
-            agent_ids[key] = await upsert_agent(session, key)
-        await upsert_conversation(session, convo, agent_ids[key])
+            agent_ids[key] = await upsert_agent(session, organization_id, key)
+        await upsert_conversation(session, convo, agent_ids[key], organization_id)
 
 
-async def dataset_counts(session: AsyncSession) -> dict[str, tuple[int, int, int]]:
+async def dataset_counts(
+    session: AsyncSession, organization_id: int
+) -> dict[str, tuple[int, int, int]]:
     """Per dataset: (conversations, turns, distinct agents)."""
     rows = await session.execute(
         select(
@@ -140,18 +157,24 @@ async def dataset_counts(session: AsyncSession) -> dict[str, tuple[int, int, int
             func.count(func.distinct(Conversation.agent_id)),
         )
         .outerjoin(Turn)
+        .where(Conversation.organization_id == organization_id)
         .group_by(Conversation.source_dataset)
         .order_by(Conversation.source_dataset)
     )
     return {dataset: (c, t, a) for dataset, c, t, a in rows}
 
 
-async def run(path: Path) -> None:
+async def run(path: Path, organization_slug: str) -> None:
     conversations = load_directory(path)
     async with async_session_factory() as session:
         async with session.begin():
-            await import_conversations(session, conversations)
-        counts = await dataset_counts(session)
+            organization_id = await session.scalar(
+                select(Organization.id).where(Organization.slug == organization_slug)
+            )
+            if organization_id is None:
+                sys.exit(f"Unknown organization: {organization_slug}")
+            await import_conversations(session, conversations, organization_id)
+        counts = await dataset_counts(session, organization_id)
 
     print(f"Imported {len(conversations)} files from {path}")
     print(f"{'dataset':<20}{'conversations':>15}{'turns':>10}{'agents':>10}")
@@ -164,10 +187,15 @@ def main() -> None:
     parser.add_argument(
         "path", type=Path, help="the curated/conversations directory of the docs repo"
     )
+    parser.add_argument(
+        "--organization",
+        default="default",
+        help="organization slug to import into (default: default)",
+    )
     args = parser.parse_args()
     if not args.path.is_dir():
         sys.exit(f"Not a directory: {args.path}")
-    asyncio.run(run(args.path))
+    asyncio.run(run(args.path, args.organization))
 
 
 if __name__ == "__main__":
