@@ -14,7 +14,7 @@ import argparse
 import asyncio
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +22,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.data.conversation_metrics import (
+    ConversationMetrics,
+    compute_conversation_metrics,
+)
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation, Organization, Turn
+from backend.models import Agent, Conversation, ConversationMetric, Organization, Turn
 
 REQUIRED_KEYS = ("id", "source", "channel", "turns", "source_fields")
 
@@ -43,6 +47,7 @@ class CuratedConversation:
     source_fields: dict[str, Any]
     customer_record: dict[str, Any] | None
     turns: list[dict[str, Any]]
+    metrics: ConversationMetrics
 
 
 def parse_file(path: Path) -> CuratedConversation:
@@ -63,6 +68,7 @@ def parse_file(path: Path) -> CuratedConversation:
             {"line_number": t["n"], "speaker": t["speaker"], "text": t["text"]}
             for t in data["turns"]
         ],
+        metrics=compute_conversation_metrics(data),
     )
 
 
@@ -114,6 +120,17 @@ async def upsert_conversation(
         set_={col: stmt.excluded[col] for col in updated},
     ).returning(Conversation.id)
     conversation_id = await session.scalar(stmt)
+
+    metric_values = asdict(convo.metrics)
+    metrics = insert(ConversationMetric).values(
+        conversation_id=conversation_id, **metric_values
+    )
+    await session.execute(
+        metrics.on_conflict_do_update(
+            index_elements=[ConversationMetric.conversation_id],
+            set_={field: metrics.excluded[field] for field in metric_values},
+        )
+    )
 
     turns = insert(Turn).values(
         [{"conversation_id": conversation_id, **t} for t in convo.turns]

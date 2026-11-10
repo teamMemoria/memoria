@@ -52,6 +52,22 @@ generated (fixed seed, so always the same) and stored in
 Each data command accepts `--organization <slug>` and defaults to the
 migration-created `default` organization.
 
+## Conversation metrics
+
+Importing a conversation creates or updates its one `conversation_metrics` row.
+All values are derived from the source record; re-importing recalculates them.
+
+- All channels: `turn_count`, agent/customer word counts, and agent/customer
+  text shares (fractions from 0 to 1).
+- HarperValleyBank voice: `call_elapsed_ms`, agent/customer speaking time in
+  milliseconds, `average_turn_duration_ms`, `asr_word_error_rate` (word errors
+  divided by reference words), and `asr_compared_turn_count`.
+- ABCD chat: `system_action_count` (system-action turns) and
+  `documented_action_count` (entries in `source_fields.actions_taken`).
+
+Channel-specific fields are `NULL` when unsupported or unavailable. Voice
+timing requires complete timing data for all agent and customer turns.
+
 ## Evaluation set
 
 `evaluation/` holds the scoring rubric and the score sheet for the

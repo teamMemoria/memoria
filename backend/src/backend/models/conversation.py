@@ -3,11 +3,14 @@ from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import (
+    CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -131,6 +134,49 @@ class Conversation(Base):
         order_by="Turn.line_number",
         cascade="all, delete-orphan",
     )
+    metrics: Mapped["ConversationMetric | None"] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        single_parent=True,
+    )
+
+
+class ConversationMetric(Base):
+    __tablename__ = "conversation_metrics"
+    __table_args__ = (
+        CheckConstraint("turn_count >= 0"),
+        CheckConstraint("agent_word_count >= 0"),
+        CheckConstraint("customer_word_count >= 0"),
+        CheckConstraint("agent_text_share BETWEEN 0 AND 1"),
+        CheckConstraint("customer_text_share BETWEEN 0 AND 1"),
+        CheckConstraint("call_elapsed_ms >= 0"),
+        CheckConstraint("agent_speaking_ms >= 0"),
+        CheckConstraint("customer_speaking_ms >= 0"),
+        CheckConstraint("average_turn_duration_ms >= 0"),
+        CheckConstraint("asr_word_error_rate >= 0"),
+        CheckConstraint("asr_compared_turn_count >= 0"),
+        CheckConstraint("system_action_count >= 0"),
+        CheckConstraint("documented_action_count >= 0"),
+    )
+
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), primary_key=True
+    )
+    turn_count: Mapped[int] = mapped_column(Integer)
+    agent_word_count: Mapped[int] = mapped_column(Integer)
+    customer_word_count: Mapped[int] = mapped_column(Integer)
+    agent_text_share: Mapped[float | None] = mapped_column(Float)
+    customer_text_share: Mapped[float | None] = mapped_column(Float)
+    call_elapsed_ms: Mapped[int | None] = mapped_column(Integer)
+    agent_speaking_ms: Mapped[int | None] = mapped_column(Integer)
+    customer_speaking_ms: Mapped[int | None] = mapped_column(Integer)
+    average_turn_duration_ms: Mapped[float | None] = mapped_column(Float)
+    asr_word_error_rate: Mapped[float | None] = mapped_column(Float)
+    asr_compared_turn_count: Mapped[int | None] = mapped_column(Integer)
+    system_action_count: Mapped[int | None] = mapped_column(Integer)
+    documented_action_count: Mapped[int | None] = mapped_column(Integer)
+
+    conversation: Mapped[Conversation] = relationship(back_populates="metrics")
 
 
 class Turn(Base):
