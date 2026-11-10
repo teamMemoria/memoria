@@ -97,7 +97,7 @@
 .conversation-table {
   width: 100%;
   min-width: 1136px;
-  border-collapse: collapse;
+  border-collapse: separate;
   table-layout: fixed;
   text-align: left;
 }
@@ -107,7 +107,7 @@
 .conversation-table th,
 .conversation-table td {
   padding: 0 8px 0 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-table-border);
   overflow-wrap: anywhere;
 }
 .conversation-table th:first-child,

@@ -1,7 +1,7 @@
 """add conversation metrics
 
 Revision ID: ca38f73b9d21
-Revises: af4e24e69992
+Revises: b7e2f4a91c3d
 Create Date: 2026-11-02 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "ca38f73b9d21"
-down_revision: str | Sequence[str] | None = "af4e24e69992"
+down_revision: str | Sequence[str] | None = "b7e2f4a91c3d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
