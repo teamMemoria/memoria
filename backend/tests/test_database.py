@@ -1,7 +1,9 @@
+import logging
 from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql.elements import TextClause
 
 from backend.core.config import Settings
@@ -73,3 +75,41 @@ async def test_session_dependency_closes_session_after_error(monkeypatch):
         await dependency.athrow(RuntimeError("request failed"))
 
     session_context.__aexit__.assert_awaited_once()
+
+
+def test_readiness_returns_503_without_traceback_when_database_is_down(caplog):
+    session = AsyncMock()
+    session.execute.side_effect = OperationalError(
+        "SELECT 1", {}, Exception("connection refused\nsecond line")
+    )
+
+    async def override_db_session():
+        yield session
+
+    app.dependency_overrides[get_db_session] = override_db_session
+    try:
+        with caplog.at_level(logging.WARNING, logger="backend.main"):
+            response = TestClient(app, raise_server_exceptions=False).get("/ready")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "database unavailable"}
+    records = [r for r in caplog.records if r.name == "backend.main"]
+    assert len(records) == 1
+    assert records[0].getMessage() == (
+        "Readiness check failed: Exception: connection refused"
+    )
+    assert records[0].exc_info is None
+    assert "Traceback" not in caplog.text
+
+
+def test_app_shutdown_disposes_the_engine(monkeypatch):
+    engine = AsyncMock()
+    monkeypatch.setattr(session_module, "engine", engine)
+
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
+        engine.dispose.assert_not_awaited()
+
+    engine.dispose.assert_awaited_once()

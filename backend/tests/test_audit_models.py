@@ -7,8 +7,6 @@ from backend.models import (
     Agent,
     Audit,
     Conversation,
-    EvaluationForm,
-    EvaluationFormVersion,
     Finding,
     FindingCategory,
     FindingResult,
@@ -40,15 +38,8 @@ async def conversation(session):
 
 
 @pytest.fixture
-async def evaluation_version(session):
-    version = EvaluationFormVersion(
-        form=EvaluationForm(name="Default quality form"),
-        version_number=1,
-        is_active=True,
-    )
-    session.add(version)
-    await session.flush()
-    return version
+async def evaluation_version(default_evaluation_version):
+    return default_evaluation_version
 
 
 async def make_entry(session) -> KnowledgeEntry:
