@@ -6,11 +6,12 @@ from pathlib import Path
 import psycopg
 import pytest
 from psycopg import sql
-from sqlalchemy import make_url
+from sqlalchemy import make_url, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from backend.core.config import get_settings
+from backend.models.evaluation import EvaluationForm, EvaluationFormVersion
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 SOURCE_DIR = BACKEND_DIR / "src"
@@ -83,3 +84,12 @@ async def session():
             yield s
         await trans.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def default_evaluation_version(session):
+    return await session.scalar(
+        select(EvaluationFormVersion)
+        .join(EvaluationForm)
+        .where(EvaluationForm.name == "Default quality form")
+    )

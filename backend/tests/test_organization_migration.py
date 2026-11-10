@@ -135,6 +135,18 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
         run_alembic("head")
 
         with psycopg.connect(MIGRATION_URL) as conn:
+            assert conn.execute(
+                """
+                SELECT f.name, v.version_number, count(c.id)
+                FROM audits AS a
+                JOIN evaluation_form_versions AS v ON v.id = a.evaluation_form_version_id
+                JOIN evaluation_forms AS f ON f.id = v.form_id
+                JOIN evaluation_criteria AS c ON c.form_version_id = v.id
+                WHERE a.id = %s
+                GROUP BY f.name, v.version_number
+                """,
+                (audit_id,),
+            ).fetchall() == [("Default quality form", 1, 4)]
             default_org_id = conn.execute(
                 "SELECT id FROM organizations WHERE slug = 'default'"
             ).fetchone()[0]
@@ -174,7 +186,7 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
             ).fetchall() == [("Legacy Feedback Manager", "manager")]
 
         subprocess.run(
-            [sys.executable, "-m", "alembic", "downgrade", "-1"],
+            [sys.executable, "-m", "alembic", "downgrade", "c75d2d9e41af"],
             env=alembic_env(),
             check=True,
             capture_output=True,

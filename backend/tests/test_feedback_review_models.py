@@ -23,7 +23,7 @@ from backend.models import (
 
 
 @pytest.fixture
-async def finding(session):
+async def finding(session, default_evaluation_version):
     org = Organization(slug="feedback-tests", name="Feedback tests")
     agent = Agent(organization=org, external_id="hvb-speaker-review")
     conversation = Conversation(
@@ -39,7 +39,14 @@ async def finding(session):
         result=FindingResult.NEEDS_WORK,
         feedback="Check identity before discussing the account.",
     )
-    session.add(Audit(organization=org, conversation=conversation, findings=[finding]))
+    session.add(
+        Audit(
+            organization=org,
+            conversation=conversation,
+            evaluation_form_version=default_evaluation_version,
+            findings=[finding],
+        )
+    )
     await session.flush()
     return finding
 
