@@ -8,7 +8,7 @@ from backend.data.assign_synthetic_dates import (
     assign_synthetic_dates,
     synthetic_times,
 )
-from backend.models import Agent, Conversation
+from backend.models import Agent, Conversation, Organization
 
 START = DEFAULT_START
 WEEKS = 8
@@ -52,15 +52,24 @@ def test_too_many_conversations_for_window_is_an_error():
 
 
 @pytest.fixture
-async def conversations(session):
+async def organization(session):
+    org = Organization(slug="synthetic-date-tests", name="Synthetic Date Tests")
+    session.add(org)
+    await session.flush()
+    return org
+
+
+@pytest.fixture
+async def conversations(session, organization):
     agents = [
-        Agent(external_id="hvb-speaker-1"),
-        Agent(external_id="abcd-unknown-agent"),
+        Agent(organization=organization, external_id="hvb-speaker-1"),
+        Agent(organization=organization, external_id="abcd-unknown-agent"),
     ]
     rows = []
     for i in range(12):
         rows.append(
             Conversation(
+                organization=organization,
                 source_dataset="HarperValleyBank" if i % 2 else "ABCD",
                 original_id=str(i),
                 # Inserted out of curated order on purpose.
@@ -75,7 +84,7 @@ async def conversations(session):
     return rows
 
 
-async def started_times(session):
+async def started_times(session, organization_id):
     rows = await session.execute(
         select(
             Agent.external_id,
@@ -83,15 +92,18 @@ async def started_times(session):
             Conversation.synthetic_started_at,
         )
         .join(Agent)
+        .where(Conversation.organization_id == organization_id)
         .order_by(Agent.external_id, Conversation.curated_id)
     )
     return rows.all()
 
 
-async def test_every_conversation_gets_a_date_in_agent_order(session, conversations):
-    await assign_synthetic_dates(session, START, WEEKS, seed=1)
+async def test_every_conversation_gets_a_date_in_agent_order(
+    session, organization, conversations
+):
+    await assign_synthetic_dates(session, organization.id, START, WEEKS, seed=1)
 
-    rows = await started_times(session)
+    rows = await started_times(session, organization.id)
     assert all(t is not None for _, _, t in rows)
     for agent in ("hvb-speaker-1", "abcd-unknown-agent"):
         times = [t for a, _, t in rows if a == agent]
@@ -99,18 +111,39 @@ async def test_every_conversation_gets_a_date_in_agent_order(session, conversati
         assert times == sorted(times) and len(set(times)) == 6
 
 
-async def test_source_dates_are_left_alone(session, conversations):
-    await assign_synthetic_dates(session, START, WEEKS, seed=1)
+async def test_source_dates_are_left_alone(session, organization, conversations):
+    await assign_synthetic_dates(session, organization.id, START, WEEKS, seed=1)
     await session.refresh(conversations[0])
     assert conversations[0].conversation_date == date(2020, 1, 1)
     assert conversations[1].conversation_date is None
 
 
-async def test_rerun_with_same_seed_is_identical(session, conversations):
-    await assign_synthetic_dates(session, START, WEEKS, seed=1)
-    first = await started_times(session)
-    await assign_synthetic_dates(session, START, WEEKS, seed=1)
-    assert await started_times(session) == first
+async def test_rerun_with_same_seed_is_identical(session, organization, conversations):
+    await assign_synthetic_dates(session, organization.id, START, WEEKS, seed=1)
+    first = await started_times(session, organization.id)
+    await assign_synthetic_dates(session, organization.id, START, WEEKS, seed=1)
+    assert await started_times(session, organization.id) == first
+
+
+async def test_only_selected_organization_gets_dates(
+    session, organization, conversations
+):
+    other = Organization(slug="other-org", name="Other Organization")
+    other_conversation = Conversation(
+        organization=other,
+        source_dataset="ABCD",
+        original_id="other-call",
+        curated_id="OTHER-0001",
+        channel="chat",
+        agent=Agent(organization=other, external_id="other-agent"),
+    )
+    session.add(other_conversation)
+    await session.flush()
+
+    await assign_synthetic_dates(session, organization.id, START, WEEKS, seed=1)
+
+    await session.refresh(other_conversation)
+    assert other_conversation.synthetic_started_at is None
 
 
 async def test_column_is_marked_as_generated(session):

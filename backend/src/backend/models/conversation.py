@@ -2,12 +2,22 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Date,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
 from backend.models.columns import str_enum
+from backend.models.organization import Organization
 
 
 class Speaker(StrEnum):
@@ -18,32 +28,61 @@ class Speaker(StrEnum):
 
 class Agent(Base):
     __tablename__ = "agents"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "external_id"),
+        UniqueConstraint("organization_id", "id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
     # ID from the source dataset, e.g. "hvb-speaker-17".
-    external_id: Mapped[str] = mapped_column(String(100), unique=True)
+    external_id: Mapped[str] = mapped_column(String(100))
     name: Mapped[str | None] = mapped_column(String(200))
 
-    conversations: Mapped[list["Conversation"]] = relationship(back_populates="agent")
+    organization: Mapped[Organization] = relationship()
+    conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="agent", overlaps="organization,topic"
+    )
 
 
 class Topic(Base):
     __tablename__ = "topics"
     # Topics belong to one dataset (company) so knowledge never mixes across them.
-    __table_args__ = (UniqueConstraint("source_dataset", "name"),)
+    __table_args__ = (
+        UniqueConstraint("organization_id", "source_dataset", "name"),
+        UniqueConstraint("organization_id", "id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
     source_dataset: Mapped[str] = mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(Text)
 
-    conversations: Mapped[list["Conversation"]] = relationship(back_populates="topic")
+    organization: Mapped[Organization] = relationship()
+    conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="topic", overlaps="agent,conversations,organization"
+    )
 
 
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
-        UniqueConstraint("source_dataset", "original_id"),
+        UniqueConstraint("organization_id", "source_dataset", "original_id"),
+        UniqueConstraint("organization_id", "curated_id"),
+        UniqueConstraint("organization_id", "id"),
+        ForeignKeyConstraint(
+            ["organization_id", "agent_id"],
+            ["agents.organization_id", "agents.id"],
+        ),
+        ForeignKeyConstraint(
+            ["organization_id", "topic_id"],
+            ["topics.organization_id", "topics.id"],
+        ),
         Index(
             "ix_conversations_agent_started_topic",
             "agent_id",
@@ -53,6 +92,9 @@ class Conversation(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
     source_dataset: Mapped[str] = mapped_column(String(50))
     original_id: Mapped[str] = mapped_column(String(100))
     channel: Mapped[str] = mapped_column(String(20))
@@ -63,18 +105,27 @@ class Conversation(Base):
         DateTime(timezone=True),
         comment="Generated, not from the source (see assign-synthetic-dates)",
     )
-    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id"), index=True)
-    topic_id: Mapped[int | None] = mapped_column(ForeignKey("topics.id"), index=True)
+    agent_id: Mapped[int] = mapped_column(index=True)
+    topic_id: Mapped[int | None] = mapped_column(index=True)
     # File ID in the curated docs repo, e.g. "HVB-0001". Null for live calls.
-    curated_id: Mapped[str | None] = mapped_column(String(20), unique=True)
+    curated_id: Mapped[str | None] = mapped_column(String(20))
     # Dataset-specific fields, kept exactly as the source provides them.
     source_fields: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default="{}"
     )
     customer_record: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
-    agent: Mapped[Agent] = relationship(back_populates="conversations")
-    topic: Mapped[Topic | None] = relationship(back_populates="conversations")
+    # Composite foreign keys share organization_id, so SQLAlchemy needs the
+    # overlaps declarations to understand that these relationships coordinate.
+    organization: Mapped[Organization] = relationship(
+        overlaps="agent,conversations,topic"
+    )
+    agent: Mapped[Agent] = relationship(
+        back_populates="conversations", overlaps="organization,topic,conversations"
+    )
+    topic: Mapped[Topic | None] = relationship(
+        back_populates="conversations", overlaps="agent,organization,conversations"
+    )
     turns: Mapped[list["Turn"]] = relationship(
         back_populates="conversation",
         order_by="Turn.line_number",

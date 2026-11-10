@@ -19,6 +19,12 @@ from backend.models.knowledge import (
     ReviewAction,
     knowledge_draft_conversations,
 )
+from backend.models.organization import (
+    Organization,
+    OrganizationMembership,
+    User,
+    UserRole,
+)
 
 __all__ = [
     "EMBEDDING_DIM",
@@ -36,10 +42,14 @@ __all__ = [
     "KnowledgeReview",
     "ManagerReview",
     "ManagerReviewOutcome",
+    "Organization",
+    "OrganizationMembership",
     "ReviewAction",
     "Speaker",
     "Topic",
     "Turn",
+    "User",
+    "UserRole",
     "finding_evidence",
     "knowledge_draft_conversations",
 ]

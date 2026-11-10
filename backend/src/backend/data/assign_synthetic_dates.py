@@ -2,7 +2,8 @@
 
 Usage (from backend/, after import-conversations):
 
-    uv run assign-synthetic-dates [--start 2026-01-05] [--weeks 8] [--seed 2026]
+    uv run assign-synthetic-dates [--start 2026-01-05] [--weeks 8] [--seed 2026] \
+        [--organization default]
 
 Each agent's conversations are spread across the window during business hours
 (weekdays, 09:00-17:00 UTC) and kept in curated-ID order, so a later file is
@@ -13,6 +14,7 @@ always gives the same times.
 import argparse
 import asyncio
 import random
+import sys
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 
@@ -20,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation
+from backend.models import Agent, Conversation, Organization
 
 DEFAULT_START = date(2026, 1, 5)  # a Monday
 DEFAULT_WEEKS = 8
@@ -55,11 +57,16 @@ def synthetic_times(
 
 
 async def assign_synthetic_dates(
-    session: AsyncSession, start: date, weeks: int, seed: int
+    session: AsyncSession,
+    organization_id: int,
+    start: date,
+    weeks: int,
+    seed: int,
 ) -> None:
     rows = await session.execute(
         select(Conversation, Agent.external_id)
         .join(Agent)
+        .where(Conversation.organization_id == organization_id)
         .order_by(Conversation.curated_id, Conversation.id)
     )
     by_agent: dict[str, list[Conversation]] = defaultdict(list)
@@ -73,10 +80,15 @@ async def assign_synthetic_dates(
     await session.flush()
 
 
-async def run(start: date, weeks: int, seed: int) -> None:
+async def run(start: date, weeks: int, seed: int, organization_slug: str) -> None:
     async with async_session_factory() as session:
         async with session.begin():
-            await assign_synthetic_dates(session, start, weeks, seed)
+            organization_id = await session.scalar(
+                select(Organization.id).where(Organization.slug == organization_slug)
+            )
+            if organization_id is None:
+                sys.exit(f"Unknown organization: {organization_slug}")
+            await assign_synthetic_dates(session, organization_id, start, weeks, seed)
         rows = await session.execute(
             select(
                 Agent.external_id,
@@ -85,6 +97,7 @@ async def run(start: date, weeks: int, seed: int) -> None:
                 func.max(Conversation.synthetic_started_at),
             )
             .join(Conversation)
+            .where(Conversation.organization_id == organization_id)
             .group_by(Agent.external_id)
             .order_by(Agent.external_id)
         )
@@ -101,8 +114,13 @@ def main() -> None:
     parser.add_argument("--start", type=date.fromisoformat, default=DEFAULT_START)
     parser.add_argument("--weeks", type=int, default=DEFAULT_WEEKS)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--organization",
+        default="default",
+        help="organization slug to update (default: default)",
+    )
     args = parser.parse_args()
-    asyncio.run(run(args.start, args.weeks, args.seed))
+    asyncio.run(run(args.start, args.weeks, args.seed, args.organization))
 
 
 if __name__ == "__main__":

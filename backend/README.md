@@ -49,6 +49,9 @@ generated (fixed seed, so always the same) and stored in
 
     uv run assign-synthetic-dates
 
+Each data command accepts `--organization <slug>` and defaults to the
+migration-created `default` organization.
+
 ## Evaluation set
 
 `evaluation/` holds the scoring rubric and the score sheet for the
