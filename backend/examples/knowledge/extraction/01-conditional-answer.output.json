@@ -1,0 +1,182 @@
+{
+  "conversation_id": "ABCD-0041",
+  "source_key": "ABCD:1686",
+  "status": "ok",
+  "drafts": [
+    {
+      "schema": "knowledge-draft/1",
+      "draft_id": "draft_ae32e8c290618a962673",
+      "kind": "knowledge_draft",
+      "status": "draft",
+      "trusted": false,
+      "audit_eligible": false,
+      "company_id": "acme",
+      "scope": {
+        "company_id": "acme",
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "topic": "purchase_dispute/promo_code_invalid",
+      "question": "Hello, the reason I contact you is because im trying to use a promo code but it doesnt work",
+      "answer": "However, depending on your membership level, I may be able to provide a new code for you Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members",
+      "wording": "verbatim",
+      "question_passages": [
+        {
+          "conversation_id": "ABCD-0041",
+          "source_key": "ABCD:1686",
+          "turn_id": "ABCD-0041#t2",
+          "speaker": "customer",
+          "span": [
+            0,
+            91
+          ],
+          "quote": "Hello, the reason I contact you is because im trying to use a promo code but it doesnt work",
+          "source_version": "genesys-curated@c39d2e061041"
+        }
+      ],
+      "answer_passages": [
+        {
+          "conversation_id": "ABCD-0041",
+          "source_key": "ABCD:1686",
+          "turn_id": "ABCD-0041#t15",
+          "speaker": "agent",
+          "span": [
+            0,
+            88
+          ],
+          "quote": "However, depending on your membership level, I may be able to provide a new code for you",
+          "source_version": "genesys-curated@c39d2e061041"
+        },
+        {
+          "conversation_id": "ABCD-0041",
+          "source_key": "ABCD:1686",
+          "turn_id": "ABCD-0041#t21",
+          "speaker": "agent",
+          "span": [
+            0,
+            89
+          ],
+          "quote": "Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members",
+          "source_version": "genesys-curated@c39d2e061041"
+        }
+      ],
+      "conditions": [
+        {
+          "text": "However, depending on your membership level, I may be able to provide a new code for you",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "ABCD-0041",
+            "source_key": "ABCD:1686",
+            "turn_id": "ABCD-0041#t15",
+            "speaker": "agent",
+            "span": [
+              0,
+              88
+            ],
+            "quote": "However, depending on your membership level, I may be able to provide a new code for you",
+            "source_version": "genesys-curated@c39d2e061041"
+          }
+        },
+        {
+          "text": "Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members",
+          "basis": "agent_statement",
+          "passage": {
+            "conversation_id": "ABCD-0041",
+            "source_key": "ABCD:1686",
+            "turn_id": "ABCD-0041#t21",
+            "speaker": "agent",
+            "span": [
+              0,
+              89
+            ],
+            "quote": "Oh, I'm sorry, I could only issue a replacement promo code to one of our existing members",
+            "source_version": "genesys-curated@c39d2e061041"
+          }
+        },
+        {
+          "text": "it was issued about 8 days ago",
+          "basis": "customer_statement",
+          "passage": {
+            "conversation_id": "ABCD-0041",
+            "source_key": "ABCD:1686",
+            "turn_id": "ABCD-0041#t11",
+            "speaker": "customer",
+            "span": [
+              0,
+              30
+            ],
+            "quote": "it was issued about 8 days ago",
+            "source_version": "genesys-curated@c39d2e061041"
+          }
+        },
+        {
+          "text": "im a guest",
+          "basis": "customer_statement",
+          "passage": {
+            "conversation_id": "ABCD-0041",
+            "source_key": "ABCD:1686",
+            "turn_id": "ABCD-0041#t20",
+            "speaker": "customer",
+            "span": [
+              0,
+              10
+            ],
+            "quote": "im a guest",
+            "source_version": "genesys-curated@c39d2e061041"
+          }
+        }
+      ],
+      "procedure": [
+        {
+          "name": "pull-up-account",
+          "order": 1,
+          "turn_id": "ABCD-0041#t8"
+        },
+        {
+          "name": "ask-the-oracle",
+          "order": 2,
+          "turn_id": "ABCD-0041#t13"
+        }
+      ],
+      "source": {
+        "conversation_id": "ABCD-0041",
+        "source_key": "ABCD:1686",
+        "dataset": "ABCD",
+        "original_id": "1686",
+        "version": "genesys-curated@c39d2e061041",
+        "dataset_version": "abcd_v1.1@6b8700ce67c6",
+        "split": null,
+        "licence": "MIT"
+      },
+      "evidence_coverage": {
+        "source_turns": 29,
+        "turns_kept": 29,
+        "speakers": {
+          "agent": 12,
+          "customer": 15,
+          "system_action": 2
+        },
+        "actions_recorded": 2,
+        "actions_aligned_to_turns": 2,
+        "turns_cited": 5,
+        "cited_share": 0.1724
+      },
+      "privacy": {
+        "redactions": {
+          "CUSTOMER_NAME": 3
+        }
+      },
+      "extractor": {
+        "name": "rule-extractor",
+        "version": "1"
+      },
+      "verification": {
+        "status": "not_verified",
+        "note": "Observed in a conversation. Observing an answer does not verify it."
+      }
+    }
+  ],
+  "no_draft_reason": null,
+  "rejected_drafts": [],
+  "errors": []
+}

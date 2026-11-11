@@ -1,0 +1,68 @@
+{
+  "id": "SYN-0003",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-0003",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Good morning! How can I help?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "Hi, this is Marguerite Okonkwo-Bell, email m.okonkwobell@example.org, phone 415.555.0199. Can I get a refund if my item arrives damaged?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Thanks Marguerite. Yes, damaged items can be refunded in full if you report them within 30 days of delivery."
+    },
+    {
+      "n": 4,
+      "speaker": "agent",
+      "text": "After 30 days we can only offer store credit."
+    },
+    {
+      "n": 5,
+      "speaker": "customer",
+      "text": "Great. My card is 4111 1111 1111 1111 and I live at 88 Willow Lane, Springfield."
+    },
+    {
+      "n": 6,
+      "speaker": "agent",
+      "text": "You don't need to share your card number here. The refund goes back to the original payment method."
+    },
+    {
+      "n": 7,
+      "speaker": "customer",
+      "text": "Thanks Margeurite here signing off"
+    }
+  ],
+  "source_fields": {
+    "flow": "storewide_query",
+    "subflow": "policy_2",
+    "actions_taken": []
+  },
+  "customer_record": {
+    "customer_name": "marguerite okonkwo-bell",
+    "email": "m.okonkwobell@example.org",
+    "phone": "(415) 555-0199",
+    "member_level": "gold",
+    "address": {
+      "street": "88 willow lane",
+      "city": "springfield",
+      "state": "il",
+      "zip_code": "62704",
+      "full_address": "88 willow lane  springfield, il 62704"
+    }
+  },
+  "note": "Policy answer with a time condition, surrounded by personal data in unusual formats (dotted phone, hyphenated name, misspelt name, card number, street address)."
+}

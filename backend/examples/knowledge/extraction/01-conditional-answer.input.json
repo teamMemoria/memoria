@@ -1,0 +1,5 @@
+{
+  "company_id": "acme",
+  "conversation_file": "data/abcd/conversations/ABCD-0041.json",
+  "note": "ABCD records stay in data/abcd/ (MIT, see SOURCE.md); the example points at one instead of copying it."
+}

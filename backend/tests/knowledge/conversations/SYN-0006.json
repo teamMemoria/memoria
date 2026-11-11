@@ -1,0 +1,63 @@
+{
+  "id": "SYN-0006",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-0006",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, how can I help?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "Why does my promo code say invalid?"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "Promo codes usually last 7 days, so a code issued longer ago than that has expired."
+    },
+    {
+      "n": 4,
+      "speaker": "agent",
+      "text": "If you are a gold, silver or bronze member I can issue you a new code."
+    },
+    {
+      "n": 5,
+      "speaker": "customer",
+      "text": "I'm gold."
+    },
+    {
+      "n": 6,
+      "speaker": "system_action",
+      "text": "Membership level of gold has been noted."
+    },
+    {
+      "n": 7,
+      "speaker": "system_action",
+      "text": "A promo code has been created."
+    },
+    {
+      "n": 8,
+      "speaker": "agent",
+      "text": "I've sent you a new code, it is for 20% off your next purchase."
+    }
+  ],
+  "source_fields": {
+    "flow": "purchase_dispute",
+    "subflow": "promo_code_invalid",
+    "actions_taken": [
+      "membership",
+      "promo-code"
+    ]
+  },
+  "note": "Answer consistent with the ABCD promo-code guideline, with its conditions."
+}

@@ -1,0 +1,58 @@
+{
+  "company_id": "acme",
+  "conversation": {
+    "id": "SYN-0004",
+    "source": {
+      "dataset": "SYNTHETIC",
+      "original_id": "SYN-0004",
+      "licence": "MIT (this repository)",
+      "url": "",
+      "citation": "Made-up conversation written for tests. Not real call data."
+    },
+    "modifications": [],
+    "channel": "chat",
+    "turns": [
+      {
+        "n": 1,
+        "speaker": "agent",
+        "text": "Hello! How can I help you today?"
+      },
+      {
+        "n": 2,
+        "speaker": "bot",
+        "text": "What is your return policy for gold members?"
+      },
+      {
+        "n": 3,
+        "speaker": "agent",
+        "text": "Gold members can return items at any time."
+      },
+      {
+        "n": 4,
+        "speaker": "agent",
+        "text": "Bronze members can return items within 90 days of purchase, unless the item was on final sale."
+      },
+      {
+        "n": 5,
+        "speaker": "customer",
+        "text": "And if I am just a guest?"
+      },
+      {
+        "n": 6,
+        "speaker": "agent",
+        "text": "Guests can return items within 30 days with a receipt."
+      },
+      {
+        "n": 7,
+        "speaker": "customer",
+        "text": "Thank you!"
+      }
+    ],
+    "source_fields": {
+      "flow": "storewide_query",
+      "subflow": "policy_1",
+      "actions_taken": []
+    },
+    "note": "Conditional policy answer: membership levels, time limits and an exception."
+  }
+}
