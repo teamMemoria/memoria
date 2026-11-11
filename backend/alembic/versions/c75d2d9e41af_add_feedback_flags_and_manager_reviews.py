@@ -1,7 +1,7 @@
 """add feedback flags and manager reviews
 
 Revision ID: c75d2d9e41af
-Revises: 1b6f24f748c0
+Revises: aa37b6c1d0e2
 Create Date: 2026-11-02
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c75d2d9e41af"
-down_revision: str | Sequence[str] | None = "1b6f24f748c0"
+down_revision: str | Sequence[str] | None = "aa37b6c1d0e2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -60,6 +60,19 @@ def upgrade() -> None:
             ),
             nullable=False,
         ),
+        sa.Column(
+            "reviewed_result",
+            sa.Enum(
+                "pass",
+                "needs_work",
+                "cannot_assess",
+                name="finding_result",
+                native_enum=False,
+                create_constraint=True,
+                length=20,
+            ),
+            nullable=True,
+        ),
         sa.Column("reviewer", sa.String(length=200), nullable=False),
         sa.Column("reason", sa.Text(), nullable=False),
         sa.Column("feedback", sa.Text(), nullable=False),
@@ -73,6 +86,10 @@ def upgrade() -> None:
             ["feedback_flag_id"], ["feedback_flags.id"], ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.CheckConstraint(
+            "(outcome = 'corrected') = (reviewed_result IS NOT NULL)",
+            name="ck_manager_reviews_corrected_result",
+        ),
         sa.UniqueConstraint("feedback_flag_id"),
     )
 

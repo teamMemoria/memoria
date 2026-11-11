@@ -99,6 +99,8 @@ class KnowledgeDraft(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+    # Composite foreign keys share organization_id, so overlapping relationships
+    # must tell SQLAlchemy that they coordinate writes to the same column.
     organization: Mapped[Organization] = relationship()
     topic: Mapped[Topic] = relationship(overlaps="organization")
     supporting_conversations: Mapped[list[Conversation]] = relationship(

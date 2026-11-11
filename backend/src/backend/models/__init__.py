@@ -13,7 +13,14 @@ from backend.models.audit import (
     ManagerReviewOutcome,
     finding_evidence,
 )
-from backend.models.conversation import Agent, Conversation, Speaker, Topic, Turn
+from backend.models.conversation import (
+    Agent,
+    Conversation,
+    ConversationMetric,
+    Speaker,
+    Topic,
+    Turn,
+)
 from backend.models.evaluation import (
     EvaluationCriterion,
     EvaluationForm,
@@ -44,6 +51,7 @@ __all__ = [
     "AnalysisRunStatus",
     "Audit",
     "Conversation",
+    "ConversationMetric",
     "DraftStatus",
     "EntryStatus",
     "EvaluationCriterion",
