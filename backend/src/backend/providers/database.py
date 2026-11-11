@@ -307,7 +307,7 @@ def latest_decision(audit: Audit | None) -> ManagerDecision | None:
         outcome=OUTCOME_NAMES[review.outcome],
         reason=review.reason,
         feedback=review.feedback,
-        manager_name=review.reviewer,
+        manager_name=review.reviewer_membership.user.display_name,
         decided_at=iso_timestamp(review.reviewed_at),
     )
 
@@ -381,9 +381,10 @@ def audit_options():
     findings = selectinload(Audit.findings)
     return (
         findings.selectinload(Finding.evidence),
-        findings.selectinload(Finding.feedback_flag).selectinload(
-            FeedbackFlag.manager_review
-        ),
+        findings.selectinload(Finding.feedback_flag)
+        .selectinload(FeedbackFlag.manager_review)
+        .selectinload(ManagerReview.reviewer_membership)
+        .selectinload(OrganizationMembership.user),
         findings.selectinload(Finding.knowledge_entry).options(*entry_options()),
     )
 
