@@ -144,24 +144,28 @@ def _entry(org, topic, text, status, reviewer, *, confirmed=None):
     )
 
 
-def four_findings(**overrides):
+def four_findings(org, **overrides):
     findings = {
         FindingCategory.PROCEDURE: Finding(
+            organization=org,
             category=FindingCategory.PROCEDURE,
             result=FindingResult.PASS,
             feedback="Steps were followed in order.",
         ),
         FindingCategory.ANSWER_SUPPORT: Finding(
+            organization=org,
             category=FindingCategory.ANSWER_SUPPORT,
             result=FindingResult.PASS,
             feedback="The answer matches approved guidance.",
         ),
         FindingCategory.COMPLETENESS: Finding(
+            organization=org,
             category=FindingCategory.COMPLETENESS,
             result=FindingResult.PASS,
             feedback="Every request was handled.",
         ),
         FindingCategory.COMMUNICATION: Finding(
+            organization=org,
             category=FindingCategory.COMMUNICATION,
             result=FindingResult.PASS,
             feedback="Clear and polite.",
@@ -244,6 +248,7 @@ async def seed(session: AsyncSession) -> Seed:
 
     turns = {turn.line_number: turn for turn in assessed.turns}
     procedure_finding = Finding(
+        organization=northwind,
         category=FindingCategory.PROCEDURE,
         result=FindingResult.NEEDS_WORK,
         feedback="The refund was offered before the order was checked.",
@@ -252,29 +257,34 @@ async def seed(session: AsyncSession) -> Seed:
     )
     session.add(
         Audit(
+            organization=northwind,
             conversation=assessed,
             evaluation_form_version=form_version,
             findings=four_findings(
+                northwind,
                 **{
                     FindingCategory.PROCEDURE: procedure_finding,
                     FindingCategory.COMPLETENESS: Finding(
+                        organization=northwind,
                         category=FindingCategory.COMPLETENESS,
                         result=FindingResult.CANNOT_ASSESS,
                         feedback="The call ended before the request was settled.",
                     ),
-                }
+                },
             ),
         )
     )
     session.add(
         Audit(
+            organization=northwind,
             conversation=undated,
             evaluation_form_version=form_version,
-            findings=four_findings(),
+            findings=four_findings(northwind),
         )
     )
     reviewed_turns = {turn.line_number: turn for turn in reviewed.turns}
     reviewed_finding = Finding(
+        organization=northwind,
         category=FindingCategory.PROCEDURE,
         result=FindingResult.NEEDS_WORK,
         feedback="Identity was not checked.",
@@ -282,19 +292,24 @@ async def seed(session: AsyncSession) -> Seed:
     )
     session.add(
         Audit(
+            organization=northwind,
             conversation=reviewed,
             evaluation_form_version=form_version,
-            findings=four_findings(**{FindingCategory.PROCEDURE: reviewed_finding}),
+            findings=four_findings(
+                northwind, **{FindingCategory.PROCEDURE: reviewed_finding}
+            ),
         )
     )
     session.add(
         FeedbackFlag(
+            organization=northwind,
             finding=reviewed_finding,
             agent=alex_agent,
             reason="Identity was checked before the transcript starts.",
             manager_review=ManagerReview(
+                organization=northwind,
                 outcome=ManagerReviewOutcome.CANNOT_ASSESS,
-                reviewer="Maya Chen",
+                reviewer_membership=maya,
                 reason="The recording starts after the identity check.",
                 feedback="Nothing to change; the evidence is incomplete.",
                 reviewed_at=datetime(2026, 10, 13, 15, 20, tzinfo=UTC),
@@ -304,17 +319,20 @@ async def seed(session: AsyncSession) -> Seed:
     sam_turns = {turn.line_number: turn for turn in sam_call.turns}
     session.add(
         Audit(
+            organization=northwind,
             conversation=sam_call,
             evaluation_form_version=form_version,
             findings=four_findings(
+                northwind,
                 **{
                     FindingCategory.PROCEDURE: Finding(
+                        organization=northwind,
                         category=FindingCategory.PROCEDURE,
                         result=FindingResult.NEEDS_WORK,
                         feedback="Sam skipped a step.",
                         evidence=[sam_turns[2]],
                     )
-                }
+                },
             ),
         )
     )
