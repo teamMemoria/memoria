@@ -701,11 +701,13 @@ class AnalysisService:
             )
         }
         audit = Audit(
+            organization_id=conversation.organization_id,
             conversation_id=conversation.id,
             evaluation_form_version_id=form_version_id,
             summary=parsed.summary,
             findings=[
                 Finding(
+                    organization_id=conversation.organization_id,
                     category=CATEGORY_FOR_CRITERION[name],
                     result=category.result,
                     feedback=category.feedback,
