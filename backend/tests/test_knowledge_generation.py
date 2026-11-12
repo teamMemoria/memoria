@@ -1,7 +1,6 @@
 import copy
 
 import pytest
-
 from sqlalchemy import select
 
 from backend.models import DraftStatus, KnowledgeDraft
