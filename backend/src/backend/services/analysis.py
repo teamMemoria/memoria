@@ -21,7 +21,7 @@ import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any, Protocol
 
 from sqlalchemy import func, select
@@ -51,6 +51,7 @@ from backend.providers.database import (
     unavailable_on_database_error,
 )
 from backend.schemas.call_review import CRITERION_IDS
+from backend.services.clock import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -348,10 +349,6 @@ class RetryRequiredError(Exception):
 class StartResult:
     run: AnalysisRun
     created: bool
-
-
-def utc_now() -> datetime:
-    return datetime.now(UTC)
 
 
 @dataclass

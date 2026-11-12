@@ -1,6 +1,7 @@
 """Response schemas that mirror the frontend types in ``frontend/src/types``."""
 
 from backend.schemas.call_review import (
+    AgentContext,
     AuditCriterion,
     AuditResult,
     CallFinding,
@@ -8,6 +9,7 @@ from backend.schemas.call_review import (
     CriterionId,
     ManagerDecision,
     ProcedureStep,
+    ReviewRequest,
     Transcript,
     TranscriptTurn,
 )
@@ -16,6 +18,7 @@ from backend.schemas.knowledge import KnowledgeEntry, KnowledgeSource, Knowledge
 from backend.schemas.viewer import Viewer, ViewerRole
 
 __all__ = [
+    "AgentContext",
     "AuditCriterion",
     "AuditResult",
     "AutomatedResult",
@@ -28,6 +31,7 @@ __all__ = [
     "KnowledgeStep",
     "ManagerDecision",
     "ProcedureStep",
+    "ReviewRequest",
     "ReviewStatus",
     "Transcript",
     "TranscriptTurn",

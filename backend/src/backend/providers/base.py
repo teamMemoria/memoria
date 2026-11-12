@@ -2,11 +2,22 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from backend.core.auth import DEV_IDENTITIES, CurrentUser
-from backend.schemas import CallReview, Conversation, KnowledgeEntry, Viewer
+from backend.schemas import (
+    AgentContext,
+    CallReview,
+    Conversation,
+    KnowledgeEntry,
+    ReviewRequest,
+    Viewer,
+)
 
 
 class ProviderUnavailableError(Exception):
     """The data source could not be reached. Routes turn this into a 503, not an empty result."""
+
+
+class RecordNotFoundError(Exception):
+    """The record does not exist or is not visible to the requester (a 404)."""
 
 
 # Every read is scoped to one organization. Methods mirror the frontend's
@@ -63,6 +74,31 @@ class KnowledgeProvider(Protocol):
     ) -> KnowledgeEntry | None: ...
 
 
+class FeedbackProvider(Protocol):
+    """An agent's own writes on their calls."""
+
+    async def save_context(
+        self, organization_id: str, agent_id: str, conversation_id: str, text: str
+    ) -> AgentContext:
+        """Save the agent's note on a call. Never creates a review request."""
+        ...
+
+    async def request_review(
+        self,
+        organization_id: str,
+        agent_id: str,
+        conversation_id: str,
+        finding_id: str,
+        reason: str,
+    ) -> tuple[ReviewRequest, bool]:
+        """Ask a Manager to review one finding; returns (request, created).
+
+        A finding has at most one review request. Asking again returns the
+        existing one unchanged with created=False.
+        """
+        ...
+
+
 @dataclass(frozen=True)
 class Providers:
     viewers: ViewerProvider
@@ -70,3 +106,5 @@ class Providers:
     calls: CallReviewProvider
     knowledge: KnowledgeProvider
     identities: IdentityProvider = field(default_factory=FixtureIdentityProvider)
+    # Writes need the database; with fixtures their routes answer 503.
+    feedback: FeedbackProvider | None = None
