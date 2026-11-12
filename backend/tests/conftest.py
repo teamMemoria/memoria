@@ -42,9 +42,8 @@ def _same_database(a: str, b: str) -> bool:
     )
 
 
-@pytest.fixture(scope="session", autouse=True)
-def migrated_database():
-    """Recreate the test database and run every migration against it."""
+def _recreate_test_database() -> None:
+    """Drop the test database, create it again and run every migration."""
     if not TEST_DB:
         pytest.exit("TEST_DATABASE_URL must name a database", returncode=2)
     if _same_database(TEST_DATABASE_URL, get_settings().database_url):
@@ -72,6 +71,12 @@ def migrated_database():
     )
 
 
+@pytest.fixture(scope="session", autouse=True)
+def migrated_database():
+    """Recreate the test database and run every migration against it."""
+    _recreate_test_database()
+
+
 @pytest.fixture
 async def session():
     """A session whose changes are rolled back after each test."""
@@ -84,6 +89,23 @@ async def session():
             yield s
         await trans.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def committed_sessions():
+    """A session factory whose sessions really commit, for concurrency tests.
+
+    Each session gets its own connection, as in the running app. The database
+    is rebuilt afterwards, so later tests start from the migrated state again,
+    including the rows the migrations seed (the default organization and the
+    default evaluation form).
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    engine = create_async_engine(TEST_DATABASE_URL)
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()
+    _recreate_test_database()
 
 
 @pytest.fixture
