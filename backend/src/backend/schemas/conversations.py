@@ -16,7 +16,9 @@ class Conversation(ApiModel):
     topic: str
     agent_id: str
     agent_name: str
-    date: str  # YYYY-MM-DD, the frontend appends T00:00:00Z itself
+    # YYYY-MM-DD, the frontend appends T00:00:00Z itself. None when the source
+    # recorded no date; it is never filled with a guess.
+    date: str | None
     automated_result: AutomatedResult
     review_status: ReviewStatus | None
 

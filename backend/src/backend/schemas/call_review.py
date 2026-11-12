@@ -80,8 +80,9 @@ class CallReview(ApiModel):
     agent_id: str
     agent_name: str
     topic: str
-    date: str
-    duration: str
+    # None when the source recorded no date or length; never guessed.
+    date: str | None
+    duration: str | None
     summary: str
     status: Literal["ready", "processing"]
     criteria: list[AuditCriterion]

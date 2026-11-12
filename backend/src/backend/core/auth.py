@@ -33,6 +33,25 @@ class CurrentUser:
         return permission in self.permissions
 
 
+def permissions_for_membership(
+    *, is_agent: bool, can_review_feedback: bool, can_approve_knowledge: bool
+) -> frozenset[Permission]:
+    """Permissions granted by a stored organization membership.
+
+    Every member can read approved guidance. Only agents read their own calls.
+    Feedback review and knowledge approval each come from their own capability
+    on the membership, so they stay separate even if one role holds both.
+    """
+    permissions = {Permission.KNOWLEDGE_READ}
+    if is_agent:
+        permissions.add(Permission.CONVERSATIONS_READ_OWN)
+    if can_review_feedback:
+        permissions.add(Permission.FEEDBACK_REVIEW)
+    if can_approve_knowledge:
+        permissions.add(Permission.KNOWLEDGE_APPROVE)
+    return frozenset(permissions)
+
+
 def same_organization(user: CurrentUser, organization_id: str) -> bool:
     return user.organization_id == organization_id
 
