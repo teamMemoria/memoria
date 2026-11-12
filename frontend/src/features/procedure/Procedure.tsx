@@ -349,19 +349,19 @@ function AgentProcedure({
     void navigate(`${location.pathname}${location.search}`, { replace: true })
   }
 
-  if (call.status === 'processing' || (findingId && !finding)) {
+  if (call.status !== 'ready' || (findingId && !finding)) {
     return (
       <div className="procedure">
         {back}
         <h1>
           {call.status === 'processing'
             ? 'Feedback is processing'
-            : 'Finding unavailable'}
+            : call.status === 'unavailable' ? 'Assessment unavailable' : 'Finding unavailable'}
         </h1>
         <p>
           {call.status === 'processing'
             ? 'Automatic feedback is not ready for this call.'
-            : 'This finding is not available for this conversation.'}
+            : call.status === 'unavailable' ? 'No assessment is stored for this conversation.' : 'This finding is not available for this conversation.'}
         </p>
       </div>
     )

@@ -49,6 +49,8 @@ export type KnowledgeDraft = KnowledgeEntry & {
   // The authoritative source a Manager must check before approving.
   verificationReference: { title: string; url: string } | null
   decision: KnowledgeDecision | null
+  possibleConflicts?: { id: string; status: string; explanation: string }[]
+  duplicateOfId?: string | null
 }
 
 export type KnowledgeReviewDetail = {
@@ -69,11 +71,13 @@ export interface KnowledgeReviewApi {
     managerId: string,
     entryId: string,
     verifiedReferenceUrl: string,
+    version?: string,
   ): Promise<KnowledgeDraft>
   reject(
     managerId: string,
     entryId: string,
     reason: string,
+    version?: string,
   ): Promise<KnowledgeDraft>
 }
 

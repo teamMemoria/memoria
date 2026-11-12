@@ -1,5 +1,7 @@
 from typing import Literal
 
+from pydantic import Field
+
 from backend.schemas.base import ApiModel
 from backend.schemas.knowledge import KnowledgeEntry
 
@@ -84,3 +86,10 @@ class KnowledgeImportResult(ApiModel):
     unchanged: int
     skipped: list[dict[str, str]]
     conflicts_stored: int
+    generation: list[dict] = Field(default_factory=list)
+
+
+class KnowledgeDecisionInput(ApiModel):
+    version: str = Field(min_length=1, max_length=100)
+    verified_reference_url: str | None = Field(default=None, max_length=2000)
+    reason: str | None = Field(default=None, max_length=4000)

@@ -6,8 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings, read from the environment and the backend .env file."""
-
     database_url: str = "postgresql+psycopg://app:app@localhost:5432/callassist"
 
     # MEMORIA_APP_ENV. Defaults to production so development shortcuts are off
@@ -23,6 +21,10 @@ class Settings(BaseSettings):
     data_source: Literal["fixtures", "database"] = Field(
         default="fixtures",
         validation_alias=AliasChoices("MEMORIA_DATA_SOURCE", "data_source"),
+    )
+
+    analysis_engine: Literal["unconfigured", "rules"] = Field(
+        default="unconfigured", validation_alias="MEMORIA_ANALYSIS_ENGINE"
     )
 
     model_config = SettingsConfigDict(

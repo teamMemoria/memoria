@@ -12,8 +12,10 @@ from backend.providers import (
     ProviderUnavailableError,
     RecordNotFoundError,
 )
+from backend.providers.knowledge_review import KnowledgeDecisionRejected
 from backend.schemas.knowledge_review import (
     DraftQueueStatus,
+    KnowledgeDecisionInput,
     KnowledgeDraft,
     KnowledgeImportResult,
     KnowledgeQueueCounts,
@@ -115,3 +117,34 @@ async def import_pipeline_output(
         # The requester's organization has no stored records yet.
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from None
     return KnowledgeImportResult(**asdict(result))
+
+
+@router.post("/drafts/{draft_id}/approve", response_model=KnowledgeDraft)
+async def approve(
+    draft_id: str,
+    body: KnowledgeDecisionInput,
+    user: ApproverDep,
+    providers: ProvidersDep,
+):
+    return await decide(draft_id, body, user, providers, "approved")
+
+
+@router.post("/drafts/{draft_id}/reject", response_model=KnowledgeDraft)
+async def reject(
+    draft_id: str,
+    body: KnowledgeDecisionInput,
+    user: ApproverDep,
+    providers: ProvidersDep,
+):
+    return await decide(draft_id, body, user, providers, "rejected")
+
+
+async def decide(draft_id, body, user, providers, outcome):
+    try:
+        return await review_provider(providers).decide(
+            user.organization_id, user.user_id, draft_id, outcome, body
+        )
+    except RecordNotFoundError:
+        raise HTTPException(404, "Knowledge draft not found") from None
+    except KnowledgeDecisionRejected as error:
+        raise HTTPException(409, str(error)) from None

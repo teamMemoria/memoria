@@ -13,7 +13,6 @@ import {
   conversationStatusLabels,
   countConversationStatuses,
   filterConversations,
-  formatConversationDate,
   getAgentConversations,
   reviewStatusLabels,
   type Conversation,
@@ -38,6 +37,7 @@ const resultTones = {
   'meets-criteria': 'positive',
   'cannot-assess': 'neutral',
   processing: 'neutral',
+  unavailable: 'neutral',
 } as const
 
 export function AgentConversations({
@@ -253,10 +253,10 @@ export function AgentConversations({
                   assessment, not a submitted Manager review request.
                 </caption>
                 <colgroup>
-                  {[116, 260, 210, 180, 278, 268, 56].map((width, index) => (
+                  {[116, 260, 210, 278, 268, 56].map((width, index) => (
                     <col
                       key={index}
-                      style={{ width: `${(width / 1368) * 100}%` }}
+                      style={{ width: `${(width / 1188) * 100}%` }}
                     />
                   ))}
                 </colgroup>
@@ -265,9 +265,6 @@ export function AgentConversations({
                     <th scope="col">Call</th>
                     <th scope="col">Topic</th>
                     <th scope="col">Agent</th>
-                    <th scope="col" aria-sort="descending">
-                      Date <span aria-hidden="true">↓</span>
-                    </th>
                     <th scope="col">Automated result</th>
                     <th scope="col">Review status</th>
                     <th scope="col">
@@ -284,16 +281,11 @@ export function AgentConversations({
                           to={`/agent/conversations/${encodeURIComponent(conversation.id)}${search}`}
                           aria-label={`Open conversation ${conversation.id}: ${conversation.topic}`}
                         >
-                          {conversation.id}
+                          {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
                         </Link>
                       </td>
                       <td>{conversation.topic}</td>
                       <td>{conversation.agentName}</td>
-                      <td className="conversation-date">
-                        <time dateTime={conversation.date ?? undefined}>
-                          {formatConversationDate(conversation.date)}
-                        </time>
-                      </td>
                       <td>
                         <StatusLabel
                           tone={resultTones[conversation.automatedResult]}

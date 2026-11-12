@@ -46,6 +46,13 @@ def test_ready_call_matches_frontend_shape():
             {**r, "availableToAgentIds": [ALEX]} for r in expected["references"]
         ],
     }
+    expected.update(
+        sourceId=None, overallScoring=None, assessmentVersion=None, requestLinks=[]
+    )
+    for criterion in expected["criteria"]:
+        criterion["scoring"] = None
+    for finding in expected["findings"]:
+        finding["critical"] = False
     assert response.json() == expected
 
 

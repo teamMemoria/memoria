@@ -517,3 +517,23 @@ Documented here rather than filled with invented data. Each needs agreement with
    and no link to which finding was reviewed.
 9. **A listed conversation can have no call record.** The list has no way to mark that the detail
    is unavailable; the detail route returns `404` (fixture `C1046`).
+
+
+## Persistent knowledge decisions
+
+`POST /api/manager/knowledge/drafts/{draftId}/approve` accepts
+`{"version":"<current draft version>","verifiedReferenceUrl":"<stored authoritative URL>"}`.
+`POST /api/manager/knowledge/drafts/{draftId}/reject` accepts
+`{"version":"<current draft version>","reason":"<nonempty reason>"}`.
+Both require `knowledge:approve`, operate only on pending drafts in the current
+organization, and return the updated draft. Wrong permissions return 403;
+other-organization/missing drafts 404; stale versions or repeated decisions 409.
+Approval additionally requires the matching independent verification reference
+and no blocking conflict/duplicate. Supporting Agent quotations do not verify a
+policy. Decisions record the reviewer and timestamp (plus URL/rejection reason).
+Approved entries are visible only to their assigned Agents; rejected/pending
+entries never enter Agent knowledge. Automated assessments remain separate.
+
+Scored call responses add `assessmentVersion`, `overallScoring`, `requestLinks`
+and each criterion's `scoring` ledger (points, coverage, limitations, exact
+citations). An unavailable/failed assessment is not poor Agent performance.

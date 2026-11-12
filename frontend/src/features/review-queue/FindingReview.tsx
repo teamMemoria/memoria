@@ -317,6 +317,7 @@ export function FindingReview({
       {back}
       <header className="finding-review-header">
         <h1>{finding.title}</h1>
+        <Link to={`/manager/conversations/${encodeURIComponent(call.id)}/assessments/${finding.criterionId}${search}`}>Open {finding.criterionId} assessment</Link>
         <p className="metadata-line">
           <span>Call {call.id}</span>
           <span>{call.agentName}</span>
