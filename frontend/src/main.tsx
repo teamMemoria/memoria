@@ -8,8 +8,8 @@ import './styles/global.css'
 import './styles/controls.css'
 
 const {
-  viewerApi, conversationsApi, callApi, knowledgeApi, teamReviewApi,
-  knowledgeReviewApi,
+  viewerApi, profilesApi, conversationsApi, callApi, knowledgeApi,
+  teamReviewApi, knowledgeReviewApi,
 } = createDependencies()
 
 createRoot(document.getElementById('root')!).render(
@@ -17,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <App
         viewerApi={viewerApi}
+        profilesApi={profilesApi}
         conversationsApi={conversationsApi}
         callApi={callApi}
         knowledgeApi={knowledgeApi}

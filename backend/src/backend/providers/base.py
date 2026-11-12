@@ -6,6 +6,7 @@ from backend.schemas import (
     AgentContext,
     CallReview,
     Conversation,
+    DemoProfile,
     KnowledgeEntry,
     ManagerDecision,
     ReviewRequest,
@@ -63,6 +64,12 @@ class FixtureIdentityProvider:
         if user is None or organization_id not in (None, user.organization_id):
             return None
         return user
+
+
+class DemoProfileProvider(Protocol):
+    async def list_profiles(self) -> list[DemoProfile]:
+        """Profiles the demo entry screen offers. Only served in development and test."""
+        ...
 
 
 class ViewerProvider(Protocol):
@@ -179,3 +186,4 @@ class Providers:
     feedback: FeedbackProvider | None = None
     reviews: ReviewProvider | None = None
     knowledge_review: KnowledgeReviewProvider | None = None
+    demo_profiles: DemoProfileProvider | None = None

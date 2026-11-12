@@ -16,12 +16,13 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from functools import wraps
 
-from sqlalchemy import Select, false, select
+from sqlalchemy import Select, false, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import CurrentUser, permissions_for_membership
+from backend.data.seed_demo_profiles import DEMO_PREFIX
 from backend.models import AgentContext as AgentContextRecord
 from backend.models import (
     Audit,
@@ -47,6 +48,7 @@ from backend.schemas import (
     AuditCriterion,
     CallFinding,
     CallReview,
+    DemoProfile,
     ManagerDecision,
     ReviewRequest,
     Transcript,
@@ -544,6 +546,46 @@ class DatabaseIdentityProvider:
         return current_user_for(memberships[0])
 
 
+class DatabaseDemoProfileProvider:
+    """Users created by seed-demo-profiles, with their imported conversation counts."""
+
+    def __init__(self, sessions: SessionFactory):
+        self._sessions = sessions
+
+    @unavailable_on_database_error
+    async def list_profiles(self):
+        conversation_count = (
+            select(func.count())
+            .select_from(Conversation)
+            .where(
+                Conversation.organization_id == OrganizationMembership.organization_id,
+                Conversation.agent_id == OrganizationMembership.agent_id,
+            )
+            .scalar_subquery()
+        )
+        async with self._sessions() as session:
+            rows = await session.execute(
+                select(
+                    User.external_id,
+                    User.display_name,
+                    OrganizationMembership.role,
+                    conversation_count,
+                )
+                .join(OrganizationMembership, OrganizationMembership.user_id == User.id)
+                .where(User.external_id.startswith(DEMO_PREFIX))
+                .order_by(OrganizationMembership.role, User.external_id)
+            )
+        return [
+            DemoProfile(
+                id=external_id,
+                display_name=name,
+                role="agent" if role is UserRole.AGENT else "manager",
+                conversation_count=count if role is UserRole.AGENT else None,
+            )
+            for external_id, name, role, count in rows
+        ]
+
+
 class DatabaseViewerProvider:
     def __init__(self, sessions: SessionFactory):
         self._sessions = sessions
@@ -679,4 +721,5 @@ def create_database_providers(sessions: SessionFactory) -> Providers:
         feedback=DatabaseFeedbackProvider(sessions),
         reviews=DatabaseReviewProvider(sessions),
         knowledge_review=DatabaseKnowledgeReviewProvider(sessions),
+        demo_profiles=DatabaseDemoProfileProvider(sessions),
     )

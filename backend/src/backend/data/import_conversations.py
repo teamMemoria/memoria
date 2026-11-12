@@ -50,6 +50,20 @@ class CuratedConversation:
     metrics: ConversationMetrics
 
 
+def agent_for(data: dict[str, Any]) -> str:
+    """The source's agent, else the demo profile listed for this conversation, else the placeholder."""
+    # Imported here: seed_demo_profiles imports this module.
+    from backend.data.seed_demo_profiles import demo_agent_ids
+
+    dataset = data["source"]["dataset"]
+    original_id = str(data["source"]["original_id"])
+    return (
+        data.get("agent_id")
+        or demo_agent_ids().get((dataset, original_id))
+        or placeholder_agent_id(dataset)
+    )
+
+
 def parse_file(path: Path) -> CuratedConversation:
     data = json.loads(path.read_text(encoding="utf-8"))
     missing = [k for k in REQUIRED_KEYS if k not in data]
@@ -61,7 +75,7 @@ def parse_file(path: Path) -> CuratedConversation:
         source_dataset=dataset,
         original_id=str(data["source"]["original_id"]),
         channel=data["channel"],
-        agent_external_id=data.get("agent_id") or placeholder_agent_id(dataset),
+        agent_external_id=agent_for(data),
         source_fields=data["source_fields"],
         customer_record=data.get("customer_record"),
         turns=[

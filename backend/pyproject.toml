@@ -25,6 +25,7 @@ create-splits = "backend.data.create_splits:main"
 select-eval-set = "backend.data.select_eval_set:main"
 assign-synthetic-dates = "backend.data.assign_synthetic_dates:main"
 profile-conversations = "backend.data.conversation_corpus:main"
+seed-demo-profiles = "backend.data.seed_demo_profiles:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

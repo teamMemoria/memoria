@@ -15,7 +15,7 @@ from backend.schemas.call_review import (
 )
 from backend.schemas.conversations import AutomatedResult, Conversation, ReviewStatus
 from backend.schemas.knowledge import KnowledgeEntry, KnowledgeSource, KnowledgeStep
-from backend.schemas.viewer import Viewer, ViewerRole
+from backend.schemas.viewer import DemoProfile, Viewer, ViewerRole
 
 __all__ = [
     "AgentContext",
@@ -26,6 +26,7 @@ __all__ = [
     "CallReview",
     "Conversation",
     "CriterionId",
+    "DemoProfile",
     "KnowledgeEntry",
     "KnowledgeSource",
     "KnowledgeStep",

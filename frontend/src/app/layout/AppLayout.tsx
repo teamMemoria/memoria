@@ -1,9 +1,16 @@
 import { Outlet } from 'react-router'
 import type { Viewer } from '../../types/viewer'
 import { Sidebar } from './Sidebar'
+import { Button } from '../../components/controls'
 import './AppLayout.css'
 
-export function AppLayout({ viewer }: { viewer: Viewer }) {
+export function AppLayout({
+  viewer,
+  onSwitchProfile,
+}: {
+  viewer: Viewer
+  onSwitchProfile?: () => void
+}) {
   const initials = viewer.displayName
     .split(/\s+/)
     .filter(Boolean)
@@ -20,6 +27,15 @@ export function AppLayout({ viewer }: { viewer: Viewer }) {
       <Sidebar viewer={viewer} />
       <div className="workspace">
         <header className="workspace-header">
+          {onSwitchProfile && (
+            <Button
+              variant="quiet"
+              className="switch-profile"
+              onClick={onSwitchProfile}
+            >
+              Switch profile
+            </Button>
+          )}
           <span
             className="avatar"
             role="img"

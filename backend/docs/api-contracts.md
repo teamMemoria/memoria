@@ -437,6 +437,22 @@ stays `queued` or `running`. Once it is older than 15 minutes, a `POST` with `{"
 marks it failed with `timed-out` and starts a new attempt. A run is never replaced without that
 retry flag.
 
+## Demo entry screen
+
+`GET /api/demo/profiles` returns the `DemoProfile[]` the entry screen offers
+(`DemoProfilesApi.listProfiles`): `id`, `displayName`, `role` and
+`conversationCount` (imported conversations for an Agent, `null` for a Manager).
+It needs no identity, because choosing a profile is how the demo signs in, so it
+only exists where `X-Dev-User` is accepted (`MEMORIA_APP_ENV` development or
+test) and is a `404` everywhere else.
+
+The frontend then sends the chosen `id` as `X-Dev-User`. Access still comes from
+the stored membership: an Agent profile sees only the conversations linked to its
+agent record, whatever its display name.
+
+With the database, the profiles are the users created by `seed-demo-profiles`
+(IDs starting with `demo-`). With fixtures, they are the fixture viewers.
+
 ## Providers
 
 Routes read data through the interfaces in `backend/src/backend/providers/base.py`

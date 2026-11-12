@@ -197,6 +197,14 @@ a.sidebar-item[aria-current='page'] {
   padding: 8px 32px;
 }
 
+.switch-profile {
+  min-height: 40px;
+  margin-right: 12px;
+  padding: 6px 12px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
 .avatar {
   display: grid;
   place-items: center;

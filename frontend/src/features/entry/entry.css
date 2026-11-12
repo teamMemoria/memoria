@@ -1,0 +1,121 @@
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.entry-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  width: min(520px, calc(100% - 48px));
+  margin: 48px auto;
+}
+
+.entry-intro {
+  color: var(--color-muted);
+}
+
+.entry-notice {
+  padding: 12px 16px;
+  border-radius: var(--control-radius);
+  background: var(--color-evidence);
+  color: var(--color-attention);
+}
+
+.entry-panel form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.entry-roles,
+.entry-profiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.entry-roles legend,
+.entry-profiles legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.entry-profiles {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.entry-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--control-radius);
+  cursor: pointer;
+}
+
+.entry-choice:has(input:checked) {
+  border-color: var(--color-link);
+  background: #f2f5fb;
+}
+
+.entry-choice:has(input:focus-visible) {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.entry-profile-name {
+  font-weight: 600;
+}
+
+.entry-profile-detail {
+  color: var(--color-muted);
+  font-size: 16px;
+}
+
+.entry-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.entry-brand {
+  display: grid;
+  place-items: center;
+  padding: 48px;
+  background: var(--color-nav);
+}
+
+.entry-brand video,
+.entry-brand img {
+  width: min(100%, 560px);
+  height: auto;
+}
+
+@media (max-width: 800px) {
+  .entry {
+    grid-template-columns: 1fr;
+  }
+  .entry-brand {
+    order: -1;
+    padding: 24px;
+  }
+  .entry-brand video,
+  .entry-brand img {
+    width: min(100%, 280px);
+  }
+}

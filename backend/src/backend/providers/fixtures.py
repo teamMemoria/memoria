@@ -2,7 +2,13 @@ from dataclasses import dataclass
 
 from backend.providers.base import Providers
 from backend.providers.fixture_data import CALLS, CONVERSATIONS, KNOWLEDGE, VIEWERS
-from backend.schemas import CallReview, Conversation, KnowledgeEntry, Viewer
+from backend.schemas import (
+    CallReview,
+    Conversation,
+    DemoProfile,
+    KnowledgeEntry,
+    Viewer,
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +50,31 @@ class FixtureViewerProvider:
             if viewer.id == user_id:
                 return viewer.model_copy(deep=True)
         return None
+
+
+class FixtureDemoProfileProvider:
+    """Every fixture viewer, so each one can be picked on the entry screen."""
+
+    def __init__(self, data: FixtureData):
+        self._data = data
+
+    async def list_profiles(self):
+        profiles = []
+        for organization_id, viewers in self._data.viewers.items():
+            conversations = self._data.conversations.get(organization_id, [])
+            for viewer in viewers:
+                count = None
+                if viewer.role == "agent":
+                    count = sum(1 for c in conversations if c.agent_id == viewer.id)
+                profiles.append(
+                    DemoProfile(
+                        id=viewer.id,
+                        display_name=viewer.display_name,
+                        role=viewer.role,
+                        conversation_count=count,
+                    )
+                )
+        return profiles
 
 
 class FixtureConversationProvider:
@@ -105,4 +136,5 @@ def create_fixture_providers(data: FixtureData | None = None) -> Providers:
         conversations=FixtureConversationProvider(data),
         calls=FixtureCallReviewProvider(data),
         knowledge=FixtureKnowledgeProvider(data),
+        demo_profiles=FixtureDemoProfileProvider(data),
     )
