@@ -67,6 +67,20 @@ def create_app(
             scoring_context=load_rule_context(),
         )
     app.state.analysis = analysis or AnalysisService(db_session.async_session_factory)
+    if knowledge_import is None and settings.knowledge_engine == "rules":
+        import json
+        from pathlib import Path
+
+        from ml.knowledge_candidates import generate_candidates
+
+        cohort = json.loads(
+            (Path(__file__).resolve().parents[3] / "ml/rule_cohort.json").read_text()
+        )
+        knowledge_import = KnowledgeImportService(
+            db_session.async_session_factory,
+            generate=generate_candidates,
+            source_ids=tuple(row["id"] for row in cohort["conversations"]),
+        )
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
         db_session.async_session_factory
     )
