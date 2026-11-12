@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import Permission
+from backend.data.demo_profiles import profile_display_name
 from backend.models import (
     Agent,
     Audit,
@@ -67,7 +68,10 @@ async def agent_identities(
     )
     identities = {
         agent.id: AgentIdentity(
-            id=agent.external_id, name=agent.name or agent.external_id
+            id=agent.external_id,
+            name=profile_display_name(
+                agent.external_id, agent.name or agent.external_id
+            ),
         )
         for agent in agents
     }
@@ -80,7 +84,9 @@ async def agent_identities(
         )
     )
     for agent_id, external_id, display_name in linked:
-        identities[agent_id] = AgentIdentity(id=external_id, name=display_name)
+        identities[agent_id] = AgentIdentity(
+            id=external_id, name=profile_display_name(external_id, display_name)
+        )
     return identities
 
 
@@ -104,7 +110,10 @@ def decision_schema(review: ManagerReview) -> ManagerDecision:
         outcome=OUTCOME_NAMES[review.outcome],
         reason=review.reason,
         feedback=review.feedback,
-        manager_name=review.reviewer_membership.user.display_name,
+        manager_name=profile_display_name(
+            review.reviewer_membership.user.external_id,
+            review.reviewer_membership.user.display_name,
+        ),
         decided_at=iso_timestamp(review.reviewed_at),
     )
 

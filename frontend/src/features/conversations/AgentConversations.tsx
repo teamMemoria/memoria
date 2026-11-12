@@ -1,9 +1,9 @@
+import { MemoriaSelectField } from '../../components/ui/select'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import {
   Button,
   Panel,
-  SelectField,
   StatusLabel,
   TextField,
 } from '../../components/controls'
@@ -217,19 +217,14 @@ export function AgentConversations({
           onChange={(event) => changeFilter('q', event.target.value, true)}
           disabled={state.status !== 'ready'}
         />
-        <SelectField
+        <MemoriaSelectField
           id="conversation-status"
           label="Review status"
           value={status}
-          onChange={(event) => changeFilter('status', event.target.value)}
+          onValueChange={(value) => changeFilter('status', value)}
           disabled={state.status !== 'ready'}
-        >
-          {filters.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </SelectField>
+          options={filters}
+        />
       </div>
       {state.status === 'loading' && (
         <p role="status">Loading your conversations…</p>
@@ -295,7 +290,7 @@ export function AgentConversations({
                       <td>{conversation.topic}</td>
                       <td>{conversation.agentName}</td>
                       <td className="conversation-date">
-                        <time dateTime={conversation.date}>
+                        <time dateTime={conversation.date ?? undefined}>
                           {formatConversationDate(conversation.date)}
                         </time>
                       </td>

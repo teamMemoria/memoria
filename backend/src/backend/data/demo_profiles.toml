@@ -1,0 +1,173 @@
+# Demo profiles offered on the entry screen (#107). Loaded by seed-demo-profiles.
+#
+# Agent names come from what agents say in ABCD conversations: ABCD v1.1 at
+# commit 6b8700c, training split only. They are demo names, not verified
+# identities, and two conversations with the same name may involve different
+# people. "Carol" and "Carol Jensen" stay separate; "Betty" is an alias used in
+# the conversation.
+#
+# Each `id` is the profile's permanent ID (stored as the user's and agent's
+# external_id). Never change or reuse one; add new profiles with new IDs.
+# `conversations` are original ABCD conversation IDs.
+
+dataset = "ABCD"
+split = "train"
+
+[manager]
+id = "demo-manager-01"
+name = "Manager"
+
+[[agents]]
+id = "demo-agent-01"
+name = "Adam"
+conversations = ["8434"]
+
+[[agents]]
+id = "demo-agent-02"
+name = "Alex"
+conversations = ["1891", "5496"]
+
+[[agents]]
+id = "demo-agent-03"
+name = "Amy"
+conversations = ["8215", "8516", "8685"]
+
+[[agents]]
+id = "demo-agent-04"
+name = "Anne"
+conversations = ["1094", "2169", "2829", "3899", "4456", "5304", "5420", "5658", "5779", "5870", "6165", "6717", "6949"]
+
+[[agents]]
+id = "demo-agent-05"
+name = "Betty"
+conversations = ["3313"]
+
+[[agents]]
+id = "demo-agent-06"
+name = "Bob"
+conversations = ["2619"]
+
+[[agents]]
+id = "demo-agent-07"
+name = "Carol"
+conversations = ["10563"]
+
+[[agents]]
+id = "demo-agent-08"
+name = "Carol Jensen"
+conversations = ["10574"]
+
+[[agents]]
+id = "demo-agent-09"
+name = "Danny"
+conversations = ["1460", "1478", "1488", "1512", "1538", "1734", "1999", "2032", "4216", "5679", "5770", "5792", "5885", "6242", "6456", "6524", "6553", "8769", "9876", "10580"]
+
+[[agents]]
+id = "demo-agent-10"
+name = "Donny"
+conversations = ["1284", "1321", "4042", "4076", "4097", "4118", "4132", "4199", "4311", "4684", "4839", "7388", "7418", "7457", "7527", "7599", "7625", "7658", "7726", "7776", "7906", "8017", "8038", "8059", "8097", "8130", "8148", "8182"]
+
+[[agents]]
+id = "demo-agent-11"
+name = "Ford Prefect"
+conversations = ["1846", "2464"]
+
+[[agents]]
+id = "demo-agent-12"
+name = "Jack"
+conversations = ["5930"]
+
+[[agents]]
+id = "demo-agent-13"
+name = "Jackie"
+conversations = ["10583"]
+
+[[agents]]
+id = "demo-agent-14"
+name = "James"
+conversations = ["219", "223", "238", "287", "309", "416", "422", "426", "749", "780", "820", "832", "864", "888", "910", "923", "952", "8240"]
+
+[[agents]]
+id = "demo-agent-15"
+name = "Jamie"
+conversations = ["9970"]
+
+[[agents]]
+id = "demo-agent-16"
+name = "Janice"
+conversations = ["5072"]
+
+[[agents]]
+id = "demo-agent-17"
+name = "Joe"
+conversations = ["10054", "10080"]
+
+[[agents]]
+id = "demo-agent-18"
+name = "John"
+conversations = ["5893", "8095", "8381", "8479"]
+
+[[agents]]
+id = "demo-agent-19"
+name = "Johnny"
+conversations = ["9359"]
+
+[[agents]]
+id = "demo-agent-20"
+name = "Karen"
+conversations = ["10562"]
+
+[[agents]]
+id = "demo-agent-21"
+name = "Mike"
+conversations = ["10592"]
+
+[[agents]]
+id = "demo-agent-22"
+name = "Molly"
+conversations = ["336"]
+
+[[agents]]
+id = "demo-agent-23"
+name = "Peter"
+conversations = ["10591"]
+
+[[agents]]
+id = "demo-agent-24"
+name = "Rebecca"
+conversations = ["635"]
+
+[[agents]]
+id = "demo-agent-25"
+name = "Richard"
+conversations = ["10595"]
+
+[[agents]]
+id = "demo-agent-26"
+name = "Rufold the Seventh"
+conversations = ["9055"]
+
+[[agents]]
+id = "demo-agent-27"
+name = "Sam"
+conversations = ["5607"]
+
+[[agents]]
+id = "demo-agent-28"
+name = "Sher"
+conversations = ["810", "835", "956"]
+
+[[agents]]
+id = "demo-agent-29"
+name = "Smith"
+conversations = ["590"]
+
+[[agents]]
+id = "demo-agent-30"
+name = "Stephanie"
+conversations = ["9211"]
+
+[[agents]]
+id = "demo-agent-31"
+name = "Summer"
+conversations = ["3357", "5926"]

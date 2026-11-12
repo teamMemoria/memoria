@@ -1,4 +1,4 @@
-import type { AuditResult, CallReview, ReviewRequest } from '../../types/callReview'
+import type { AuditResult, CallReview, ReviewRequest, ManagerCallApi } from '../../types/callReview'
 import {
   conversationStatusLabels,
   filterConversations,
@@ -17,18 +17,10 @@ export type DecisionInput = Pick<ManagerDecision, 'outcome' | 'reason' | 'feedba
   reviewedResult?: AuditResult
 }
 
-export type FindingReviewDetail = {
-  call: CallReview
-  // Call-review permission, supplied by the backend.
-  canDecide: boolean
-}
+export type { FindingReviewDetail } from '../../types/callReview'
 
-export interface TeamReviewApi {
+export interface TeamReviewApi extends ManagerCallApi {
   listForManager(managerId: string): Promise<TeamConversation[]>
-  getCallForManager(
-    managerId: string,
-    conversationId: string,
-  ): Promise<FindingReviewDetail | null>
   saveDecision(
     managerId: string,
     conversationId: string,
@@ -85,8 +77,8 @@ export function filterTeamConversations(
         .includes(search),
     )
     .sort((first, second) =>
-      (second.flag?.requestedAt ?? second.date).localeCompare(
-        first.flag?.requestedAt ?? first.date,
+      (second.flag?.requestedAt ?? second.date ?? '').localeCompare(
+        first.flag?.requestedAt ?? first.date ?? '',
       ),
     )
 }

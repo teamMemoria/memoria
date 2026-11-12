@@ -13,6 +13,7 @@ from backend.api import analysis as analysis_api
 from backend.api import (
     calls,
     conversations,
+    demo,
     knowledge,
     knowledge_review,
     reviews,
@@ -89,6 +90,7 @@ def create_app(
             ) from None
         return {"status": "ready"}
 
+    app.include_router(demo.router)
     app.include_router(viewer.router)
     app.include_router(conversations.router)
     app.include_router(calls.router)

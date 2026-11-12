@@ -52,8 +52,8 @@ export type CallReview = {
   agentId: string
   agentName: string
   topic: string
-  date: string
-  duration: string
+  date: string | null
+  duration: string | null
   summary: string
   status: 'ready' | 'processing'
   criteria: AuditCriterion[]
@@ -104,4 +104,10 @@ export interface CallApi {
     findingId: string,
     reason: string,
   ): Promise<ReviewRequest>
+}
+
+export type FindingReviewDetail = { call: CallReview; canDecide: boolean }
+
+export interface ManagerCallApi {
+  getCallForManager(managerId: string, conversationId: string): Promise<FindingReviewDetail | null>
 }

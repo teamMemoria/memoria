@@ -49,6 +49,20 @@ generated (fixed seed, so always the same) and stored in
 
     uv run assign-synthetic-dates
 
+Then create the demo profiles offered on the entry screen: 31 Agents from the
+ABCD training conversations and one Manager, listed in
+`src/backend/data/demo_profiles.toml`. Each Agent is linked to the imported
+conversations listed for it; nothing is assessed, reviewed or approved:
+
+    uv run seed-demo-profiles
+
+To use them from the frontend, start the backend with
+`MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database` and the frontend with
+`VITE_DEMO_BACKEND=true npm run dev`.
+
+See [the dashboard entry guide](../frontend/DEMO-BACKEND.md) for the single-backend
+setup, supported assessment views and current read-only knowledge limitation.
+
 Each data command accepts `--organization <slug>` and defaults to the
 migration-created `default` organization.
 

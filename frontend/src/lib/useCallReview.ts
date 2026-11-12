@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { CallApi, CallReview } from '../types/callReview'
+import type { CallApi, CallReview, ManagerCallApi } from '../types/callReview'
 
 type CallState =
   | { status: 'loading' }
@@ -9,48 +9,67 @@ type CallState =
 
 export function useCallReview(
   api: CallApi | null,
-  agentId: string,
+  viewerId: string,
   conversationId: string,
+  managerApi: ManagerCallApi | null = null,
 ) {
   const [request, setRequest] = useState<{
     api: CallApi | null
-    agentId: string
+    managerApi: ManagerCallApi | null
+    viewerId: string
     conversationId: string
     state: CallState
   }>({
     api,
-    agentId,
+    managerApi,
+    viewerId,
     conversationId,
     state: { status: 'loading' },
   })
   const [attempt, setAttempt] = useState(0)
   const isCurrentRequest =
     request.api === api &&
-    request.agentId === agentId &&
+    request.managerApi === managerApi &&
+    request.viewerId === viewerId &&
     request.conversationId === conversationId
 
   if (!isCurrentRequest) {
-    setRequest({ api, agentId, conversationId, state: { status: 'loading' } })
+    setRequest({
+      api,
+      managerApi,
+      viewerId,
+      conversationId,
+      state: { status: 'loading' },
+    })
   }
 
-  const state: CallState = !api
-    ? { status: 'unavailable' }
-    : isCurrentRequest
-      ? request.state
-      : { status: 'loading' }
+  const state: CallState =
+    !api && !managerApi
+      ? { status: 'unavailable' }
+      : isCurrentRequest
+        ? request.state
+        : { status: 'loading' }
 
   useEffect(() => {
     let active = true
-    if (!api) return
-    void api.getCallForAgent(agentId, conversationId).then(
+    if (!api && !managerApi) return
+    const pending = managerApi
+      ? managerApi
+          .getCallForManager(viewerId, conversationId)
+          .then((detail) => detail?.call ?? null)
+      : api!.getCallForAgent(viewerId, conversationId)
+    void pending.then(
       (call) => {
         if (active)
           setRequest({
             api,
-            agentId,
+            managerApi,
+            viewerId,
             conversationId,
             state:
-              call && call.agentId === agentId && call.id === conversationId
+              call &&
+              (managerApi || call.agentId === viewerId) &&
+              call.id === conversationId
                 ? { status: 'ready', call }
                 : { status: 'unavailable' },
           })
@@ -59,7 +78,8 @@ export function useCallReview(
         if (active)
           setRequest({
             api,
-            agentId,
+            managerApi,
+            viewerId,
             conversationId,
             state: { status: 'error' },
           })
@@ -68,10 +88,16 @@ export function useCallReview(
     return () => {
       active = false
     }
-  }, [api, agentId, conversationId, attempt])
+  }, [api, managerApi, viewerId, conversationId, attempt])
 
   function retry() {
-    setRequest({ api, agentId, conversationId, state: { status: 'loading' } })
+    setRequest({
+      api,
+      managerApi,
+      viewerId,
+      conversationId,
+      state: { status: 'loading' },
+    })
     setAttempt((value) => value + 1)
   }
 
@@ -81,7 +107,10 @@ export function useCallReview(
       current.state.status === 'ready'
         ? {
             ...current,
-            state: { status: 'ready', call: { ...current.state.call, ...changes } },
+            state: {
+              status: 'ready',
+              call: { ...current.state.call, ...changes },
+            },
           }
         : current,
     )

@@ -187,6 +187,12 @@ function DecisionPanel({
     )
   }
 
+  if (api.decisionsAvailable === false) {
+    return <Panel title="Decision" className="knowledge-review-decision">
+      <p>Knowledge drafts are read-only in this demo. Approve and reject are not available yet.</p>
+    </Panel>
+  }
+
   return (
     <Panel title="Decision" className="knowledge-review-decision">
       {canDecide ? (
