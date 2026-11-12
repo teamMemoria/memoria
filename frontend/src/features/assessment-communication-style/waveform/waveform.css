@@ -1,0 +1,64 @@
+.waveform-heading, .waveform-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.waveform-tools { gap: 18px; }
+.waveform-voice { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 12px; border: 1px solid #dce4f0; border-radius: 8px; background: white; color: var(--color-muted); font-size: 14px; font-weight: 550; }
+.waveform-voice:hover { color: var(--color-heading); background: #f5f8fd; }
+.waveform-voice[aria-pressed='true'] { color: var(--color-heading); background: #edf3ff; border-color: #a8bde8; }
+.waveform-voice:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.waveform-voice:disabled { opacity: .6; cursor: not-allowed; }
+.waveform-voice-error { margin: 0 0 12px; color: var(--color-muted); font-size: 14px; }
+.waveform-scroll { position: relative; overflow-x: auto; padding: 12px 8px; scrollbar-width: thin; }
+.transcript-waveform { display: flex; gap: clamp(4px, .6vw, 10px); min-width: 100%; width: max-content; background: linear-gradient(#e8edf5,#e8edf5) left 104px / 100% 1px no-repeat; }
+.waveform-turn { --wave-color: #365eaa; --wave-tint: #edf3ff; position: relative; display: flex; flex: calc(var(--turn-weight,1) * var(--wave-grow,1)) 0 var(--turn-width,34px); flex-direction: column; align-items: center; gap: 10px; min-width: var(--turn-width,34px); padding: 20px 3px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--color-muted); cursor: pointer; transition: background 160ms, color 160ms; }
+.waveform-bars { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 120px; margin: 24px 0; pointer-events: none; transform: scaleY(var(--wave-scale,1)); }
+.waveform-bars i { display: block; flex: 1; min-width: 1px; max-width: calc(6px * var(--wave-scale,1)); border-radius: 4px; background: var(--wave-color); transition: background 160ms; }
+.waveform-turn-label { position: relative; font-size: 13px; font-variant-numeric: tabular-nums; }
+.waveform-turn-label > svg { position: absolute; top: 3px; left: calc(100% + 4px); }
+.waveform-turn[data-speaking='true'] { box-shadow: inset 0 -2px var(--wave-color); }
+.waveform-playhead { position: absolute; inset: 26px 4px 43px; pointer-events: none; }
+.waveform-playhead i { position: absolute; inset-block: 0; left: calc(var(--voice-progress,0) * 100%); width: 2px; border-radius: 2px; background: var(--wave-color); opacity: .55; }
+.waveform-turn--active { --wave-color: #2452cc; background: #f1f5fb; color: var(--color-heading); }
+.waveform-turn--customer { --wave-color: var(--color-accent); --wave-tint: #fff0e7; }
+.waveform-turn--selected::after { content: ''; position: absolute; bottom: 2px; width: 16px; height: 2px; border-radius: 2px; background: var(--color-accent); }
+.waveform-turn:hover, .waveform-turn:focus-visible { background: var(--wave-tint); }
+.waveform-turn:hover .waveform-turn-label, .waveform-turn:focus-visible .waveform-turn-label { color: var(--wave-color); font-weight: 700; }
+.waveform-turn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.waveform-preview { min-height: 96px; margin-top: 10px; padding: 14px 18px; border-left: 2px solid var(--color-accent); border-radius: 0 8px 8px 0; background: #f7f9fd; }
+.waveform-preview > span { color: var(--color-muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.waveform-preview blockquote { margin: 5px 0 0; color: var(--color-text); font-size: 18px; line-height: 28px; }
+@media (prefers-reduced-motion: reduce), (hover: none) {
+  .waveform-turn { --wave-grow: 1 !important; --wave-scale: 1 !important; }
+  .waveform-bars { transform: none; }
+}
+.chart-data { margin-top: 10px; color: var(--color-muted); font-size: 16px; }
+.chart-data summary { cursor: pointer; width: fit-content; padding: 5px 0; }
+.chart-data-list { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+.chart-data-list button { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 10px; border: 1px solid #e5eaf1; border-radius: 6px; background: #fafcff; color: var(--color-muted); font-size: 14px; }
+.chart-data-list strong { color: var(--color-text); }
+
+@media (max-width: 800px) {
+  .waveform-heading { gap: 8px; }
+  .chart-data-list { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+  .chart-data-list { grid-template-columns: minmax(0,1fr); }
+  .chart-data-list button { overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .waveform-scroll:not([data-voice-enabled='true']) .waveform-bars--selected i { animation: waveform-select 600ms ease-out var(--wave-delay,0ms); }
+  .waveform-turn[data-speaking='true'] .waveform-bars i { animation: waveform-speaking 420ms ease-in-out calc(var(--voice-delay,0ms) * -1) infinite alternate; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .waveform-playhead { display: none; }
+}
+@keyframes waveform-select { 0%,100% { transform: scaleY(1); } 35% { transform: scaleY(1.24); background: var(--color-accent); } }
+@keyframes waveform-speaking { 0% { transform: scaleY(.62); } 45% { transform: scaleY(1); } 100% { transform: scaleY(.82); } }
+
+.waveform-voices { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 18px; margin: 12px 0; }
+.waveform-voices label { display: grid; gap: 5px; color: var(--color-muted); font-size: 14px; }
+.waveform-voices select { max-width: 100%; padding: 8px 10px; border: 1px solid #dce4f0; border-radius: 8px; background: white; color: var(--color-text); font: inherit; }
+.waveform-voices select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.waveform-voices > span { flex-basis: 100%; }
+
+.waveform-voice-settings { color: var(--color-muted); font-size: 14px; margin: 8px 0; }
+.waveform-voice-settings > summary { cursor: pointer; width: fit-content; }
+.waveform-turn-label > .codicon { position: absolute; top: 2px; left: calc(100% + 4px); font-size: 12px; }
