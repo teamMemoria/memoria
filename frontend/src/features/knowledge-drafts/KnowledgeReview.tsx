@@ -8,12 +8,26 @@ import {
   TextAreaField,
 } from '../../components/controls'
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../../components/ui/collapsible'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from '../../components/ui/dialog'
+import {
   canDecideKnowledge,
   type KnowledgeDraft,
   type KnowledgeReviewApi,
 } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
 import { queueTabFor, queueTabs } from './draftsQueue'
+import { KnowledgeSources } from './KnowledgeSources'
+import './knowledge-drafts.css'
 
 type LoadState =
   | { status: 'loading' }
@@ -28,130 +42,38 @@ const decidedAtFormatter = new Intl.DateTimeFormat('en-US', {
 })
 
 const statusTone = {
-  pending: 'neutral',
+  pending: 'attention',
   approved: 'positive',
   flagged: 'attention',
   rejected: 'neutral',
 } as const
 
-function DecisionForm({
-  api,
-  managerId,
-  entry,
-  onDecided,
-}: {
-  api: KnowledgeReviewApi
-  managerId: string
-  entry: KnowledgeDraft
-  onDecided: (entry: KnowledgeDraft) => void
-}) {
-  const verifiedId = useId()
-  const reasonId = useId()
-  const reference = entry.verificationReference
-  const [referenceOpened, setReferenceOpened] = useState(false)
-  const [verified, setVerified] = useState(false)
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState<'approve' | 'reject' | null>(null)
-  const [failed, setFailed] = useState(false)
-  // Permission alone never unlocks approval: the reference must be checked.
-  const canApprove = reference !== null && referenceOpened && verified
-
-  async function decide(outcome: 'approve' | 'reject') {
-    if (saving) return
-    setSaving(outcome)
-    setFailed(false)
-    try {
-      onDecided(
-        outcome === 'approve'
-          ? await api.approve(managerId, entry.id, reference!.url)
-          : await api.reject(managerId, entry.id, reason),
-      )
-    } catch {
-      // Keep the verification and reason so the Manager can try again.
-      setFailed(true)
-      setSaving(null)
-    }
-  }
-
-  function reject(event: FormEvent) {
-    event.preventDefault()
-    if (reason.trim()) void decide('reject')
-  }
-
+function SavedDecision({ entry }: { entry: KnowledgeDraft }) {
+  const { decision } = entry
   return (
     <>
-      <section className="knowledge-review-step" aria-labelledby={`${verifiedId}-title`}>
-        <h3 id={`${verifiedId}-title`}>Verify and approve</h3>
-        {reference ? (
-          <>
-            <p>
-              Check the draft against the authoritative reference before
-              approving. Matching conversations do not count as verification.
-            </p>
-            <a
-              className="knowledge-review-reference"
-              href={reference.url}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setReferenceOpened(true)}
-            >
-              <Icon name="document" /> Open verification reference:{' '}
-              {reference.title}
-            </a>
-            <label className="knowledge-review-check" htmlFor={verifiedId}>
-              <input
-                id={verifiedId}
-                type="checkbox"
-                checked={verified}
-                disabled={!referenceOpened || saving !== null}
-                onChange={(event) => setVerified(event.target.checked)}
-              />
-              I checked this draft against {reference.title}
-            </label>
-          </>
-        ) : (
-          <p>
-            No authoritative reference is available, so this entry cannot be
-            approved. Matching conversations alone do not verify it.
-          </p>
-        )}
-        <Button
-          loading={saving === 'approve'}
-          loadingLabel="Approving…"
-          disabled={!canApprove || saving !== null}
-          onClick={() => void decide('approve')}
-        >
-          Approve
-        </Button>
-      </section>
-      <form className="knowledge-review-step" onSubmit={reject}>
-        <h3>Reject</h3>
-        <TextAreaField
-          id={reasonId}
-          label="Reason for rejection"
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          disabled={saving !== null}
-          required
-        />
-        <Button
-          type="submit"
-          variant="secondary"
-          loading={saving === 'reject'}
-          loadingLabel="Rejecting…"
-          disabled={!reason.trim() || saving !== null}
-        >
-          Reject
-        </Button>
-      </form>
-      {failed && (
-        <p role="alert">The decision could not be saved. Please try again.</p>
+      <StatusLabel tone={entry.status === 'approved' ? 'positive' : 'neutral'}>
+        {entry.status === 'approved' ? 'Approved' : 'Rejected'}
+      </StatusLabel>
+      {decision ? (
+        <p className="metadata-line">
+          <span>{decision.managerName}</span>
+          <span>
+            {decidedAtFormatter.format(new Date(decision.decidedAt))} UTC
+          </span>
+        </p>
+      ) : (
+        entry.approvedBy && <p>Approved by {entry.approvedBy}</p>
+      )}
+      {decision?.reason && <p>Reason: {decision.reason}</p>}
+      {entry.status === 'approved' && (
+        <p>This entry is available on Agent knowledge pages.</p>
       )}
     </>
   )
 }
 
-function DecisionPanel({
+function ReviewContent({
   api,
   managerId,
   entry,
@@ -164,49 +86,215 @@ function DecisionPanel({
   canDecide: boolean
   onDecided: (entry: KnowledgeDraft) => void
 }) {
-  if (!canDecideKnowledge(entry)) {
-    const { decision } = entry
-    return (
-      <Panel title="Decision" className="knowledge-review-decision">
-        <StatusLabel tone={entry.status === 'approved' ? 'positive' : 'neutral'}>
-          {entry.status === 'approved' ? 'Approved' : 'Rejected'}
-        </StatusLabel>
-        {decision ? (
-          <p className="metadata-line">
-            <span>{decision.managerName}</span>
-            <span>{decidedAtFormatter.format(new Date(decision.decidedAt))} UTC</span>
-          </p>
-        ) : (
-          entry.approvedBy && <p>Approved by {entry.approvedBy}</p>
-        )}
-        {decision?.reason && <p>Reason: {decision.reason}</p>}
-        {entry.status === 'approved' && (
-          <p>This entry is available on Agent knowledge pages.</p>
-        )}
-      </Panel>
-    )
+  const verifiedId = useId()
+  const reasonId = useId()
+  const reference = entry.verificationReference
+  const [referenceOpened, setReferenceOpened] = useState(false)
+  const [verified, setVerified] = useState(false)
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState<'approve' | 'reject' | null>(null)
+  const [failed, setFailed] = useState<'approve' | 'reject' | null>(null)
+  canDecide = canDecide && api.decisionsAvailable !== false
+  const needsDecision = canDecideKnowledge(entry)
+  const canApprove =
+    reference !== null &&
+    referenceOpened &&
+    verified &&
+    !entry.duplicateOfId &&
+    !entry.possibleConflicts?.length
+  const tab = queueTabFor(entry)
+
+  async function decide(outcome: 'approve' | 'reject') {
+    if (saving || !canDecide || !needsDecision) return
+    if (outcome === 'approve' && !canApprove) return
+    if (outcome === 'reject' && !reason.trim()) return
+    setSaving(outcome)
+    setFailed(null)
+    try {
+      onDecided(
+        outcome === 'approve'
+          ? await api.approve(
+              managerId,
+              entry.id,
+              reference!.url,
+              entry.version,
+            )
+          : await api.reject(managerId, entry.id, reason, entry.version),
+      )
+    } catch {
+      setFailed(outcome)
+      setSaving(null)
+    }
   }
 
-  if (api.decisionsAvailable === false) {
-    return <Panel title="Decision" className="knowledge-review-decision">
-      <p>Knowledge drafts are read-only in this demo. Approve and reject are not available yet.</p>
-    </Panel>
+  function reject(event: FormEvent) {
+    event.preventDefault()
+    void decide('reject')
   }
 
   return (
-    <Panel title="Decision" className="knowledge-review-decision">
-      {canDecide ? (
-        <DecisionForm
-          key={`${entry.id}:${entry.version}:${entry.verificationReference?.url}`}
-          api={api}
-          managerId={managerId}
-          entry={entry}
-          onDecided={onDecided}
-        />
-      ) : (
-        <p>You do not have permission to approve or reject knowledge.</p>
-      )}
-    </Panel>
+    <>
+      <header className="knowledge-review-header">
+        <div className="knowledge-review-title">
+          <h1>{entry.title}</h1>
+          <StatusLabel tone={statusTone[tab]}>{queueTabs[tab]}</StatusLabel>
+        </div>
+        <p className="metadata-line">
+          <span>
+            {entry.sourceConversationIds.length} source{' '}
+            {entry.sourceConversationIds.length === 1
+              ? 'conversation'
+              : 'conversations'}
+          </span>
+          <span>
+            {entry.id} · {entry.topic} · Version{' '}
+            {entry.version.replace(/^v(?=\d)/i, '')}
+          </span>
+        </p>
+      </header>
+      {api.decisionsAvailable === false && <Panel title="Decision">
+        <p>Knowledge drafts are read-only in this demo. Approve and reject are not available yet.</p>
+      </Panel>}
+      <KnowledgeSources entry={entry} />
+      <Panel title="Knowledge entry" className="knowledge-entry">
+        {reference && (
+          <a
+            className="knowledge-review-reference"
+            href={reference.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open verification reference: ${reference.title}`}
+            onClick={() => setReferenceOpened(true)}
+          >
+            <Icon name="link" /> Verification source
+          </a>
+        )}
+        <div className="knowledge-entry-text">
+          {entry.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+          {entry.steps.length > 0 && (
+            <ol>
+              {entry.steps.map((step) => (
+                <li key={step.number} value={step.number}>
+                  {step.text}
+                </li>
+              ))}
+            </ol>
+          )}
+          {!entry.paragraphs.length && !entry.steps.length && (
+            <p>No draft content is available.</p>
+          )}
+        </div>
+        {needsDecision && canDecide && reference && (
+          <Collapsible className="knowledge-verification">
+            <CollapsibleTrigger asChild>
+              <Button variant="secondary">
+                <Icon name="plus" /> Verify reference
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="knowledge-verification-content">
+              <h3>Verify and approve</h3>
+              <p>
+                Check the draft against the authoritative reference before
+                approving. Matching conversations do not count as verification.
+              </p>
+              <p className="metadata-line">
+                Verification reference: {reference.title}
+              </p>
+              <label className="knowledge-review-check" htmlFor={verifiedId}>
+                <input
+                  id={verifiedId}
+                  type="checkbox"
+                  checked={verified}
+                  disabled={!referenceOpened || saving !== null}
+                  onChange={(event) => setVerified(event.target.checked)}
+                />
+                I checked this draft against {reference.title}
+              </label>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+        <p className="metadata-line">
+          {reference
+            ? 'Review the verification source before approving. Source calls show examples, not policy authority.'
+            : 'No authoritative reference is available, so this entry cannot be approved. Matching conversations alone do not verify it.'}
+        </p>
+      </Panel>
+      <Panel title="Decision" className="knowledge-review-decision">
+        {entry.duplicateOfId && (
+          <p>Resolve duplicate draft {entry.duplicateOfId} before approval.</p>
+        )}
+        {entry.possibleConflicts?.map((conflict) => (
+          <p key={conflict.id}>Unresolved conflict: {conflict.explanation}</p>
+        ))}
+        {!needsDecision ? (
+          <SavedDecision entry={entry} />
+        ) : !canDecide ? (
+          <p>You do not have permission to approve or reject knowledge.</p>
+        ) : (
+          <>
+            <div className="knowledge-review-actions">
+              <Button
+                loading={saving === 'approve'}
+                loadingLabel="Approving…"
+                disabled={!canApprove || saving !== null}
+                onClick={() => void decide('approve')}
+              >
+                Approve
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    className="knowledge-review-reject"
+                    disabled={saving !== null}
+                  >
+                    Reject
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogTitle>Reject knowledge draft</DialogTitle>
+                  <DialogDescription>
+                    A reason is required. Rejected guidance will remain
+                    unavailable to Agents.
+                  </DialogDescription>
+                  <form className="knowledge-review-step" onSubmit={reject}>
+                    <TextAreaField
+                      id={reasonId}
+                      label="Reason for rejection"
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                      disabled={saving !== null}
+                      required
+                    />
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      loading={saving === 'reject'}
+                      loadingLabel="Rejecting…"
+                      disabled={!reason.trim() || saving !== null}
+                    >
+                      Reject
+                    </Button>
+                    {failed === 'reject' && (
+                      <p role="alert">
+                        The decision could not be saved. Please try again.
+                      </p>
+                    )}
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {failed === 'approve' && (
+              <p role="alert">
+                The decision could not be saved. Please try again.
+              </p>
+            )}
+          </>
+        )}
+      </Panel>
+    </>
   )
 }
 
@@ -254,8 +342,7 @@ export function KnowledgeReview({
 
   const back = (
     <Link className="knowledge-drafts-back" to={`/manager/knowledge${search}`}>
-      <Icon name="arrowLeft" />
-      Knowledge drafts
+      <Icon name="arrowLeft" /> Knowledge drafts
     </Link>
   )
 
@@ -292,74 +379,19 @@ export function KnowledgeReview({
   }
 
   const { entry, canDecide } = state
-  const tab = queueTabFor(entry)
-
   return (
     <div className="knowledge-drafts knowledge-review">
       {back}
-      <header className="knowledge-review-header">
-        <h1>{entry.title}</h1>
-        <StatusLabel tone={statusTone[tab]}>{queueTabs[tab]}</StatusLabel>
-        <p className="metadata-line">
-          <span>{entry.id}</span>
-          <span>{entry.topic}</span>
-          <span>Version {entry.version.replace(/^v(?=\d)/i, '')}</span>
-        </p>
-      </header>
-      <div className="knowledge-review-columns">
-        <div className="knowledge-review-content">
-          <section aria-labelledby="knowledge-review-draft">
-            <h2 id="knowledge-review-draft">Draft</h2>
-            {entry.paragraphs.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
-            ))}
-            {entry.steps.length > 0 && (
-              <ol>
-                {entry.steps.map((step) => (
-                  <li key={step.number} value={step.number}>
-                    {step.text}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-          <section aria-labelledby="knowledge-review-passages">
-            <h2 id="knowledge-review-passages">Supporting conversations</h2>
-            <p className="metadata-line">
-              Found in {entry.sourceConversationIds.length}{' '}
-              {entry.sourceConversationIds.length === 1
-                ? 'conversation'
-                : 'conversations'}
-              . These show where the answer came from; they do not verify it.
-            </p>
-            {entry.passages.length ? (
-              <ul className="knowledge-review-passages">
-                {entry.passages.map((item) => (
-                  <li key={`${item.conversationId}-${item.turnNumber}`}>
-                    <span className="metadata-line">
-                      <span>Call {item.conversationId}</span>
-                      <span>Turn {item.turnNumber}</span>
-                      <span>{item.speaker}</span>
-                    </span>
-                    <blockquote>{item.text}</blockquote>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No conversation passages are available for this entry.</p>
-            )}
-          </section>
-        </div>
-        <DecisionPanel
-          api={api}
-          managerId={viewer.id}
-          entry={entry}
-          canDecide={canDecide}
-          onDecided={(decided) =>
-            setState({ status: 'ready', entry: decided, canDecide })
-          }
-        />
-      </div>
+      <ReviewContent
+        key={`${entry.id}:${entry.version}:${entry.verificationReference?.url}`}
+        api={api}
+        managerId={viewer.id}
+        entry={entry}
+        canDecide={canDecide}
+        onDecided={(decided) =>
+          setState({ status: 'ready', entry: decided, canDecide })
+        }
+      />
     </div>
   )
 }

@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import {
-  Button,
-  Panel,
-  StatusLabel,
-  Tabs,
-  TextField,
-} from '../../components/controls'
+import { Icon } from '../../components/Icon'
+import { Button, Panel, Tabs, TextField } from '../../components/controls'
 import type { KnowledgeDraft, KnowledgeReviewApi } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
 import { formatKnowledgeDate } from '../approved-knowledge/knowledge'
@@ -14,7 +9,6 @@ import {
   countQueueTabs,
   filterQueue,
   isQueueTab,
-  queueTabFor,
   queueTabs,
   type QueueTab,
 } from './draftsQueue'
@@ -26,12 +20,42 @@ type LoadState =
   | { status: 'error' }
   | { status: 'ready'; entries: KnowledgeDraft[] }
 
-const statusTone = {
-  pending: 'neutral',
-  approved: 'positive',
-  flagged: 'attention',
-  rejected: 'neutral',
-} as const satisfies Record<QueueTab, 'neutral' | 'positive' | 'attention'>
+function KnowledgeCounts({ counts }: { counts: Record<QueueTab, number> }) {
+  const maximum = Math.max(
+    10,
+    Math.ceil(Math.max(...Object.values(counts)) / 10) * 10,
+  )
+  const statuses = ['pending', 'approved', 'flagged'] as const
+
+  return (
+    <figure className="knowledge-counts" aria-label="Knowledge draft counts">
+      <figcaption className="knowledge-drafts-sr-only">
+        {statuses
+          .map((status) => `${queueTabs[status]}: ${counts[status]}`)
+          .join('. ')}
+      </figcaption>
+      <div className="knowledge-counts-bars" aria-hidden="true">
+        {statuses.map((status) => (
+          <div className="knowledge-counts-row" key={status}>
+            <span>{queueTabs[status]}</span>
+            <div className="knowledge-counts-track">
+              <span
+                className={`knowledge-counts-bar knowledge-counts-bar--${status}`}
+                style={{ width: `${(counts[status] / maximum) * 100}%` }}
+              />
+              <strong>{counts[status]}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="knowledge-counts-axis" aria-hidden="true">
+        {Array.from({ length: 11 }, (_, index) => (
+          <span key={index}>{(index * maximum) / 10}</span>
+        ))}
+      </div>
+    </figure>
+  )
+}
 
 function useKnowledgeQueue(api: KnowledgeReviewApi | null, viewer: Viewer) {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
@@ -74,7 +98,8 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous)
-        if (value && !(key === 'tab' && value === 'pending')) next.set(key, value)
+        if (value && !(key === 'tab' && value === 'pending'))
+          next.set(key, value)
         else next.delete(key)
         return next
       },
@@ -100,7 +125,7 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
         {queueTabs[tab]} knowledge entries
       </caption>
       <colgroup>
-        {[36, 14, 18, 16, 16].map((width, index) => (
+        {[30, 19, 19, 18, 14].map((width, index) => (
           <col key={index} style={{ width: `${width}%` }} />
         ))}
       </colgroup>
@@ -110,7 +135,9 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
           <th scope="col">Topic</th>
           <th scope="col">Sources</th>
           <th scope="col">Updated</th>
-          <th scope="col">Status</th>
+          <th scope="col">
+            <span className="knowledge-drafts-sr-only">Action</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -123,7 +150,7 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
                 >
                   {entry.title}
                 </Link>
-                <span className="metadata-line">
+                <span className="knowledge-drafts-sr-only">
                   <span>{entry.id}</span>
                 </span>
               </span>
@@ -131,15 +158,17 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
             <td>{entry.topic}</td>
             <td>
               {entry.sourceConversationIds.length}{' '}
-              {entry.sourceConversationIds.length === 1
-                ? 'conversation'
-                : 'conversations'}
+              {entry.sourceConversationIds.length === 1 ? 'source' : 'sources'}
             </td>
             <td>{formatKnowledgeDate(entry.updatedAt)}</td>
             <td>
-              <StatusLabel tone={statusTone[queueTabFor(entry)]}>
-                {queueTabs[queueTabFor(entry)]}
-              </StatusLabel>
+              <Link
+                className="knowledge-drafts-action"
+                to={`/manager/knowledge/${encodeURIComponent(entry.id)}${search}`}
+                aria-label={`Review ${entry.title}`}
+              >
+                Review <Icon name="arrowRight" />
+              </Link>
             </td>
           </tr>
         ))}
@@ -169,21 +198,14 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
         <p role="status">Loading knowledge drafts…</p>
       ) : state.status === 'error' ? (
         <Panel title="Unable to load knowledge drafts">
-          <p role="alert">Knowledge drafts could not be loaded. Please try again.</p>
+          <p role="alert">
+            Knowledge drafts could not be loaded. Please try again.
+          </p>
           <Button onClick={retry}>Try again</Button>
         </Panel>
       ) : (
         <>
-          <div role="search" aria-label="Find knowledge entries">
-            <TextField
-              id="knowledge-drafts-search"
-              type="search"
-              label="Search knowledge entries"
-              placeholder="Search by title, topic or ID"
-              value={query}
-              onChange={(event) => setParam('q', event.target.value)}
-            />
-          </div>
+          <KnowledgeCounts counts={counts} />
           <Tabs
             label="Review status"
             value={tab}
@@ -191,7 +213,22 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
             items={(Object.keys(queueTabs) as QueueTab[]).map((value) => ({
               value,
               label: `${queueTabs[value]} (${counts[value]})`,
-              content: value === tab ? list : null,
+              content:
+                value === tab ? (
+                  <div className="knowledge-drafts-results">
+                    <div role="search" aria-label="Find knowledge entries">
+                      <TextField
+                        id="knowledge-drafts-search"
+                        type="search"
+                        label="Search knowledge entries"
+                        placeholder="Search drafts"
+                        value={query}
+                        onChange={(event) => setParam('q', event.target.value)}
+                      />
+                    </div>
+                    {list}
+                  </div>
+                ) : null,
             }))}
           />
         </>
