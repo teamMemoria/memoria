@@ -2,17 +2,17 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from backend.data.demo_profiles import (
+    DemoAgent,
+    DemoProfiles,
+    load_profiles,
+)
 from backend.data.import_conversations import (
     import_conversations,
     load_directory,
     placeholder_agent_id,
 )
-from backend.data.seed_demo_profiles import (
-    DemoAgent,
-    DemoProfiles,
-    load_profiles,
-    seed_demo_profiles,
-)
+from backend.data.seed_demo_profiles import seed_demo_profiles
 from backend.models import (
     Agent,
     Conversation,
@@ -136,10 +136,15 @@ async def test_profiles_and_their_conversations_are_listed(
     await add_conversation(session, organization, unassigned, "ABCD", "1891")
     await add_conversation(session, organization, unassigned, "ABCD", "5496")
     await seed_demo_profiles(session, organization.id, PROFILES)
+    # Old databases can retain the suffix; every API returns the canonical name.
+    user = await session.scalar(select(User).where(User.external_id == "demo-agent-01"))
+    user.display_name = "Alex (demo)"
+    await session.flush()
     providers = create_database_providers(sessions_for(session))
 
     profiles = {p.id: p for p in await providers.demo_profiles.list_profiles()}
     assert profiles["demo-agent-01"].conversation_count == 2
+    assert profiles["demo-agent-01"].display_name == "Alex"
     assert profiles["demo-agent-02"].conversation_count == 0
     assert profiles["demo-manager-01"].role == "manager"
     assert profiles["demo-manager-01"].conversation_count is None
@@ -149,6 +154,13 @@ async def test_profiles_and_their_conversations_are_listed(
         alex.organization_id, alex.user_id
     )
     assert len(listed) == 2
+    assert all(call.agent_name == "Alex" for call in listed)
+    viewer = await providers.viewers.get_viewer(alex.organization_id, alex.user_id)
+    assert viewer.display_name == "Alex"
+    detail = await providers.calls.get_for_agent(
+        alex.organization_id, alex.user_id, listed[0].id
+    )
+    assert detail.agent_name == "Alex"
     amy = await providers.identities.resolve("demo-agent-02")
     assert (
         await providers.conversations.list_for_agent(amy.organization_id, amy.user_id)

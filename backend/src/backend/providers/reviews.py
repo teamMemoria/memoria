@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import Permission
-from backend.data.seed_demo_profiles import profile_display_name
+from backend.data.demo_profiles import profile_display_name
 from backend.models import (
     Agent,
     Audit,

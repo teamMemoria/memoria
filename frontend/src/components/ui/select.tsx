@@ -7,7 +7,6 @@ import { Icon } from '../Icon'
 import './select.css'
 
 export const Select = SelectPrimitive.Root
-export const SelectGroup = SelectPrimitive.Group
 export function SelectValue(props: ComponentProps<typeof SelectPrimitive.Value>) {
   return <SelectPrimitive.Value data-slot="select-value" {...props} />
 }

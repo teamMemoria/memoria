@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import CurrentUser, permissions_for_membership
-from backend.data.seed_demo_profiles import DEMO_PREFIX, profile_display_name
+from backend.data.demo_profiles import DEMO_PREFIX, profile_display_name
 from backend.models import AgentContext as AgentContextRecord
 from backend.models import (
     Audit,

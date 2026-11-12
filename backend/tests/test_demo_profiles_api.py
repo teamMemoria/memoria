@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.core.config import Settings
-from backend.data.seed_demo_profiles import load_profiles, profile_display_name
+from backend.data.demo_profiles import load_profiles, profile_display_name
 from backend.main import create_app
 from backend.providers import ProviderUnavailableError, create_fixture_providers
 

@@ -26,6 +26,7 @@ from backend.data.conversation_metrics import (
     ConversationMetrics,
     compute_conversation_metrics,
 )
+from backend.data.demo_profiles import demo_agent_ids
 from backend.db.session import async_session_factory
 from backend.models import Agent, Conversation, ConversationMetric, Organization, Turn
 
@@ -52,9 +53,6 @@ class CuratedConversation:
 
 def agent_for(data: dict[str, Any]) -> str:
     """The source's agent, else the demo profile listed for this conversation, else the placeholder."""
-    # Imported here: seed_demo_profiles imports this module.
-    from backend.data.seed_demo_profiles import demo_agent_ids
-
     dataset = data["source"]["dataset"]
     original_id = str(data["source"]["original_id"])
     return (

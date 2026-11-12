@@ -57,22 +57,22 @@ describe('database profile HTTP integration', () => {
     expect(fetch.mock.calls[0][1]?.headers).toEqual({})
   })
 
-  it('removes only legacy profile suffixes, preserving IDs, stored scores and exact evidence', async () => {
+  it('preserves server-owned profile names, IDs, scores and exact evidence', async () => {
     const call = await callFixture({ agentId: 'demo-abcd-alex', agentName: 'Alex (demo)' })
     const fetch = mockResponse(call)
     const actual = await createHttpApis().callApi.getCallForAgent('demo-abcd-alex', call.id)
-    expect(actual).toEqual({ ...call, agentName: 'Alex' })
+    expect(actual).toEqual(call)
     expect(fetch.mock.calls[0][1]?.headers).toEqual({ 'X-Dev-User': 'demo-abcd-alex' })
     mockResponse({ ...call, agentId: 'unrelated-user' })
     expect((await createHttpApis().callApi.getCallForAgent('unrelated-user', call.id))?.agentName).toBe('Alex (demo)')
   })
 
   it('uses the selected profile for viewer lookup and preserves database conversation counts', async () => {
-    const profile = { id: 'demo-abcd-alex', displayName: 'Alex (demo)', role: 'agent', conversationCount: 2 }
+    const profile = { id: 'demo-abcd-alex', displayName: 'Alex', role: 'agent', conversationCount: 2 }
     mockResponse([profile])
-    expect(await createHttpApis().profilesApi.listProfiles()).toEqual([{ ...profile, displayName: 'Alex' }])
+    expect(await createHttpApis().profilesApi.listProfiles()).toEqual([profile])
     const fetch = mockResponse(profile)
-    expect(await createHttpApis().viewerApi.getViewer(profile.id)).toEqual({ ...profile, displayName: 'Alex' })
+    expect(await createHttpApis().viewerApi.getViewer(profile.id)).toEqual(profile)
     expect(fetch.mock.calls[0][1]?.headers).toEqual({ 'X-Dev-User': profile.id })
   })
 
