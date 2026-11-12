@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router'
 import type { Viewer } from '../../types/viewer'
 import { Sidebar } from './Sidebar'
-import { Button } from '../../components/controls'
+import { ProfileMenu } from './ProfileMenu'
 import './AppLayout.css'
 
 export function AppLayout({
@@ -24,18 +24,17 @@ export function AppLayout({
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <Sidebar viewer={viewer} />
+      <Sidebar viewer={viewer} onSwitchProfile={onSwitchProfile} />
       <div className="workspace">
         <header className="workspace-header">
-          {onSwitchProfile && (
-            <Button
-              variant="quiet"
-              className="switch-profile"
-              onClick={onSwitchProfile}
-            >
-              Switch profile
-            </Button>
-          )}
+          {onSwitchProfile ? (
+            <ProfileMenu viewer={viewer} onSwitchProfile={onSwitchProfile}>
+              <button className="avatar profile-trigger" type="button"
+                aria-label={`Open profile menu for ${viewer.displayName}`}>
+                <span role="img" aria-label={`${viewer.displayName}, ${viewer.role}`}>{initials}</span>
+              </button>
+            </ProfileMenu>
+          ) : (
           <span
             className="avatar"
             role="img"
@@ -44,6 +43,7 @@ export function AppLayout({
           >
             {initials}
           </span>
+          )}
         </header>
         <main className="workspace-content" id="main-content" tabIndex={-1}>
           <Outlet />

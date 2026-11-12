@@ -1,9 +1,9 @@
+import { MemoriaSelectField } from '../../components/ui/select'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import {
   Button,
   Panel,
-  SelectField,
   StatusLabel,
   TextField,
 } from '../../components/controls'
@@ -117,19 +117,14 @@ export function ReviewQueue({
           onChange={(event) => setParam('q', event.target.value)}
           disabled={state.status !== 'ready'}
         />
-        <SelectField
+        <MemoriaSelectField
           id="review-queue-status"
           label="Review status"
           value={status}
-          onChange={(event) => setParam('status', event.target.value)}
+          onValueChange={(value) => setParam('status', value)}
           disabled={state.status !== 'ready'}
-        >
-          {Object.entries(conversationStatusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {value === defaultQueueStatus ? `${label} (flagged)` : label}
-            </option>
-          ))}
-        </SelectField>
+          options={Object.entries(conversationStatusLabels).map(([value, label]) => [value, value === defaultQueueStatus ? `${label} (flagged)` : label] as const)}
+        />
       </div>
       {!api ? (
         <Panel title="Team review unavailable">
@@ -201,14 +196,14 @@ export function ReviewQueue({
               </thead>
               <tbody>
                 {visible.map((conversation) => {
-                  const path = findingReviewPath(conversation, search)
+                  const path = findingReviewPath(conversation, search) ?? `/manager/conversations/${encodeURIComponent(conversation.id)}${search}`
                   return (
                     <tr key={conversation.id}>
                       <td>
                         {path ? (
                           <Link
                             to={path}
-                            aria-label={`Review ${conversation.id}: ${conversation.flag!.findingTitle}`}
+                            aria-label={`Review ${conversation.id}: ${conversation.flag?.findingTitle ?? conversation.topic}`}
                           >
                             {conversation.id}
                           </Link>
@@ -231,7 +226,7 @@ export function ReviewQueue({
                         )}
                       </td>
                       <td>
-                        <time dateTime={conversation.date}>
+                        <time dateTime={conversation.date ?? undefined}>
                           {formatConversationDate(conversation.date)}
                         </time>
                       </td>

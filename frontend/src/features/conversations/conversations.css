@@ -79,7 +79,8 @@
   gap: 0;
 }
 .conversation-sr-only,
-.conversation-filters > .field > span:first-child {
+.conversation-filters > .field > span:first-child,
+.conversation-filters > .field > label {
   position: absolute;
   width: 1px;
   height: 1px;

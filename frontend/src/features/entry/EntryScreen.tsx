@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { Button } from '../../components/controls'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import type {
   DemoProfile,
   DemoProfilesApi,
@@ -68,101 +69,135 @@ export function EntryScreen({
   return (
     <div className="entry">
       <main className="entry-panel" aria-labelledby={headingId}>
-        <h1 id={headingId}>Welcome to Memoria</h1>
-        <p className="entry-intro">Choose a demo profile to open its dashboard.</p>
-        {notice && (
-          <p className="entry-notice" role="alert">
-            {notice}
-          </p>
-        )}
+        <div className="entry-panel-content">
+          <header className="entry-welcome">
+            <h1 id={headingId} aria-label="Welcome to Memoria">
+              <span>Welcome to</span>
+              <img src="/brand/memoria-wordmark-navy.svg" alt="" />
+            </h1>
+            <p className="entry-intro">Choose a demo profile to get started.</p>
+          </header>
+          {notice && (
+            <p className="entry-notice" role="alert">
+              {notice}
+            </p>
+          )}
 
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (selected) onSelect(selected)
-          }}
-        >
-          <fieldset className="entry-roles">
-            <legend>Sign in as</legend>
-            {roles.map((item) => (
-              <label key={item.value} className="entry-choice">
-                <input
-                  type="radio"
-                  name={roleName}
-                  value={item.value}
-                  checked={role === item.value}
-                  onChange={() => {
-                    setRole(item.value)
-                    setSelectedId(null)
-                  }}
-                />
-                {item.label}
-              </label>
-            ))}
-          </fieldset>
-
-          {state.status === 'loading' && (
-            <p role="status">Loading demo profiles…</p>
-          )}
-          {state.status === 'error' && (
-            <div className="entry-error">
-              <p role="alert">We couldn't load the demo profiles.</p>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setState({ status: 'loading' })
-                  setAttempt((value) => value + 1)
-                }}
-              >
-                Try again
-              </Button>
-            </div>
-          )}
-          {state.status === 'ready' && profiles.length === 0 && (
-            <p>No demo {role} profiles are available yet.</p>
-          )}
-          {state.status === 'ready' && profiles.length > 0 && (
-            <fieldset className="entry-profiles">
-              <legend>{role === 'agent' ? 'Agent profile' : 'Manager profile'}</legend>
-              {profiles.map((profile) => (
-                <label key={profile.id} className="entry-choice">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (selected) onSelect(selected)
+            }}
+          >
+            <fieldset className="entry-roles">
+              <legend className="entry-sr-only">Sign in as</legend>
+              {roles.map((item) => (
+                <label key={item.value} className="entry-choice">
                   <input
+                    aria-label={item.label}
                     type="radio"
-                    name={profileName}
-                    value={profile.id}
-                    checked={selectedId === profile.id}
-                    onChange={() => setSelectedId(profile.id)}
+                    name={roleName}
+                    value={item.value}
+                    checked={role === item.value}
+                    onChange={() => {
+                      setRole(item.value)
+                      setSelectedId(null)
+                    }}
                   />
-                  <span className="entry-profile-name">{profile.displayName}</span>
-                  <span className="entry-profile-detail">
-                    Demo profile
-                    {profile.conversationCount !== null &&
-                      ` · ${profile.conversationCount} ${
-                        profile.conversationCount === 1
-                          ? 'conversation'
-                          : 'conversations'
-                      }`}
+                  <span className="entry-role-top" aria-hidden="true">
+                    <img src={`/brand/login-${item.value}.svg`} alt="" />
+                    {role === item.value && (
+                      <img className="entry-role-selected" src="/brand/login-selected.svg" alt="" />
+                    )}
+                  </span>
+                  <span className="entry-role-title">
+                    {item.label}
+                    {item.value === 'manager' && <img src="/brand/login-arrow.svg" alt="" />}
+                  </span>
+                  <span className="entry-role-detail">
+                    {item.value === 'agent' ? 'View your conversations' : 'Open manager workspace'}
                   </span>
                 </label>
               ))}
             </fieldset>
-          )}
 
-          <Button type="submit" disabled={!selected}>
-            Continue
-          </Button>
-        </form>
+            {state.status === 'loading' && (
+              <p role="status">Loading demo profiles…</p>
+            )}
+            {state.status === 'error' && (
+              <div className="entry-error">
+                <p role="alert">We couldn't load the demo profiles.</p>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setState({ status: 'loading' })
+                    setAttempt((value) => value + 1)
+                  }}
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
+            {state.status === 'ready' && profiles.length === 0 && (
+              <p>No demo {role} profiles are available yet.</p>
+            )}
+            {state.status === 'ready' && profiles.length > 0 && (
+              <div className="entry-profiles">
+                <label htmlFor={profileName}>
+                  {role === 'agent' ? 'Choose an agent' : 'Choose a manager'}
+                </label>
+                <Select value={selected?.id ?? ''} onValueChange={setSelectedId} required>
+                  <SelectTrigger
+                    id={profileName}
+                    className="entry-profile-trigger"
+                    aria-describedby={selected ? `${profileName}-detail` : undefined}
+                  >
+                    <span className="entry-avatar" aria-hidden="true">
+                      {selected ? selected.displayName.slice(0, 2).toUpperCase() : '—'}
+                    </span>
+                    <SelectValue placeholder="Select a profile" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map((profile) => (
+                      <SelectItem
+                        key={profile.id}
+                        value={profile.id}
+                        textValue={profile.displayName}
+                        leading={<span className="entry-avatar entry-avatar-small">{profile.displayName.slice(0, 2).toUpperCase()}</span>}
+                        description={profile.conversationCount === null ? undefined :
+                          `${profile.conversationCount} ${profile.conversationCount === 1 ? 'conversation' : 'conversations'}`}
+                      >
+                        {profile.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selected && (
+                  <span id={`${profileName}-detail`} className="entry-sr-only">
+                    Demo profile{selected.conversationCount !== null &&
+                      ` · ${selected.conversationCount} ${selected.conversationCount === 1 ? 'conversation' : 'conversations'}`}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <Button className="entry-continue" type="submit" disabled={!selected}>
+              <span>{selected ? `Continue as ${selected.displayName}` : 'Continue'}</span>
+              <img src="/brand/login-arrow.svg" alt="" />
+            </Button>
+          </form>
+        </div>
       </main>
 
       <aside className="entry-brand" aria-label="Memoria">
         {reducedMotion ? (
-          <img src="/brand/memoria-wordmark.svg" alt="Memoria" />
+          <img src="/brand/login-wordmark-white.svg" alt="Memoria" />
         ) : (
           <video
-            src="/brand/memoria-logo-animation.mp4"
+            src="/brand/memoria-login-navy.mp4"
+            preload="auto"
             autoPlay
             muted
-            loop
             playsInline
             aria-label="Memoria"
           />

@@ -17,6 +17,14 @@ const viewerApi = {
   },
 }
 
+// jsdom does not implement the scrolling API used by Radix's roving focus.
+HTMLElement.prototype.scrollIntoView ??= () => {}
+
+async function selectProfile(name: RegExp) {
+  fireEvent.keyDown(await screen.findByRole('combobox'), { key: 'ArrowDown' })
+  fireEvent.click(await screen.findByRole('option', { name }))
+}
+
 function openEntry(overrides = {}) {
   return openApp({ profilesApi, viewerApi, ...overrides })
 }
@@ -37,9 +45,8 @@ describe('demo entry screen', () => {
     await screen.findByRole('heading', { name: 'Welcome to Memoria' })
     const continueButton = screen.getByRole<HTMLButtonElement>('button', { name: 'Continue' })
     expect(continueButton.disabled).toBe(true)
+    await selectProfile(/Alex Morgan/)
     expect(screen.getByText(/6 conversations/)).toBeTruthy()
-
-    fireEvent.click(await screen.findByRole('radio', { name: /Alex Morgan/ }))
     fireEvent.click(continueButton)
 
     await screen.findByRole('heading', { name: 'My conversations' })
@@ -51,10 +58,44 @@ describe('demo entry screen', () => {
   it('opens the Manager dashboard with the demo Manager profile', async () => {
     openEntry()
     fireEvent.click(await screen.findByRole('radio', { name: 'Manager' }))
-    expect(screen.queryByRole('radio', { name: /Alex Morgan/ })).toBeNull()
-    fireEvent.click(screen.getByRole('radio', { name: /Maya Chen/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.queryByRole('option', { name: /Alex Morgan/ })).toBeNull()
+    await selectProfile(/Maya Chen/)
+    fireEvent.click(screen.getByRole('button', { name: /Continue/ }))
     await screen.findByRole('heading', { name: 'Team conversations' })
+  })
+
+  it('clears the selection when changing roles', async () => {
+    openEntry()
+    await selectProfile(/Alex Morgan/)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: /Continue as Alex/ }).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('radio', { name: 'Manager' }))
+    expect(screen.getByRole('combobox').textContent).toContain('Select a profile')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Continue' }).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('radio', { name: 'Agent' }))
+    expect(screen.getByRole('combobox').textContent).toContain('Select a profile')
+  })
+
+  it('keeps every server profile in the dropdown and submits its exact ID', async () => {
+    const many = Array.from({ length: 31 }, (_, i) => ({
+      id: `database-profile-${i}`, displayName: `Agent ${i}`, role: 'agent' as const,
+      conversationCount: i,
+    }))
+    const getViewer = vi.fn(async (id?: string) => many.find((p) => p.id === id) ?? null)
+    openEntry({ profilesApi: { listProfiles: async () => many }, viewerApi: { getViewer } })
+    const select = await screen.findByRole('combobox', { name: 'Choose an agent' })
+    fireEvent.keyDown(select, { key: 'ArrowDown' })
+    expect(await screen.findAllByRole('option')).toHaveLength(31)
+    fireEvent.click(screen.getByRole('option', { name: /Agent 30/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Continue as Agent 30/ }))
+    await screen.findByRole('heading', { name: 'My conversations' })
+    expect(getViewer).toHaveBeenCalledWith('database-profile-30')
+  })
+
+  it('leaves an empty role unavailable instead of inventing a profile', async () => {
+    openEntry({ profilesApi: { listProfiles: async () => [] } })
+    await screen.findByText('No demo agent profiles are available yet.')
+    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Continue' }).disabled).toBe(true)
   })
 
   it('remembers the chosen profile across a reload', async () => {
@@ -87,14 +128,18 @@ describe('demo entry screen', () => {
     await screen.findByText("We couldn't load the demo profiles.")
     expect(screen.queryByText('Internal connection details')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('radio', { name: /Alex Morgan/ })
+    await screen.findByRole('combobox', { name: 'Choose an agent' })
     expect(listProfiles).toHaveBeenCalledTimes(2)
   })
 
-  it('returns to the entry screen when switching profile', async () => {
+  it.each([0, 1])('switches profile from menu trigger %s without switching on open', async (index) => {
     localStorage.setItem('memoria.demoProfile', 'agent-alex-morgan')
     openEntry()
-    fireEvent.click(await screen.findByRole('button', { name: 'Switch profile' }))
+    fireEvent.keyDown((await screen.findAllByRole('button', { name: 'Open profile menu for Alex Morgan' }))[index], { key: 'Enter' })
+    const item = await screen.findByRole('menuitem', { name: 'Switch profile' })
+    expect(localStorage.getItem('memoria.demoProfile')).toBe('agent-alex-morgan')
+    expect(screen.getByRole('heading', { name: 'My conversations' })).toBeTruthy()
+    fireEvent.click(item)
     await screen.findByRole('heading', { name: 'Welcome to Memoria' })
     expect(localStorage.getItem('memoria.demoProfile')).toBeNull()
   })
@@ -110,6 +155,6 @@ describe('demo entry screen', () => {
   it('plays the animated logo otherwise', async () => {
     const { container } = openEntry()
     await screen.findByRole('heading', { name: 'Welcome to Memoria' })
-    expect(container.querySelector('video')?.getAttribute('src')).toBe('/brand/memoria-logo-animation.mp4')
+    expect(container.querySelector('video')?.getAttribute('src')).toBe('/brand/memoria-login-navy.mp4')
   })
 })
