@@ -14,6 +14,7 @@ from backend.schemas import (
 )
 from backend.schemas.knowledge_review import (
     DraftQueueStatus,
+    KnowledgeDecisionInput,
     KnowledgeDraft,
     KnowledgeQueueCounts,
     KnowledgeReviewDetail,
@@ -173,6 +174,15 @@ class KnowledgeReviewProvider(Protocol):
     async def get_for_approver(
         self, organization_id: str, user_id: str, draft_id: str
     ) -> KnowledgeReviewDetail | None: ...
+
+    async def decide(
+        self,
+        organization_id: str,
+        user_id: str,
+        draft_id: str,
+        outcome: str,
+        decision: KnowledgeDecisionInput,
+    ) -> KnowledgeDraft: ...
 
 
 @dataclass(frozen=True)

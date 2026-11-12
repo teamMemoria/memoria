@@ -117,6 +117,7 @@ class Conversation(Base):
         JSONB, default=dict, server_default="{}"
     )
     customer_record: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    canonical_evidence: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     # Composite foreign keys share organization_id, so SQLAlchemy needs the
     # overlaps declarations to understand that these relationships coordinate.

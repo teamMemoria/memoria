@@ -58,6 +58,14 @@ def create_app(
     app.state.providers = providers
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
+    if analysis is None and settings.analysis_engine == "rules":
+        from backend.services.rule_assessment import LocalRuleAdapter, load_rule_context
+
+        analysis = AnalysisService(
+            db_session.async_session_factory,
+            adapter=LocalRuleAdapter(),
+            scoring_context=load_rule_context(),
+        )
     app.state.analysis = analysis or AnalysisService(db_session.async_session_factory)
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
         db_session.async_session_factory

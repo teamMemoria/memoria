@@ -3,10 +3,7 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    // Sends API requests to the backend in development (VITE_DEMO_BACKEND=true).
-    proxy: { '/api': process.env.MEMORIA_API_TARGET || 'http://localhost:8000' },
-  },
+  server: { proxy: { '/api': process.env.MEMORIA_API_TARGET || 'http://127.0.0.1:8010' } },
   test: {
     environment: 'jsdom',
   },

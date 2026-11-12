@@ -25,6 +25,7 @@ from backend.core.auth import CurrentUser, permissions_for_membership
 from backend.data.demo_profiles import DEMO_PREFIX, profile_display_name
 from backend.models import AgentContext as AgentContextRecord
 from backend.models import (
+    AnalysisRun,
     Audit,
     Conversation,
     EntryStatus,
@@ -57,7 +58,15 @@ from backend.schemas import (
 )
 from backend.schemas import Conversation as ConversationSummary
 from backend.schemas import KnowledgeEntry as KnowledgeEntrySchema
-from backend.schemas.call_review import CRITERION_IDS, AuditResult, CriterionId
+from backend.schemas.call_review import (
+    CRITERION_IDS,
+    AssessmentVersion,
+    AuditResult,
+    CategoryScoring,
+    CriterionId,
+    OverallScoring,
+    RequestLink,
+)
 from backend.schemas.conversations import AutomatedResult, ReviewStatus
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
@@ -86,7 +95,11 @@ OUTCOME_NAMES = {
     ManagerReviewOutcome.DISMISSED: "dismissed",
     ManagerReviewOutcome.CANNOT_ASSESS: "cannot-assess",
 }
-SPEAKER_NAMES = {Speaker.AGENT: "Agent", Speaker.CUSTOMER: "Customer"}
+SPEAKER_NAMES = {
+    Speaker.AGENT: "Agent",
+    Speaker.CUSTOMER: "Customer",
+    Speaker.SYSTEM_ACTION: "System action",
+}
 
 NO_TOPIC = "Unassigned"
 NO_STORED_RESULT = "No result was stored for this criterion."
@@ -320,12 +333,7 @@ def latest_decision(audit: Audit | None) -> ManagerDecision | None:
 
 
 def transcript_of(conversation: Conversation) -> Transcript | None:
-    """Agent and customer turns with their original numbers.
-
-    System actions are not part of the frontend transcript type, so they are
-    left out. The database does not record whether a transcript was cut short,
-    so a stored transcript is reported as complete.
-    """
+    """Preserve original positions and label recorded actions separately."""
     turns = [
         TranscriptTurn(
             number=turn.line_number,
@@ -338,7 +346,13 @@ def transcript_of(conversation: Conversation) -> Transcript | None:
     ]
     if not turns:
         return None
-    return Transcript(complete=True, turns=turns, unavailable_reason=None)
+    evidence = conversation.canonical_evidence
+    complete = (
+        evidence["conversations"][0]["coverage"]["transcript"]["status"] == "complete"
+        if evidence
+        else True
+    )
+    return Transcript(complete=complete, turns=turns, unavailable_reason=None)
 
 
 def knowledge_entry_schema(
@@ -367,7 +381,12 @@ def knowledge_entry_schema(
         effective_at=None,
         last_confirmed_at=iso_date(entry.last_confirmed_at),
         owner=None,
-        source=None,
+        source={
+            "title": "Verified approval reference",
+            "url": review.verified_reference_url,
+        }
+        if review.verified_reference_url
+        else None,
         paragraphs=[
             paragraph.strip()
             for paragraph in entry.answer_text.split("\n\n")
@@ -412,10 +431,13 @@ async def audits_by_conversation(
 
 
 def conversation_summary(
-    conversation: Conversation, audit: Audit | None, agent: AgentIdentity
+    conversation: Conversation,
+    audit: Audit | None,
+    agent: AgentIdentity,
+    report: dict | None = None,
 ) -> ConversationSummary:
     if audit is None:
-        automated: AutomatedResult = "processing"
+        automated: AutomatedResult = "unavailable"
     else:
         criteria, _, _ = assessment(
             audit, conversation.id, conversation.organization_id
@@ -423,12 +445,16 @@ def conversation_summary(
         automated = overall_result(criteria)
     return ConversationSummary(
         id=str(conversation.id),
+        source_id=conversation.original_id
+        if conversation.source_dataset == "ABCD"
+        else None,
         topic=conversation.topic.name if conversation.topic else NO_TOPIC,
         agent_id=agent.id,
         agent_name=agent.name,
         date=iso_date(conversation.conversation_date),
         automated_result=automated,
         review_status=review_status(audit),
+        overall_scoring=report_overall(audit.assessment_report if audit else report),
     )
 
 
@@ -473,9 +499,13 @@ def call_review(
     audit: Audit | None,
     agent: AgentIdentity,
     context: AgentContextRecord | None = None,
+    report: dict | None = None,
 ) -> CallReview:
     common = {
         "id": str(conversation.id),
+        "source_id": conversation.original_id
+        if conversation.source_dataset == "ABCD"
+        else None,
         "agent_id": agent.id,
         "agent_name": agent.name,
         "topic": conversation.topic.name if conversation.topic else NO_TOPIC,
@@ -485,20 +515,21 @@ def call_review(
         "agent_context": agent_context_schema(context),
     }
     if audit is None:
-        return CallReview(
+        call = CallReview(
             **common,
             summary="",
-            status="processing",
+            status="unavailable",
             criteria=[],
             findings=[],
             references=[],
             review_request=None,
             decision=None,
         )
+        return with_scoring(call, report)
     criteria, findings, entries = assessment(
         audit, conversation.id, conversation.organization_id
     )
-    return CallReview(
+    call = CallReview(
         **common,
         summary=audit.summary or "",
         status="ready",
@@ -510,6 +541,121 @@ def call_review(
             audit, {finding.id for finding in findings}
         ),
         decision=latest_decision(audit),
+    )
+    return with_scoring(call, audit.assessment_report)
+
+
+def report_overall(report):
+    return OverallScoring.model_validate(report["overall"]) if report else None
+
+
+def with_scoring(call, report):
+    if report is None:
+        return call
+    prior = {criterion.id: criterion for criterion in call.criteria}
+    criteria = []
+    for row in report["categories"]:
+        category = row["category"]
+        result = row["result"]
+        criterion = prior.get(category)
+        if criterion is None:
+            criterion = AuditCriterion(
+                id=category,
+                title=CRITERION_TITLES[category],
+                result=result["result"] if result else "cannot-assess",
+                explanation=result["explanation"]
+                if result
+                else "Processing failed for this category.",
+                evidence_turn_numbers=sorted(
+                    {
+                        citation["turn_id"]
+                        for check in row["scoring"]["checks"]
+                        for citation in check["citations"]
+                        if citation["kind"] == "conversation"
+                    }
+                ),
+                finding_id=None,
+                reference_id=None,
+            )
+        criteria.append(
+            criterion.model_copy(
+                update={
+                    "scoring": CategoryScoring.model_validate(row["scoring"]),
+                }
+            )
+        )
+    critical_categories = {
+        row["category"]
+        for row in report["categories"]
+        if any(
+            check["critical"] and check["outcome"] == "breach"
+            for check in row["scoring"]["checks"]
+        )
+    }
+    findings = [
+        finding.model_copy(
+            update={"critical": finding.criterion_id in critical_categories}
+        )
+        for finding in call.findings
+    ]
+    priorities = report.get("priorities", [])
+    order = {}
+    for index, priority in enumerate(priorities):
+        order.setdefault(priority["category"], index)
+    findings.sort(key=lambda finding: order.get(finding.criterion_id, len(priorities)))
+    return call.model_copy(
+        update={
+            "status": "ready",
+            "criteria": criteria,
+            "overall_scoring": report_overall(report),
+            "assessment_version": AssessmentVersion(
+                source_id=report["conversation_id"],
+                as_of=report["as_of"],
+                rules=report["versions"]["rules"],
+                transcript=report["transcript_version"],
+            ),
+            "request_links": [
+                RequestLink(
+                    id=item["id"],
+                    text=next(
+                        (
+                            turn.text
+                            for turn in call.transcript.turns
+                            if turn.number == item["turn_id"]
+                        ),
+                        "Source passage unavailable",
+                    )
+                    if call.transcript
+                    else "Source passage unavailable",
+                    state=item["state"],
+                    request_turns=sorted(
+                        {item["turn_id"], *item.get("context_turn_ids", [])}
+                    ),
+                    response_turns=sorted(
+                        {
+                            number
+                            for event in item["history"][1:]
+                            for number in event["turn_ids"]
+                        }
+                    ),
+                    limitations=[event["reason"] for event in item["history"]],
+                )
+                for item in report.get("requests", [])
+            ],
+            "findings": findings,
+        }
+    )
+
+
+async def latest_report(session, conversation_id):
+    return await session.scalar(
+        select(AnalysisRun.assessment_report)
+        .where(
+            AnalysisRun.conversation_id == conversation_id,
+            AnalysisRun.assessment_report.is_not(None),
+        )
+        .order_by(AnalysisRun.attempt.desc())
+        .limit(1)
     )
 
 
@@ -675,12 +821,15 @@ class DatabaseCallReviewProvider:
             if conversation is None:
                 return None
             audit = (await audits_by_conversation(session, [key])).get(key)
+            report = await latest_report(session, key) if audit is None else None
             context = await session.scalar(
                 select(AgentContextRecord).where(
                     AgentContextRecord.conversation_id == key
                 )
             )
-        return call_review(conversation, audit, agent_identity(membership), context)
+        return call_review(
+            conversation, audit, agent_identity(membership), context, report
+        )
 
 
 class DatabaseKnowledgeProvider:

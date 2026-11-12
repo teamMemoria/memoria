@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -14,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
@@ -83,6 +84,7 @@ class Audit(Base):
     )
     # The report's plain-language summary, when the analysis produced one.
     summary: Mapped[str | None] = mapped_column(Text)
+    assessment_report: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     # Composite foreign keys share organization_id across these relationships.
     organization: Mapped[Organization] = relationship(overlaps="conversation")

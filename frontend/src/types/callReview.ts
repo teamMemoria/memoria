@@ -8,14 +8,11 @@ export const auditResults = {
 } as const
 
 export type CriterionId =
-  | 'procedure'
-  | 'answer-support'
-  | 'completeness'
-  | 'communication-style'
+  'procedure' | 'answer-support' | 'completeness' | 'communication-style'
 
 export type TranscriptTurn = {
   number: number
-  speaker: 'Agent' | 'Customer'
+  speaker: 'Agent' | 'Customer' | 'System action'
   text: string
   time: string | null
 }
@@ -28,9 +25,11 @@ export type AuditCriterion = {
   evidenceTurnNumbers: number[]
   findingId: string | null
   referenceId: string | null
+  scoring?: AssessmentScoring | null
 }
 
 export type CallFinding = {
+  critical?: boolean
   id: string
   title: string
   criterionId: CriterionId
@@ -48,6 +47,7 @@ export type CallFinding = {
 }
 
 export type CallReview = {
+  sourceId?: string | null
   id: string
   agentId: string
   agentName: string
@@ -55,7 +55,15 @@ export type CallReview = {
   date: string | null
   duration: string | null
   summary: string
-  status: 'ready' | 'processing'
+  status: 'ready' | 'processing' | 'unavailable'
+  overallScoring?: OverallScoring | null
+  assessmentVersion?: {
+    sourceId?: string
+    asOf: string
+    rules: string
+    transcript: string
+  } | null
+  requestLinks?: RequestLink[]
   criteria: AuditCriterion[]
   findings: CallFinding[]
   transcript: {
@@ -87,7 +95,23 @@ export type ReviewRequest = {
   status: 'requested' | 'complete'
 }
 
-export interface CallApi {
+export type NarrationLoader = (
+  turn: TranscriptTurn,
+  voice: string,
+  signal: AbortSignal,
+) => Promise<Blob>
+
+export interface NarrationApi {
+  getNarration?(
+    userId: string,
+    conversationId: string,
+    turn: TranscriptTurn,
+    voice: string,
+    signal: AbortSignal,
+  ): Promise<Blob>
+}
+
+export interface CallApi extends NarrationApi {
   getCallForAgent(
     agentId: string,
     conversationId: string,
@@ -106,8 +130,81 @@ export interface CallApi {
   ): Promise<ReviewRequest>
 }
 
-export type FindingReviewDetail = { call: CallReview; canDecide: boolean }
+export type FindingReviewDetail = {
+  call: CallReview
+  canDecide: boolean
+}
 
-export interface ManagerCallApi {
-  getCallForManager(managerId: string, conversationId: string): Promise<FindingReviewDetail | null>
+export interface ManagerCallApi extends NarrationApi {
+  getCallForManager(
+    managerId: string,
+    conversationId: string,
+  ): Promise<FindingReviewDetail | null>
+}
+
+export type CanonicalCitation =
+  | {
+      kind: 'conversation'
+      conversation_id: string
+      transcript_version: string
+      turn_id: number
+      event_kind: 'message' | 'action'
+      quote: string
+    }
+  | {
+      kind: 'reference'
+      reference_id: string
+      reference_version: string
+      section_id: string
+      quote: string
+    }
+
+export type ScoringCheck = {
+  id: string
+  ruleId: string
+  requirement: string
+  outcome: 'supported' | 'breach' | 'unresolved' | 'not-applicable'
+  earned: number | null
+  maximum: number
+  explanation: string
+  advice: string
+  citations: CanonicalCitation[]
+  critical: boolean
+}
+
+export type AssessmentScoring = {
+  score: number | null
+  coverage: number | null
+  earned: number
+  assessable: number
+  possible: number | null
+  checks: ScoringCheck[]
+  limitations: string[]
+  interpretationLimits: string[]
+  processingError: string | null
+}
+
+export type OverallScoring = {
+  score: number | null
+  coverage: number | null
+  profileId: string | null
+  profileVersion: string | null
+  reason: string | null
+  weights: Record<CriterionId, number> | null
+}
+
+export function percentage(
+  value: number | null | undefined,
+  unavailable = 'Not scored',
+) {
+  return value == null ? unavailable : `${Math.round(value)}%`
+}
+
+export type RequestLink = {
+  id: string
+  text: string
+  state: string
+  requestTurns: number[]
+  responseTurns: number[]
+  limitations: string[]
 }

@@ -454,6 +454,13 @@ class KnowledgeImportService:
             conversation = conversations.get(passage.conversation_key)
             if conversation is None:
                 return "conversation-not-found"
+            canonical = conversation.canonical_evidence
+            if (
+                canonical
+                and passage.source_version
+                != canonical["conversations"][0]["transcript_version"]
+            ):
+                return "source-version-mismatch"
             turn = next(
                 (t for t in conversation.turns if t.line_number == passage.turn_number),
                 None,
@@ -461,7 +468,7 @@ class KnowledgeImportService:
             if (
                 turn is None
                 or turn.speaker.value != passage.speaker
-                or passage.quote not in turn.text
+                or turn.text[passage.span[0] : passage.span[1]] != passage.quote
             ):
                 return "passage-not-in-transcript"
         return None

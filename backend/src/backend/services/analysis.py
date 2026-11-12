@@ -88,6 +88,8 @@ class AnalysisRequest:
     evaluation_form_version: int
     as_of: str
     scope: str
+    canonical_evidence: dict[str, Any] | None = None
+    scoring_context: dict[str, Any] | None = None
 
 
 class AnalysisAdapter(Protocol):
@@ -128,6 +130,7 @@ class ParsedReport:
     categories: dict[str, CategoryResult]
     summary: str | None
     report_version: str | None
+    assessment_report: dict[str, Any] | None = None
 
 
 def transcript_version(conversation_id: str, events: list[dict[str, Any]]) -> str:
@@ -199,6 +202,13 @@ def parse_report(request: AnalysisRequest, report: Any) -> ParsedReport:
     nothing from it is saved.
     """
     try:
+        if (
+            isinstance(report, dict)
+            and report.get("schema_version") == "rule-scoring-v1"
+        ):
+            from backend.services.rule_assessment import parse_rule_report
+
+            return parse_rule_report(request, report)
         return _parse_report(request, report)
     except (TypeError, KeyError, AttributeError, ValueError):
         raise ReportRejectedError(
@@ -358,6 +368,7 @@ class AnalysisService:
     now: Callable[[], datetime] = utc_now
     # How long a queued or running run may go before a retry may replace it.
     stale_after: timedelta = STALE_RUN_AFTER
+    scoring_context: dict[str, Any] | None = None
 
     async def _conversation(
         self, session: AsyncSession, organization_id: str, conversation_id: str
@@ -547,6 +558,16 @@ class AnalysisService:
             except ReportRejectedError as error:
                 return await self._fail(session, run, error.code, error.message)
 
+            if parsed.assessment_report is not None:
+                run.assessment_report = parsed.assessment_report
+                run.report_version = parsed.report_version
+                if parsed.assessment_report["processing_status"] != "completed":
+                    return await self._fail(
+                        session,
+                        run,
+                        "partial-report",
+                        "Some categories failed; independently valid checks are retained.",
+                    )
             try:
                 audit = await self._save(session, run, form_version_id, parsed)
                 run.status = AnalysisRunStatus.SUCCEEDED
@@ -651,17 +672,48 @@ class AnalysisService:
             }
             for criterion in form_version.criteria
         ]
+        canonical = conversation.canonical_evidence
+        if self.scoring_context is not None:
+            from backend.services.rule_assessment import validate_prepared
+
+            if canonical is None:
+                raise ReportRejectedError(
+                    "missing-canonical-evidence",
+                    "Import prepared masked evidence first.",
+                )
+            try:
+                prepared = validate_prepared(canonical)
+                stored = [
+                    (turn.line_number, EVENT_SPEAKERS[turn.speaker], turn.text)
+                    for turn in conversation.turns
+                ]
+                expected = [
+                    (event["turn_id"], event["speaker"], event["text"])
+                    for event in prepared["events"]
+                ]
+                if stored != expected:
+                    raise ValueError("Stored turns differ from canonical evidence")
+            except (TypeError, ValueError, KeyError) as error:
+                raise ReportRejectedError(
+                    "invalid-canonical-evidence", str(error)
+                ) from None
         request = AnalysisRequest(
-            conversation={
+            conversation=prepared
+            if self.scoring_context is not None
+            else {
                 "id": public_id,
                 "transcript_version": transcript_version(public_id, events),
                 "events": events,
             },
-            references=references,
-            criteria=criteria,
+            references=[] if self.scoring_context is not None else references,
+            criteria=[] if self.scoring_context is not None else criteria,
             evaluation_form_version=form_version.id,
             as_of=self.now().date().isoformat(),
-            scope=conversation.organization.slug,
+            scope=""
+            if self.scoring_context is not None
+            else conversation.organization.slug,
+            canonical_evidence=canonical if self.scoring_context is not None else None,
+            scoring_context=self.scoring_context,
         )
         return request, form_version
 
@@ -702,6 +754,7 @@ class AnalysisService:
             conversation_id=conversation.id,
             evaluation_form_version_id=form_version_id,
             summary=parsed.summary,
+            assessment_report=parsed.assessment_report,
             findings=[
                 Finding(
                     organization_id=conversation.organization_id,
@@ -711,10 +764,11 @@ class AnalysisService:
                     suggestion=category.suggestion,
                     evidence=[turns[number] for number in category.turn_numbers],
                     # The audit model links one entry per finding: the first cited.
-                    knowledge_entry=(
-                        entries.get(category.reference_ids[0])
+                    **(
+                        {"knowledge_entry": entries[category.reference_ids[0]]}
                         if category.reference_ids
-                        else None
+                        and category.reference_ids[0] in entries
+                        else {}
                     ),
                 )
                 for name, category in parsed.categories.items()

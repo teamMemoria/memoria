@@ -3,15 +3,17 @@ from typing import Literal, Self
 from pydantic import model_validator
 
 from backend.schemas.base import ApiModel
+from backend.schemas.call_review import OverallScoring
 
 # Matches frontend/src/features/conversations/conversations.ts.
 AutomatedResult = Literal[
-    "needs-review", "meets-criteria", "cannot-assess", "processing"
+    "needs-review", "meets-criteria", "cannot-assess", "processing", "unavailable"
 ]
 ReviewStatus = Literal["feedback-ready", "review-requested", "review-complete"]
 
 
 class Conversation(ApiModel):
+    source_id: str | None = None
     id: str
     topic: str
     agent_id: str
@@ -21,10 +23,14 @@ class Conversation(ApiModel):
     date: str | None
     automated_result: AutomatedResult
     review_status: ReviewStatus | None
+    overall_scoring: OverallScoring | None = None
 
     @model_validator(mode="after")
     def processing_has_no_review_status(self) -> Self:
         # Human review cannot start before the automated result exists.
-        if self.automated_result == "processing" and self.review_status is not None:
+        if (
+            self.automated_result in ("processing", "unavailable")
+            and self.review_status is not None
+        ):
             raise ValueError("a processing conversation cannot have a review status")
         return self

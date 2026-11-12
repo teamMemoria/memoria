@@ -205,7 +205,7 @@ export function ReviewQueue({
                             to={path}
                             aria-label={`Review ${conversation.id}: ${conversation.flag?.findingTitle ?? conversation.topic}`}
                           >
-                            {conversation.id}
+                            {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
                           </Link>
                         ) : (
                           conversation.id
@@ -233,7 +233,7 @@ export function ReviewQueue({
                       <td>
                         {conversation.automatedResult === 'processing' ||
                         !conversation.reviewStatus ? (
-                          <StatusLabel>Processing</StatusLabel>
+                          <StatusLabel>{conversation.automatedResult === 'unavailable' ? 'Assessment unavailable' : 'Processing'}</StatusLabel>
                         ) : (
                           <StatusLabel tone={statusTones[conversation.reviewStatus]}>
                             {reviewStatusLabels[conversation.reviewStatus]}

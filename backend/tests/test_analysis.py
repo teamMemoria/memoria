@@ -172,8 +172,8 @@ async def test_a_successful_run_saves_an_audit_the_agent_can_read(session, data)
     }
     [finding] = call.findings
     assert finding.suggestion == "Check the order before offering a refund."
-    # Turn 5 is a system action: saved as evidence, not shown in the transcript.
-    assert finding.evidence_turn_numbers == [2]
+    # Recorded actions keep their canonical positions and a distinct speaker label.
+    assert finding.evidence_turn_numbers == [2, 5]
     assert finding.reference_id == data.id(data.approved_entry)
     completeness = next(c for c in call.criteria if c.id == "completeness")
     assert "The call ends before the customer replies." in completeness.explanation
@@ -254,7 +254,7 @@ async def test_a_technical_failure_is_not_a_cannot_assess_result(session, data):
     assert await session.scalar(select(func.count()).select_from(Audit)) == 4
 
     call = await agent_call(session, data)
-    assert call.status == "processing"
+    assert call.status == "unavailable"
     assert call.criteria == []
 
 
@@ -332,7 +332,7 @@ def misquoted(request):
 async def test_reports_that_fail_validation_save_nothing(session, data, build, code):
     run = await run_once(session, data, ScriptedAdapter(build))
     assert (run.status, run.error_code) == (AnalysisRunStatus.FAILED, code)
-    assert (await agent_call(session, data)).status == "processing"
+    assert (await agent_call(session, data)).status == "unavailable"
 
 
 async def test_no_active_evaluation_form_fails_the_run(session, data):
@@ -536,7 +536,7 @@ async def test_a_failed_save_fails_the_run(session, data, monkeypatch):
     )
     run = await service.execute(started.run.id)
     assert (run.status, run.error_code) == (AnalysisRunStatus.FAILED, "save-failed")
-    assert (await agent_call(session, data)).status == "processing"
+    assert (await agent_call(session, data)).status == "unavailable"
 
 
 async def test_an_unexpected_error_still_fails_the_run(session, data, monkeypatch):
