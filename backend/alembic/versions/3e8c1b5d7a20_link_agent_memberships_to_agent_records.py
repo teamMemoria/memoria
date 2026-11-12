@@ -6,7 +6,7 @@ calls belong to which person. Only agent memberships can carry it, and each
 agent record belongs to at most one membership in its organization.
 
 Revision ID: 3e8c1b5d7a20
-Revises: 0a1d5e7c9b42
+Revises: ca38f73b9d21
 Create Date: 2026-11-02
 """
 
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "3e8c1b5d7a20"
-down_revision: str | Sequence[str] | None = "0a1d5e7c9b42"
+down_revision: str | Sequence[str] | None = "ca38f73b9d21"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

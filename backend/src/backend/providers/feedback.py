@@ -129,6 +129,7 @@ class DatabaseFeedbackProvider:
             # A plain value, because a rollback below expires loaded objects.
             finding_key = finding.id
             flag = FeedbackFlag(
+                organization_id=conversation.organization_id,
                 finding_id=finding_key,
                 agent_id=conversation.agent_id,
                 reason=reason,

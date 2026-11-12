@@ -1,7 +1,7 @@
 """add evaluation forms and criteria
 
 Revision ID: 84b37f614ac2
-Revises: 1b6f24f748c0
+Revises: b7e2f4a91c3d
 Create Date: 2026-11-01
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "84b37f614ac2"
-down_revision: str | Sequence[str] | None = "1b6f24f748c0"
+down_revision: str | Sequence[str] | None = "b7e2f4a91c3d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -101,9 +101,41 @@ def upgrade() -> None:
         sa.UniqueConstraint("form_version_id", "category"),
         sa.UniqueConstraint("form_version_id", "position"),
     )
-    op.add_column(
-        "audits", sa.Column("evaluation_form_version_id", sa.Integer(), nullable=False)
+    bind = op.get_bind()
+    form_id = bind.execute(
+        sa.text(
+            "INSERT INTO evaluation_forms (name, description) "
+            "VALUES ('Default quality form', 'Initial four-category rubric') "
+            "RETURNING id"
+        )
+    ).scalar_one()
+    version_id = bind.execute(
+        sa.text(
+            "INSERT INTO evaluation_form_versions (form_id, version_number, is_active) "
+            "VALUES (:form_id, 1, true) RETURNING id"
+        ),
+        {"form_id": form_id},
+    ).scalar_one()
+    bind.execute(
+        sa.text(
+            "INSERT INTO evaluation_criteria "
+            "(form_version_id, position, category, name, weight, pass_threshold) "
+            "VALUES "
+            "(:version_id, 1, 'procedure', 'Procedure', 0.2500, 0.7000), "
+            "(:version_id, 2, 'answer_support', 'Answer Support', 0.2500, 0.7000), "
+            "(:version_id, 3, 'completeness', 'Completeness', 0.2500, 0.7000), "
+            "(:version_id, 4, 'communication', 'Communication', 0.2500, 0.7000)"
+        ),
+        {"version_id": version_id},
     )
+    op.add_column(
+        "audits", sa.Column("evaluation_form_version_id", sa.Integer(), nullable=True)
+    )
+    bind.execute(
+        sa.text("UPDATE audits SET evaluation_form_version_id = :version_id"),
+        {"version_id": version_id},
+    )
+    op.alter_column("audits", "evaluation_form_version_id", nullable=False)
     op.create_foreign_key(
         "fk_audits_evaluation_form_version_id",
         "audits",
@@ -118,9 +150,69 @@ def upgrade() -> None:
         ["evaluation_form_version_id"],
         unique=False,
     )
+    op.execute(
+        """
+        CREATE FUNCTION protect_used_evaluation_criterion() RETURNS trigger AS $$
+        BEGIN
+            IF TG_OP = 'INSERT' THEN
+                IF EXISTS (SELECT 1 FROM audits WHERE evaluation_form_version_id = NEW.form_version_id) THEN
+                    RAISE EXCEPTION 'Cannot change criteria of a form version used by an audit';
+                END IF;
+            ELSIF TG_OP = 'DELETE' THEN
+                IF EXISTS (SELECT 1 FROM audits WHERE evaluation_form_version_id = OLD.form_version_id) THEN
+                    RAISE EXCEPTION 'Cannot change criteria of a form version used by an audit';
+                END IF;
+            ELSIF EXISTS (
+                SELECT 1 FROM audits
+                WHERE evaluation_form_version_id IN (OLD.form_version_id, NEW.form_version_id)
+            ) THEN
+                RAISE EXCEPTION 'Cannot change criteria of a form version used by an audit';
+            END IF;
+            IF TG_OP = 'DELETE' THEN
+                RETURN OLD;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """
+    )
+    op.execute(
+        """
+        CREATE TRIGGER protect_used_evaluation_criterion
+        BEFORE INSERT OR UPDATE OR DELETE ON evaluation_criteria
+        FOR EACH ROW EXECUTE FUNCTION protect_used_evaluation_criterion()
+        """
+    )
+    op.execute(
+        """
+        CREATE FUNCTION protect_used_evaluation_form_version() RETURNS trigger AS $$
+        BEGIN
+            IF (OLD.form_id, OLD.version_number, OLD.created_at)
+                IS DISTINCT FROM (NEW.form_id, NEW.version_number, NEW.created_at)
+                AND EXISTS (SELECT 1 FROM audits WHERE evaluation_form_version_id = OLD.id) THEN
+                RAISE EXCEPTION 'Cannot change a form version used by an audit';
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """
+    )
+    op.execute(
+        """
+        CREATE TRIGGER protect_used_evaluation_form_version
+        BEFORE UPDATE ON evaluation_form_versions
+        FOR EACH ROW EXECUTE FUNCTION protect_used_evaluation_form_version()
+        """
+    )
 
 
 def downgrade() -> None:
+    op.execute(
+        "DROP TRIGGER protect_used_evaluation_form_version ON evaluation_form_versions"
+    )
+    op.execute("DROP FUNCTION protect_used_evaluation_form_version()")
+    op.execute("DROP TRIGGER protect_used_evaluation_criterion ON evaluation_criteria")
+    op.execute("DROP FUNCTION protect_used_evaluation_criterion()")
     op.drop_index(op.f("ix_audits_evaluation_form_version_id"), table_name="audits")
     op.drop_constraint(
         "fk_audits_evaluation_form_version_id", "audits", type_="foreignkey"

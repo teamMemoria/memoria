@@ -5,10 +5,16 @@ import { Icon } from '../../components/Icon'
 import {
   Button,
   Panel,
+  SelectField,
   StatusLabel,
   TextAreaField,
 } from '../../components/controls'
-import type { CallFinding, CallReview } from '../../types/callReview'
+import {
+  auditResults,
+  type AuditResult,
+  type CallFinding,
+  type CallReview,
+} from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import {
   decisionOutcomes,
@@ -62,11 +68,17 @@ function DecisionForm({
 }) {
   const id = useId()
   const [outcome, setOutcome] = useState<DecisionInput['outcome'] | null>(null)
+  const [reviewedResult, setReviewedResult] = useState<AuditResult | ''>('')
   const [reason, setReason] = useState('')
   const [feedback, setFeedback] = useState('')
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
-  const complete = outcome !== null && reason.trim() !== '' && feedback.trim() !== ''
+  const corrected = outcome === 'corrected'
+  const complete =
+    outcome !== null &&
+    (!corrected || reviewedResult !== '') &&
+    reason.trim() !== '' &&
+    feedback.trim() !== ''
 
   async function save(event: FormEvent) {
     event.preventDefault()
@@ -74,7 +86,11 @@ function DecisionForm({
     setSaving(true)
     setFailed(false)
     try {
-      await onSave({ outcome, reason, feedback })
+      await onSave(
+        corrected && reviewedResult !== ''
+          ? { outcome, reviewedResult, reason, feedback }
+          : { outcome, reason, feedback },
+      )
     } catch {
       // Nothing is shown as saved; the form keeps what was entered.
       setFailed(true)
@@ -103,6 +119,23 @@ function DecisionForm({
           </label>
         ))}
       </fieldset>
+      {corrected && (
+        <SelectField
+          id={`${id}-reviewed-result`}
+          label="Corrected result"
+          value={reviewedResult}
+          onChange={(event) => setReviewedResult(event.target.value as AuditResult | '')}
+          disabled={saving}
+          required
+        >
+          <option value="">Choose the correct result</option>
+          {Object.entries(auditResults).map(([value, result]) => (
+            <option key={value} value={value}>
+              {result.label}
+            </option>
+          ))}
+        </SelectField>
+      )}
       <TextAreaField
         id={`${id}-reason`}
         label="Reason for this decision"

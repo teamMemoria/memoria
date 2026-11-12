@@ -11,6 +11,9 @@ const save = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Save d
 
 function fillDecision(outcome: string) {
   fireEvent.click(screen.getByRole('radio', { name: new RegExp(`^${outcome}`) }))
+  if (outcome === 'Corrected') {
+    fireEvent.change(screen.getByLabelText('Corrected result'), { target: { value: 'meets-criteria' } })
+  }
   fireEvent.change(screen.getByLabelText('Reason for this decision'), { target: { value: 'Stock check is in the order log.' } })
   fireEvent.change(screen.getByLabelText('Feedback for the agent'), { target: { value: 'Say the stock check aloud next time.' } })
 }
@@ -94,6 +97,20 @@ describe('Manager decisions on flagged feedback', () => {
     const decision = await screen.findByRole('region', { name: 'Manager decision' })
     expect(within(decision).getByText('Corrected')).toBeTruthy()
     expect(within(decision).getByText('Say the stock check aloud next time.')).toBeTruthy()
+  })
+
+  it('asks for the corrected result only when the outcome is Corrected', async () => {
+    openLamp()
+    await screen.findByRole('radio', { name: /^Dismissed/ })
+    expect(screen.queryByLabelText('Corrected result')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: /^Corrected/ }))
+    fireEvent.change(screen.getByLabelText('Reason for this decision'), { target: { value: 'Stock check is in the order log.' } })
+    fireEvent.change(screen.getByLabelText('Feedback for the agent'), { target: { value: 'No change needed.' } })
+    expect(save().disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Corrected result'), { target: { value: 'meets-criteria' } })
+    expect(save().disabled).toBe(false)
+    fireEvent.click(screen.getByRole('radio', { name: /^Dismissed/ }))
+    expect(screen.queryByLabelText('Corrected result')).toBeNull()
   })
 
   it('only lets authorized Managers save, in the page and in the development API', async () => {

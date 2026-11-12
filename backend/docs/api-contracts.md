@@ -293,10 +293,14 @@ there is no team model yet, so the organization is the review scope. Another org
 - **Filters.** `status` is `all` (the default), `feedback-ready`, `review-requested`, `review-complete` or
   `processing`, as in the frontend status menu. `q` searches the call ID, topic, agent name, request reason
   and finding title, case-insensitively. Results are newest request first, then newest call.
-- **Decision body.** `{"outcome": "confirmed" | "corrected" | "dismissed" | "cannot-assess", "reason", "feedback"}`.
+- **Decision body.** `{"outcome": "confirmed" | "corrected" | "dismissed" | "cannot-assess", "reason", "feedback", "reviewedResult"?}`.
   `reason` and `feedback` are required and must not be blank (`422` otherwise).
+  `reviewedResult` is what the finding's result should have been (`"meets-criteria"`, `"needs-review"` or
+  `"cannot-assess"`). It is required when `outcome` is `corrected` and not allowed otherwise (`422`).
+  Resubmitting with a different `reviewedResult` is a different decision (`409`).
 - **Separate storage.** A decision is a `ManagerReview` on the agent's `FeedbackFlag`. It records the
-  reviewer's name, their membership (`reviewer_membership_id`) and the time. The automated finding is
+  reviewer's membership (`reviewer_membership_id`, which gives their name), the corrected result
+  (`reviewed_result`, for corrected decisions only) and the time. The automated finding is
   never changed. The agent sees the decision in `CallReview.decision`, and the request's `status` becomes
   `complete`.
 - **The agent's context is the one they asked with.** When the call has a review request, the detail's

@@ -21,6 +21,7 @@ from backend.models import (
     Conversation,
     FeedbackFlag,
     Finding,
+    FindingResult,
     ManagerReview,
     OrganizationMembership,
     User,
@@ -29,6 +30,7 @@ from backend.models import AgentContext as AgentContextRecord
 from backend.providers.base import ConflictError, RecordNotFoundError
 from backend.providers.database import (
     OUTCOME_NAMES,
+    RESULT_NAMES,
     AgentIdentity,
     SessionFactory,
     assessment,
@@ -53,6 +55,7 @@ from backend.schemas.reviews import (
 from backend.services.clock import utc_now
 
 OUTCOMES = {name: outcome for outcome, name in OUTCOME_NAMES.items()}
+RESULTS = {name: result for result, name in RESULT_NAMES.items()}
 
 
 async def agent_identities(
@@ -81,12 +84,27 @@ async def agent_identities(
     return identities
 
 
+def reviewed_result_of(decision: DecisionInput) -> FindingResult | None:
+    """The corrected result a Manager chose; only corrected decisions have one."""
+    if decision.reviewed_result is None:
+        return None
+    return RESULTS[decision.reviewed_result]
+
+
+def reviewer_options():
+    return (
+        selectinload(ManagerReview.reviewer_membership).selectinload(
+            OrganizationMembership.user
+        ),
+    )
+
+
 def decision_schema(review: ManagerReview) -> ManagerDecision:
     return ManagerDecision(
         outcome=OUTCOME_NAMES[review.outcome],
         reason=review.reason,
         feedback=review.feedback,
-        manager_name=review.reviewer,
+        manager_name=review.reviewer_membership.user.display_name,
         decided_at=iso_timestamp(review.reviewed_at),
     )
 
@@ -232,7 +250,11 @@ class DatabaseReviewProvider:
                         Conversation.id == conversation_key,
                         Conversation.organization_id == membership.organization_id,
                     )
-                    .options(selectinload(FeedbackFlag.manager_review))
+                    .options(
+                        selectinload(FeedbackFlag.manager_review).options(
+                            *reviewer_options()
+                        )
+                    )
                 )
             if flag is None:
                 raise RecordNotFoundError("Review request not found")
@@ -243,10 +265,11 @@ class DatabaseReviewProvider:
             # A plain value, because a rollback below expires loaded objects.
             flag_key = flag.id
             review = ManagerReview(
+                organization_id=membership.organization_id,
                 feedback_flag_id=flag_key,
                 outcome=OUTCOMES[decision.outcome],
-                reviewer=membership.user.display_name,
-                reviewer_membership_id=membership.id,
+                reviewed_result=reviewed_result_of(decision),
+                reviewer_membership=membership,
                 reason=decision.reason,
                 feedback=decision.feedback,
                 reviewed_at=self._now(),
@@ -258,9 +281,9 @@ class DatabaseReviewProvider:
                 # Another Manager decided at the same moment; theirs stands.
                 await session.rollback()
                 existing = await session.scalar(
-                    select(ManagerReview).where(
-                        ManagerReview.feedback_flag_id == flag_key
-                    )
+                    select(ManagerReview)
+                    .where(ManagerReview.feedback_flag_id == flag_key)
+                    .options(*reviewer_options())
                 )
                 if existing is None:
                     raise
@@ -272,6 +295,7 @@ class DatabaseReviewProvider:
         """A resubmission is fine if it says the same thing; otherwise it conflicts."""
         same = (
             existing.outcome is OUTCOMES[decision.outcome]
+            and existing.reviewed_result is reviewed_result_of(decision)
             and existing.reason == decision.reason
             and existing.feedback == decision.feedback
         )
