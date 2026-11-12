@@ -11,6 +11,12 @@ from backend.schemas import (
     ReviewRequest,
     Viewer,
 )
+from backend.schemas.knowledge_review import (
+    DraftQueueStatus,
+    KnowledgeDraft,
+    KnowledgeQueueCounts,
+    KnowledgeReviewDetail,
+)
 from backend.schemas.reviews import (
     DecisionInput,
     FindingReviewDetail,
@@ -141,6 +147,27 @@ class ReviewProvider(Protocol):
         ...
 
 
+class KnowledgeReviewProvider(Protocol):
+    """Knowledge drafts for an authorized reviewer (knowledge:approve)."""
+
+    async def list_for_approver(
+        self,
+        organization_id: str,
+        user_id: str,
+        status: DraftQueueStatus = "all",
+        query: str = "",
+        possible_conflicts_only: bool = False,
+    ) -> list[KnowledgeDraft]: ...
+
+    async def counts(
+        self, organization_id: str, user_id: str
+    ) -> KnowledgeQueueCounts: ...
+
+    async def get_for_approver(
+        self, organization_id: str, user_id: str, draft_id: str
+    ) -> KnowledgeReviewDetail | None: ...
+
+
 @dataclass(frozen=True)
 class Providers:
     viewers: ViewerProvider
@@ -151,3 +178,4 @@ class Providers:
     # Writes need the database; with fixtures their routes answer 503.
     feedback: FeedbackProvider | None = None
     reviews: ReviewProvider | None = None
+    knowledge_review: KnowledgeReviewProvider | None = None

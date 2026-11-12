@@ -10,7 +10,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api import analysis as analysis_api
-from backend.api import calls, conversations, knowledge, reviews, viewer
+from backend.api import (
+    calls,
+    conversations,
+    knowledge,
+    knowledge_review,
+    reviews,
+    viewer,
+)
 from backend.core.config import Settings
 from backend.db import session as db_session
 from backend.db.session import get_db_session
@@ -21,6 +28,7 @@ from backend.providers import (
 )
 from backend.providers.database import create_database_providers
 from backend.services.analysis import AnalysisService
+from backend.services.knowledge_import import KnowledgeImportService
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +44,7 @@ def create_app(
     providers: Providers | None = None,
     settings: Settings | None = None,
     analysis: AnalysisService | None = None,
+    knowledge_import: KnowledgeImportService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Call Assist", lifespan=lifespan)
     settings = settings or Settings()
@@ -49,6 +58,9 @@ def create_app(
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
     app.state.analysis = analysis or AnalysisService(db_session.async_session_factory)
+    app.state.knowledge_import = knowledge_import or KnowledgeImportService(
+        db_session.async_session_factory
+    )
 
     @app.exception_handler(ProviderUnavailableError)
     async def provider_unavailable(request: Request, exc: ProviderUnavailableError):
@@ -83,6 +95,7 @@ def create_app(
     app.include_router(knowledge.router)
     app.include_router(analysis_api.router)
     app.include_router(reviews.router)
+    app.include_router(knowledge_review.router)
     return app
 
 
