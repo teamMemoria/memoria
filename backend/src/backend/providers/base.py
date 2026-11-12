@@ -7,8 +7,15 @@ from backend.schemas import (
     CallReview,
     Conversation,
     KnowledgeEntry,
+    ManagerDecision,
     ReviewRequest,
     Viewer,
+)
+from backend.schemas.reviews import (
+    DecisionInput,
+    FindingReviewDetail,
+    QueueStatus,
+    TeamConversation,
 )
 
 
@@ -18,6 +25,10 @@ class ProviderUnavailableError(Exception):
 
 class RecordNotFoundError(Exception):
     """The record does not exist or is not visible to the requester (a 404)."""
+
+
+class ConflictError(Exception):
+    """The write disagrees with what is already stored (a 409)."""
 
 
 # Every read is scoped to one organization. Methods mirror the frontend's
@@ -99,6 +110,37 @@ class FeedbackProvider(Protocol):
         ...
 
 
+class ReviewProvider(Protocol):
+    """A Manager's review queue and decisions, scoped to their organization."""
+
+    async def list_for_manager(
+        self,
+        organization_id: str,
+        manager_id: str,
+        status: QueueStatus = "all",
+        query: str = "",
+    ) -> list[TeamConversation]: ...
+
+    async def get_for_manager(
+        self, organization_id: str, manager_id: str, conversation_id: str
+    ) -> FindingReviewDetail | None: ...
+
+    async def decide(
+        self,
+        organization_id: str,
+        manager_id: str,
+        conversation_id: str,
+        finding_id: str,
+        decision: DecisionInput,
+    ) -> tuple[ManagerDecision, bool]:
+        """Record a decision on a review request; returns (decision, created).
+
+        Repeating the same decision returns the stored one with created=False.
+        A different decision on an already decided request is a ConflictError.
+        """
+        ...
+
+
 @dataclass(frozen=True)
 class Providers:
     viewers: ViewerProvider
@@ -108,3 +150,4 @@ class Providers:
     identities: IdentityProvider = field(default_factory=FixtureIdentityProvider)
     # Writes need the database; with fixtures their routes answer 503.
     feedback: FeedbackProvider | None = None
+    reviews: ReviewProvider | None = None
