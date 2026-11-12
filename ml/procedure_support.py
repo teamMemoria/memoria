@@ -13,7 +13,7 @@ those inputs uncertain; it is not interpreted as a valid submission or a failure
 
 import re
 
-from .abcd import conversation_passages, transcript_version
+from .abcd import MASKING_VERSION, conversation_passages, transcript_version
 from .audit import category_result
 from .citations import validate_citations
 from .references import eligible_references, reference_issues, reference_passages
@@ -717,10 +717,17 @@ def _answers(events, reference_for, citations, reported):
 
 
 def check_procedure_support(
-    conversation: dict, references: list[dict], *, as_of: str, scope: str
+    conversation: dict,
+    references: list[dict],
+    *,
+    as_of: str,
+    scope: str,
+    masking_version: str = MASKING_VERSION,
 ) -> list[dict]:
     """Assess only documented forms within exact, approved interpretation versions."""
-    if conversation.get("transcript_version") != transcript_version(conversation):
+    if conversation.get("transcript_version") != transcript_version(
+        conversation, masking_version=masking_version
+    ):
         raise ValueError("Transcript version does not match the evidence.")
     eligible = eligible_references(references, as_of=as_of, scope=scope)
     supported = {

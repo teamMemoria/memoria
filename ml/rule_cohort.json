@@ -1,0 +1,1215 @@
+{
+  "schema_version": 1,
+  "cohort_id": "named-training-117-v1",
+  "source": {
+    "dataset": "ABCD",
+    "commit": "6b8700ce67c6b37b062dd7a60abc76d7ef832a97",
+    "path": "data/abcd_v1.1.json",
+    "sha256": "005d425e890b30a1cdaf0d29d83b08bb7abf038d90fc4924a12e82228e587789"
+  },
+  "selection": "Previously verified explicit agent self-introductions in the official train split; aliases are demo personas, not verified people.",
+  "development_ids": [
+    "8434",
+    "1891",
+    "5496",
+    "8215",
+    "8516",
+    "8685",
+    "1094",
+    "2169",
+    "2829",
+    "3899",
+    "4456",
+    "5304",
+    "5420",
+    "5658",
+    "5779"
+  ],
+  "human_spotcheck": {
+    "selection": "Five distinct purposes selected before inspecting rule-engine verdicts.",
+    "conversation_ids": [
+      "8434",
+      "835",
+      "8097",
+      "223",
+      "9359"
+    ],
+    "reviewer": null,
+    "reviewed_at": null,
+    "judgements": null
+  },
+  "conversations": [
+    {
+      "id": "8434",
+      "alias": "Adam",
+      "split": "train",
+      "source_index": 6753,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1891",
+      "alias": "Alex",
+      "split": "train",
+      "source_index": 174,
+      "introduction_turns": [
+        11
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5496",
+      "alias": "Alex",
+      "split": "train",
+      "source_index": 3686,
+      "introduction_turns": [
+        4
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8215",
+      "alias": "Amy",
+      "split": "train",
+      "source_index": 5220,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/5220/delexed/7: turn alignment is invalid."
+    },
+    {
+      "id": "8516",
+      "alias": "Amy",
+      "split": "train",
+      "source_index": 3789,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8685",
+      "alias": "Amy",
+      "split": "train",
+      "source_index": 5762,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1094",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 5930,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "2169",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 1846,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "2829",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 1037,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "3899",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 793,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4456",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 2435,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5304",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 387,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5420",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 6903,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5658",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 1057,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5779",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 5739,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5870",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 3201,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "6165",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 2427,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "6717",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 7792,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "6949",
+      "alias": "Anne",
+      "split": "train",
+      "source_index": 2055,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "3313",
+      "alias": "Betty",
+      "split": "train",
+      "source_index": 1173,
+      "introduction_turns": [
+        10
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "2619",
+      "alias": "Bob",
+      "split": "train",
+      "source_index": 7602,
+      "introduction_turns": [
+        7
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10563",
+      "alias": "Carol",
+      "split": "train",
+      "source_index": 3892,
+      "introduction_turns": [
+        14
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10574",
+      "alias": "Carol Jensen",
+      "split": "train",
+      "source_index": 7187,
+      "introduction_turns": [
+        6
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1460",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 228,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/228/delexed/8: turn alignment is invalid."
+    },
+    {
+      "id": "1478",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 4857,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1488",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 3582,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1512",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 1424,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/1424/delexed/8: turn alignment is invalid."
+    },
+    {
+      "id": "1538",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 7422,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/7422/delexed/4: turn alignment is invalid."
+    },
+    {
+      "id": "1734",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 1366,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1999",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 2991,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "2032",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 1442,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/1442/delexed/14: turn alignment is invalid."
+    },
+    {
+      "id": "4216",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 5008,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5679",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 5005,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5770",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 6163,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5792",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 1439,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5885",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 229,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "6242",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 4735,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "6456",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 6485,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "6524",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 2289,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/2289/delexed/17: turn alignment is invalid."
+    },
+    {
+      "id": "6553",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 1375,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8769",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 4218,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "9876",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 3756,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10580",
+      "alias": "Danny",
+      "split": "train",
+      "source_index": 3164,
+      "introduction_turns": [
+        4
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1284",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 4813,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/4813/delexed/23: turn alignment is invalid."
+    },
+    {
+      "id": "1321",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 7052,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": "/train/7052/delexed/15: turn alignment is invalid."
+    },
+    {
+      "id": "4042",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 4899,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4076",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 3345,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4097",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 8023,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4118",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 2744,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4132",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 384,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4199",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 4586,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4311",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 5670,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4684",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 803,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "4839",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 4935,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7388",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 3816,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7418",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 6227,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7457",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 5589,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7527",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 3961,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7599",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 3340,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7625",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 1002,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7658",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 5365,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7726",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 5627,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7776",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 2261,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "7906",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 5735,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8017",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 1597,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8038",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 6186,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8059",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 540,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8097",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 767,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8130",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 1189,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8148",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 6220,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8182",
+      "alias": "Donny",
+      "split": "train",
+      "source_index": 6837,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "1846",
+      "alias": "Ford Prefect",
+      "split": "train",
+      "source_index": 7447,
+      "introduction_turns": [
+        7
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "2464",
+      "alias": "Ford Prefect",
+      "split": "train",
+      "source_index": 628,
+      "introduction_turns": [
+        4
+      ],
+      "annotation_warning": "/train/628/delexed/17: turn alignment is invalid."
+    },
+    {
+      "id": "5930",
+      "alias": "Jack",
+      "split": "train",
+      "source_index": 7304,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10583",
+      "alias": "Jackie",
+      "split": "train",
+      "source_index": 1733,
+      "introduction_turns": [
+        4
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "219",
+      "alias": "James",
+      "split": "train",
+      "source_index": 6117,
+      "introduction_turns": [
+        4
+      ],
+      "annotation_warning": "/train/6117/delexed/21: turn alignment is invalid."
+    },
+    {
+      "id": "223",
+      "alias": "James",
+      "split": "train",
+      "source_index": 3861,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/3861/delexed/15: turn alignment is invalid."
+    },
+    {
+      "id": "238",
+      "alias": "James",
+      "split": "train",
+      "source_index": 404,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/404/delexed/26: turn alignment is invalid."
+    },
+    {
+      "id": "287",
+      "alias": "James",
+      "split": "train",
+      "source_index": 4106,
+      "introduction_turns": [
+        3
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "309",
+      "alias": "James",
+      "split": "train",
+      "source_index": 1618,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "416",
+      "alias": "James",
+      "split": "train",
+      "source_index": 7101,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "422",
+      "alias": "James",
+      "split": "train",
+      "source_index": 6582,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "426",
+      "alias": "James",
+      "split": "train",
+      "source_index": 1832,
+      "introduction_turns": [
+        3
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "749",
+      "alias": "James",
+      "split": "train",
+      "source_index": 1348,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "780",
+      "alias": "James",
+      "split": "train",
+      "source_index": 5998,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "820",
+      "alias": "James",
+      "split": "train",
+      "source_index": 2715,
+      "introduction_turns": [
+        3
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "832",
+      "alias": "James",
+      "split": "train",
+      "source_index": 4337,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "864",
+      "alias": "James",
+      "split": "train",
+      "source_index": 1029,
+      "introduction_turns": [
+        6
+      ],
+      "annotation_warning": "/train/1029/delexed/10: turn alignment is invalid."
+    },
+    {
+      "id": "888",
+      "alias": "James",
+      "split": "train",
+      "source_index": 1092,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "910",
+      "alias": "James",
+      "split": "train",
+      "source_index": 4933,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "923",
+      "alias": "James",
+      "split": "train",
+      "source_index": 882,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/882/delexed/11: turn alignment is invalid."
+    },
+    {
+      "id": "952",
+      "alias": "James",
+      "split": "train",
+      "source_index": 7929,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8240",
+      "alias": "James",
+      "split": "train",
+      "source_index": 4522,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "9970",
+      "alias": "Jamie",
+      "split": "train",
+      "source_index": 6076,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5072",
+      "alias": "Janice",
+      "split": "train",
+      "source_index": 4097,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10054",
+      "alias": "Joe",
+      "split": "train",
+      "source_index": 7320,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": "/train/7320/delexed/1: turn alignment is invalid."
+    },
+    {
+      "id": "10080",
+      "alias": "Joe",
+      "split": "train",
+      "source_index": 5184,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5893",
+      "alias": "John",
+      "split": "train",
+      "source_index": 3599,
+      "introduction_turns": [
+        5
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8095",
+      "alias": "John",
+      "split": "train",
+      "source_index": 1187,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "8381",
+      "alias": "John",
+      "split": "train",
+      "source_index": 315,
+      "introduction_turns": [
+        3
+      ],
+      "annotation_warning": "/train/315/delexed/9: turn alignment is invalid."
+    },
+    {
+      "id": "8479",
+      "alias": "John",
+      "split": "train",
+      "source_index": 2169,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "9359",
+      "alias": "Johnny",
+      "split": "train",
+      "source_index": 302,
+      "introduction_turns": [
+        2
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10562",
+      "alias": "Karen",
+      "split": "train",
+      "source_index": 1669,
+      "introduction_turns": [
+        14
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10592",
+      "alias": "Mike",
+      "split": "train",
+      "source_index": 7241,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "336",
+      "alias": "Molly",
+      "split": "train",
+      "source_index": 7317,
+      "introduction_turns": [
+        21
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10591",
+      "alias": "Peter",
+      "split": "train",
+      "source_index": 3825,
+      "introduction_turns": [
+        3
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "635",
+      "alias": "Rebecca",
+      "split": "train",
+      "source_index": 5477,
+      "introduction_turns": [
+        19
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "10595",
+      "alias": "Richard",
+      "split": "train",
+      "source_index": 7455,
+      "introduction_turns": [
+        7
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "9055",
+      "alias": "Rufold the Seventh",
+      "split": "train",
+      "source_index": 6402,
+      "introduction_turns": [
+        7
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5607",
+      "alias": "Sam",
+      "split": "train",
+      "source_index": 8027,
+      "introduction_turns": [
+        5
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "810",
+      "alias": "Sher",
+      "split": "train",
+      "source_index": 4762,
+      "introduction_turns": [
+        33
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "835",
+      "alias": "Sher",
+      "split": "train",
+      "source_index": 4356,
+      "introduction_turns": [
+        5
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "956",
+      "alias": "Sher",
+      "split": "train",
+      "source_index": 2404,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "590",
+      "alias": "Smith",
+      "split": "train",
+      "source_index": 3483,
+      "introduction_turns": [
+        27,
+        31
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "9211",
+      "alias": "Stephanie",
+      "split": "train",
+      "source_index": 3135,
+      "introduction_turns": [
+        1
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "3357",
+      "alias": "Summer",
+      "split": "train",
+      "source_index": 1297,
+      "introduction_turns": [
+        11
+      ],
+      "annotation_warning": null
+    },
+    {
+      "id": "5926",
+      "alias": "Summer",
+      "split": "train",
+      "source_index": 4969,
+      "introduction_turns": [
+        10
+      ],
+      "annotation_warning": null
+    }
+  ],
+  "version": "sha256:8811527bb95612ccdb15bdf77ce542895eb8f80e62e8da1a3334a9d8252ea237"
+}
