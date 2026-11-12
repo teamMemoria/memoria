@@ -16,6 +16,7 @@ from backend.api import (
     demo,
     knowledge,
     knowledge_review,
+    narration,
     reviews,
     viewer,
 )
@@ -102,6 +103,7 @@ def create_app(
     app.include_router(viewer.router)
     app.include_router(conversations.router)
     app.include_router(calls.router)
+    app.include_router(narration.router)
     app.include_router(knowledge.router)
     app.include_router(analysis_api.router)
     app.include_router(reviews.router)
