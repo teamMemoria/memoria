@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         default="unconfigured", validation_alias="MEMORIA_ANALYSIS_ENGINE"
     )
 
+    knowledge_engine: Literal["unconfigured", "rules"] = Field(
+        default="unconfigured", validation_alias="MEMORIA_KNOWLEDGE_ENGINE"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

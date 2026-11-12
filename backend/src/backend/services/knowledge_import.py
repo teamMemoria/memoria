@@ -86,6 +86,7 @@ class ImportResult:
     # Drafts and conflicts that could not be stored, with the reason.
     skipped: list[dict[str, str]] = field(default_factory=list)
     conflicts_stored: int = 0
+    generation: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _text(value: Any) -> bool:
@@ -206,12 +207,54 @@ class KnowledgeImportService:
         default_factory=UnconfiguredKnowledgePipeline
     )
     now: Callable[[], datetime] = utc_now
+    generate: Callable[[str, list[dict]], dict] | None = None
+    source_ids: tuple[str, ...] = ()
 
     async def run(self, organization_id: str) -> ImportResult:
         """Run the configured pipeline and store its output."""
         try:
             # The pipeline is synchronous and may be slow; keep it off the event loop.
-            output = await asyncio.to_thread(self.adapter.run, organization_id)
+            if self.generate is None:
+                output = await asyncio.to_thread(self.adapter.run, organization_id)
+            else:
+                if not self.source_ids:
+                    raise KnowledgePipelineUnavailableError(
+                        "No frozen cohort is configured."
+                    )
+                async with self.sessions() as session:
+                    evidence = list(
+                        await session.scalars(
+                            select(Conversation.canonical_evidence)
+                            .join(
+                                Organization,
+                                Organization.id == Conversation.organization_id,
+                            )
+                            .where(
+                                Organization.slug == organization_id,
+                                Conversation.source_dataset == "ABCD",
+                                Conversation.original_id.in_(self.source_ids),
+                                Conversation.canonical_evidence["conversations"][0][
+                                    "split"
+                                ].as_string()
+                                == "train",
+                            )
+                            .order_by(Conversation.original_id)
+                        )
+                    )
+                output = await asyncio.to_thread(
+                    self.generate, organization_id, evidence
+                )
+                found = {r["conversation_id"] for r in output.get("records", [])}
+                output.setdefault("records", []).extend(
+                    {
+                        "conversation_id": identifier,
+                        "status": "unavailable",
+                        "drafts": 0,
+                        "reason": "No canonical training evidence in this organization.",
+                    }
+                    for identifier in self.source_ids
+                    if identifier not in found
+                )
         except KnowledgePipelineUnavailableError:
             raise
         except Exception as error:
@@ -219,7 +262,9 @@ class KnowledgeImportService:
             raise KnowledgePipelineUnavailableError(
                 f"The knowledge pipeline failed with {type(error).__name__}."
             ) from error
-        return await self.import_output(organization_id, output)
+        result = await self.import_output(organization_id, output)
+        result.generation = output.get("records", [])
+        return result
 
     @unavailable_on_database_error
     async def import_output(self, organization_id: str, output: Any) -> ImportResult:
