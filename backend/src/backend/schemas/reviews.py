@@ -1,7 +1,9 @@
-from typing import Literal
+from typing import Literal, Self
+
+from pydantic import model_validator
 
 from backend.schemas.base import ApiModel
-from backend.schemas.call_review import CallReview, ReviewRequest
+from backend.schemas.call_review import AuditResult, CallReview, ReviewRequest
 from backend.schemas.conversations import Conversation
 from backend.schemas.feedback import text_field
 
@@ -37,3 +39,15 @@ class DecisionInput(ApiModel):
     # Both are required so every decision explains itself to the agent.
     reason: DecisionReason
     feedback: DecisionFeedback
+    # What the finding's result should have been. Required for "corrected" and
+    # not allowed for any other outcome (422 otherwise).
+    reviewed_result: AuditResult | None = None
+
+    @model_validator(mode="after")
+    def reviewed_result_only_when_corrected(self) -> Self:
+        if (self.outcome == "corrected") != (self.reviewed_result is not None):
+            raise ValueError(
+                "reviewedResult is required when the outcome is corrected, "
+                "and only then"
+            )
+        return self

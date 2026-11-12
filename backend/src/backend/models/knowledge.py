@@ -124,6 +124,8 @@ class KnowledgeDraft(Base):
     ml_verification: Mapped[str | None] = mapped_column(String(30))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Composite foreign keys share organization_id, so overlapping relationships
+    # must tell SQLAlchemy that they coordinate writes to the same column.
     organization: Mapped[Organization] = relationship()
     topic: Mapped[Topic] = relationship(overlaps="organization")
     passages: Mapped[list["KnowledgeDraftPassage"]] = relationship(

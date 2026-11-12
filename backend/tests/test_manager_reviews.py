@@ -12,6 +12,7 @@ from backend.models import (
     AgentContext,
     FeedbackFlag,
     Finding,
+    FindingResult,
     ManagerReview,
     ManagerReviewOutcome,
 )
@@ -25,9 +26,18 @@ from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, SAM, seed, sessio
 NOW = datetime(2026, 11, 2, 11, 0, tzinfo=UTC)
 DECISION = {
     "outcome": "corrected",
+    "reviewedResult": "meets-criteria",
     "reason": "The order was checked on another screen first.",
     "feedback": "The procedure was followed; no change needed.",
 }
+
+
+def decision_body(outcome):
+    """DECISION with another outcome; only corrected carries a reviewedResult."""
+    body = {**DECISION, "outcome": outcome}
+    if outcome != "corrected":
+        del body["reviewedResult"]
+    return body
 
 
 @pytest.fixture
@@ -36,6 +46,7 @@ async def data(session):
     # Alex asks for a review of the procedure finding on the assessed call.
     session.add(
         FeedbackFlag(
+            organization_id=result.northwind.id,
             finding_id=result.procedure_finding.id,
             agent_id=result.alex_agent.id,
             reason="I checked the order before offering.",
@@ -204,7 +215,7 @@ async def test_each_outcome_is_recorded_beside_the_finding(session, data, outcom
     async with client_for(session) as client:
         response = await client.post(
             decision_path(data, data.assessed, data.procedure_finding),
-            json={**DECISION, "outcome": outcome},
+            json=decision_body(outcome),
             headers=MANAGER,
         )
         assert response.status_code == 201
@@ -243,6 +254,48 @@ async def test_each_outcome_is_recorded_beside_the_finding(session, data, outcom
     )
     assert review.outcome is ManagerReviewOutcome(outcome.replace("-", "_"))
     assert review.reviewer_membership_id == data.maya.id
+    expected = FindingResult.PASS if outcome == "corrected" else None
+    assert review.reviewed_result is expected
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {k: v for k, v in DECISION.items() if k != "reviewedResult"},
+        {**decision_body("dismissed"), "reviewedResult": "meets-criteria"},
+        {**DECISION, "reviewedResult": "fixed"},
+    ],
+    ids=["corrected-without-result", "result-without-corrected", "unknown-result"],
+)
+async def test_a_corrected_result_is_required_exactly_for_corrected(
+    session, data, body
+):
+    async with client_for(session) as client:
+        response = await client.post(
+            decision_path(data, data.assessed, data.procedure_finding),
+            json=body,
+            headers=MANAGER,
+        )
+    assert response.status_code == 422
+    assert (
+        await session.scalar(
+            select(func.count())
+            .select_from(ManagerReview)
+            .join(FeedbackFlag)
+            .where(FeedbackFlag.finding_id == data.procedure_finding.id)
+        )
+        == 0
+    )
+
+
+async def test_a_different_corrected_result_conflicts(session, data):
+    path = decision_path(data, data.assessed, data.procedure_finding)
+    async with client_for(session) as client:
+        await client.post(path, json=DECISION, headers=MANAGER)
+        conflict = await client.post(
+            path, json={**DECISION, "reviewedResult": "cannot-assess"}, headers=MANAGER
+        )
+    assert conflict.status_code == 409
 
 
 async def test_the_same_decision_twice_is_one_decision(session, data):
@@ -266,7 +319,7 @@ async def test_a_conflicting_decision_is_refused(session, data):
     async with client_for(session) as client:
         await client.post(path, json=DECISION, headers=MANAGER)
         conflict = await client.post(
-            path, json={**DECISION, "outcome": "dismissed"}, headers=MANAGER
+            path, json=decision_body("dismissed"), headers=MANAGER
         )
     assert conflict.status_code == 409
     session.expunge_all()
@@ -422,6 +475,7 @@ async def test_concurrent_decisions_record_one_and_answer_the_rest(committed_ses
         data = await seed(session)
         session.add(
             FeedbackFlag(
+                organization_id=data.northwind.id,
                 finding_id=data.procedure_finding.id,
                 agent_id=data.alex_agent.id,
                 reason="Please check.",
@@ -438,7 +492,7 @@ async def test_concurrent_decisions_record_one_and_answer_the_rest(committed_ses
                 MAYA,
                 data.id(data.assessed),
                 data.id(data.procedure_finding),
-                DecisionInput(**{**DECISION, "outcome": outcome}),
+                DecisionInput.model_validate(decision_body(outcome)),
             )
             return "created" if created else "same"
         except ConflictError:

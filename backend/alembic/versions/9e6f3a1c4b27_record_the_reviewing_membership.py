@@ -1,8 +1,9 @@
 """record the reviewing membership
 
-Manager reviews already store the reviewer's name for display. This adds the
-membership that made the decision, so a decision can be traced to an account
-even if the display name changes.
+This branch first added manager_reviews.reviewer_membership_id here. The
+organizations migration on main (b7e2f4a91c3d) now creates that column, NOT
+NULL and scoped to the organization, and drops the reviewer name. Nothing is
+left to change, so this revision is kept only so later revisions still chain.
 
 Revision ID: 9e6f3a1c4b27
 Revises: 7c4a2e9b1d58
@@ -11,10 +12,6 @@ Create Date: 2026-11-02
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
-
-from alembic import op
-
 revision: str = "9e6f3a1c4b27"
 down_revision: str | Sequence[str] | None = "7c4a2e9b1d58"
 branch_labels: str | Sequence[str] | None = None
@@ -22,22 +19,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "manager_reviews",
-        sa.Column("reviewer_membership_id", sa.Integer(), nullable=True),
-    )
-    op.create_foreign_key(
-        "fk_manager_reviews_reviewer_membership",
-        "manager_reviews",
-        "organization_memberships",
-        ["reviewer_membership_id"],
-        ["id"],
-        ondelete="SET NULL",
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "fk_manager_reviews_reviewer_membership", "manager_reviews", type_="foreignkey"
-    )
-    op.drop_column("manager_reviews", "reviewer_membership_id")
+    pass

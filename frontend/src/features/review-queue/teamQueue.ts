@@ -1,4 +1,4 @@
-import type { CallReview, ReviewRequest } from '../../types/callReview'
+import type { AuditResult, CallReview, ReviewRequest } from '../../types/callReview'
 import {
   conversationStatusLabels,
   filterConversations,
@@ -12,7 +12,10 @@ export type FlaggedFeedback = ReviewRequest & { findingTitle: string }
 export type TeamConversation = Conversation & { flag: FlaggedFeedback | null }
 
 export type ManagerDecision = NonNullable<CallReview['decision']>
-export type DecisionInput = Pick<ManagerDecision, 'outcome' | 'reason' | 'feedback'>
+export type DecisionInput = Pick<ManagerDecision, 'outcome' | 'reason' | 'feedback'> & {
+  // What the finding's result should have been. Sent only for a corrected decision.
+  reviewedResult?: AuditResult
+}
 
 export type FindingReviewDetail = {
   call: CallReview
