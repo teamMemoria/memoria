@@ -3,6 +3,8 @@ import json
 from dataclasses import replace
 
 import pytest
+from fastapi.testclient import TestClient
+
 from backend.api import narration
 from backend.core.config import Settings
 from backend.main import create_app
@@ -11,7 +13,6 @@ from backend.providers.fixture_data import CALLS, NORTHWIND
 from backend.schemas import CallReview
 from backend.schemas.reviews import FindingReviewDetail
 from backend.services.narration import clip_identity, clip_key, read_clip, text_hash
-from fastapi.testclient import TestClient
 
 ALEX = "agent-alex-morgan"
 MAYA = "manager-maya-chen"
