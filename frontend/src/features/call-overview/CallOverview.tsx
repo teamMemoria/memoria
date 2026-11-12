@@ -7,6 +7,7 @@ import type {
   AuditCriterion,
   CallApi,
   CallReview,
+  ManagerCallApi,
 } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import './call-overview.css'
@@ -23,11 +24,13 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 })
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return 'Date not recorded'
   return dateFormatter.format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
 }
 
-function formatDuration(value: string) {
+function formatDuration(value: string | null) {
+  if (!value) return 'Duration not recorded'
   const match = /^(\d+):([0-5]\d)$/.exec(value)
   return match ? `${Number(match[1])} min ${Number(match[2])} sec` : value
 }
@@ -35,33 +38,20 @@ function formatDuration(value: string) {
 export function CallOverview({
   viewer,
   api,
+  managerApi = null,
 }: {
   viewer: Viewer
   api: CallApi | null
-}) {
-  if (viewer.role !== 'agent') {
-    return (
-      <div className="call-overview-state">
-        <h1>Page unavailable for your role</h1>
-        <Link to={`/${viewer.role}/conversations`}>
-          Back to your conversations
-        </Link>
-      </div>
-    )
-  }
-  return <AgentCallOverview viewer={viewer} api={api} />
-}
-
-function AgentCallOverview({
-  viewer,
-  api,
-}: {
-  viewer: Viewer
-  api: CallApi | null
+  managerApi?: ManagerCallApi | null
 }) {
   const { conversationId = '' } = useParams()
   const [params] = useSearchParams()
-  const state = useCallReview(api, viewer.id, conversationId)
+  const state = useCallReview(
+    viewer.role === 'agent' ? api : null,
+    viewer.id,
+    conversationId,
+    viewer.role === 'manager' ? managerApi : null,
+  )
   const backParams = new URLSearchParams()
   for (const key of ['q', 'status']) {
     if (params.has(key)) backParams.set(key, params.get(key)!)
@@ -70,11 +60,19 @@ function AgentCallOverview({
 
   return (
     <div className="call-overview">
-      <Link className="call-overview-back" to={`/agent/conversations${search}`}>
+      <Link
+        className="call-overview-back"
+        to={`/${viewer.role}/conversations${search}`}
+      >
         <Icon name="arrowLeft" /> Conversations
       </Link>
       {state.status === 'ready' ? (
-        <CallContent key={state.call.id} call={state.call} search={search} />
+        <CallContent
+          key={state.call.id}
+          call={state.call}
+          search={search}
+          role={viewer.role}
+        />
       ) : (
         <div className="call-overview-state">
           <h1>Call overview</h1>
@@ -104,18 +102,25 @@ function AgentCallOverview({
   )
 }
 
-function CallContent({ call, search }: { call: CallReview; search: string }) {
-  const base = `/agent/conversations/${encodeURIComponent(call.id)}`
-  const transcript = `${base}/transcript${search}`
+function CallContent({
+  call,
+  search,
+  role,
+}: {
+  call: CallReview
+  search: string
+  role: Viewer['role']
+}) {
+  const base = `/${role}/conversations/${encodeURIComponent(call.id)}`
+  const transcriptParams = new URLSearchParams(search)
+  transcriptParams.set('transcript', 'full')
+  const transcript =
+    role === 'agent'
+      ? `${base}/transcript${search}`
+      : `${base}/assessments/procedure?${transcriptParams}`
 
   function evidenceLink(criterion: AuditCriterion) {
-    const params = new URLSearchParams(search)
-    const turn = criterion.evidenceTurnNumbers[0]
-    if (turn !== undefined) params.set('turn', String(turn))
-    const path = criterion.findingId
-      ? `${base}/findings/${encodeURIComponent(criterion.findingId)}`
-      : `${base}/transcript`
-    return `${path}${params.size ? `?${params}` : ''}`
+    return `${base}/assessments/${criterion.id}${search}`
   }
 
   return (
@@ -125,7 +130,7 @@ function CallContent({ call, search }: { call: CallReview; search: string }) {
         <li>Call {call.id}</li>
         <li>{call.agentName}</li>
         <li>
-          <time dateTime={call.date}>{formatDate(call.date)}</time>
+          <time dateTime={call.date ?? undefined}>{formatDate(call.date)}</time>
         </li>
         <li>
           <span className="call-overview-sr-only">Duration </span>
@@ -151,11 +156,6 @@ function CallContent({ call, search }: { call: CallReview; search: string }) {
               <div className="call-criteria">
                 {call.criteria.map((criterion) => {
                   const result = results[criterion.result]
-                  const hasDetails =
-                    criterion.id === 'procedure' &&
-                    call.findings.some(
-                      (finding) => finding.id === criterion.findingId,
-                    )
                   const cardContent = (
                     <>
                       <span className="call-criterion-marker">
@@ -191,25 +191,13 @@ function CallContent({ call, search }: { call: CallReview; search: string }) {
                       className={`call-criterion-column call-criterion-column--${connectionTone}`}
                       key={criterion.id}
                     >
-                      {hasDetails ? (
-                        <Link
-                          className={`call-criterion call-criterion--${result.tone}`}
-                          to={evidenceLink(criterion)}
-                          aria-label={`${criterion.title}: ${result.label}`}
-                        >
-                          {cardContent}
-                        </Link>
-                      ) : (
-                        <button
-                          className={`call-criterion call-criterion--${result.tone}`}
-                          type="button"
-                          disabled
-                          aria-label={`${criterion.title}: ${result.label}`}
-                          title={`${criterion.title} details are not available yet`}
-                        >
-                          {cardContent}
-                        </button>
-                      )}
+                      <Link
+                        className={`call-criterion call-criterion--${result.tone}`}
+                        to={evidenceLink(criterion)}
+                        aria-label={`${criterion.title}: ${result.label}`}
+                      >
+                        {cardContent}
+                      </Link>
                     </div>
                   )
                 })}

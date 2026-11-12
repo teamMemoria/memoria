@@ -60,6 +60,9 @@ To use them from the frontend, start the backend with
 `MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database` and the frontend with
 `VITE_DEMO_BACKEND=true npm run dev`.
 
+See [the dashboard entry guide](../frontend/DEMO-BACKEND.md) for the single-backend
+setup, supported assessment views and current read-only knowledge limitation.
+
 Each data command accepts `--organization <slug>` and defaults to the
 migration-created `default` organization.
 

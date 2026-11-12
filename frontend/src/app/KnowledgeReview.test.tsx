@@ -16,6 +16,19 @@ function openReview(id: string, knowledgeReviewApi: KnowledgeReviewApi = createD
 }
 
 describe('Manager knowledge verification and approval', () => {
+  it('keeps a readable draft read-only when the backend has no decision endpoints', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const approve = vi.fn(api.approve)
+    const reject = vi.fn(api.reject)
+    openReview('KD-103', { ...api, decisionsAvailable: false, approve, reject })
+    await screen.findByText(/Knowledge drafts are read-only in this demo/)
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull()
+    expect(screen.getByRole('link', { name: /Knowledge drafts/ })).toBeTruthy()
+    expect(approve).not.toHaveBeenCalled()
+    expect(reject).not.toHaveBeenCalled()
+  })
+
   it('shows the draft, its supporting passages and the verification reference', async () => {
     openReview('KD-103')
     await screen.findByRole('heading', { name: 'Refund timing for card payments', level: 1 })

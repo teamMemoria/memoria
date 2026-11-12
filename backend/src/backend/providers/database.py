@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import CurrentUser, permissions_for_membership
-from backend.data.seed_demo_profiles import DEMO_PREFIX
+from backend.data.seed_demo_profiles import DEMO_PREFIX, profile_display_name
 from backend.models import AgentContext as AgentContextRecord
 from backend.models import (
     Audit,
@@ -311,7 +311,10 @@ def latest_decision(audit: Audit | None) -> ManagerDecision | None:
         outcome=OUTCOME_NAMES[review.outcome],
         reason=review.reason,
         feedback=review.feedback,
-        manager_name=review.reviewer_membership.user.display_name,
+        manager_name=profile_display_name(
+            review.reviewer_membership.user.external_id,
+            review.reviewer_membership.user.display_name,
+        ),
         decided_at=iso_timestamp(review.reviewed_at),
     )
 
@@ -358,7 +361,9 @@ def knowledge_entry_schema(
         available_to_agent_ids=available_to,
         version=f"review-{review.id}",
         approved_at=iso_date(review.reviewed_at),
-        approved_by=approver.display_name if approver else None,
+        approved_by=profile_display_name(approver.external_id, approver.display_name)
+        if approver
+        else None,
         effective_at=None,
         last_confirmed_at=iso_date(entry.last_confirmed_at),
         owner=None,
@@ -510,7 +515,10 @@ def call_review(
 
 def agent_identity(membership: OrganizationMembership) -> AgentIdentity:
     return AgentIdentity(
-        id=membership.user.external_id, name=membership.user.display_name
+        id=membership.user.external_id,
+        name=profile_display_name(
+            membership.user.external_id, membership.user.display_name
+        ),
     )
 
 
@@ -578,7 +586,7 @@ class DatabaseDemoProfileProvider:
         return [
             DemoProfile(
                 id=external_id,
-                display_name=name,
+                display_name=profile_display_name(external_id, name),
                 role="agent" if role is UserRole.AGENT else "manager",
                 conversation_count=count if role is UserRole.AGENT else None,
             )
@@ -598,7 +606,9 @@ class DatabaseViewerProvider:
             return None
         return Viewer(
             id=membership.user.external_id,
-            display_name=membership.user.display_name,
+            display_name=profile_display_name(
+                membership.user.external_id, membership.user.display_name
+            ),
             role="agent" if membership.role is UserRole.AGENT else "manager",
         )
 

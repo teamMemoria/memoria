@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     // Sends API requests to the backend in development (VITE_DEMO_BACKEND=true).
-    proxy: { '/api': 'http://localhost:8000' },
+    proxy: { '/api': process.env.MEMORIA_API_TARGET || 'http://localhost:8000' },
   },
   test: {
     environment: 'jsdom',

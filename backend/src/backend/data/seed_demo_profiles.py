@@ -42,6 +42,14 @@ PROFILES_FILE = Path(__file__).with_name("demo_profiles.toml")
 DEMO_PREFIX = "demo-"
 
 
+def profile_display_name(external_id: str, name: str) -> str:
+    """Keep legacy demo metadata out of names, without changing identity IDs."""
+    if not external_id.startswith(DEMO_PREFIX):
+        return name
+    name = name.removesuffix(" (demo)")
+    return "Manager" if name == "Demo Manager" else name
+
+
 @dataclass(frozen=True)
 class DemoAgent:
     id: str
@@ -71,13 +79,18 @@ def load_profiles(path: Path = PROFILES_FILE) -> DemoProfiles:
     """Read and check the profiles file. Fails loudly on any mistake."""
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     agents = tuple(
-        DemoAgent(a["id"], a["name"], tuple(a["conversations"])) for a in data["agents"]
+        DemoAgent(
+            a["id"], profile_display_name(a["id"], a["name"]), tuple(a["conversations"])
+        )
+        for a in data["agents"]
     )
     profiles = DemoProfiles(
         dataset=data["dataset"],
         split=data["split"],
         manager_id=data["manager"]["id"],
-        manager_name=data["manager"]["name"],
+        manager_name=profile_display_name(
+            data["manager"]["id"], data["manager"]["name"]
+        ),
         agents=agents,
     )
 
@@ -159,9 +172,8 @@ async def seed_demo_profiles(
 
     linked = 0
     for profile in profiles.agents:
-        agent_id = await upsert_named_agent(
-            session, organization_id, profile.id, profile.name
-        )
+        name = profile_display_name(profile.id, profile.name)
+        agent_id = await upsert_named_agent(session, organization_id, profile.id, name)
         if unassigned is not None:
             await session.execute(
                 update(Conversation)
@@ -181,12 +193,16 @@ async def seed_demo_profiles(
                 Conversation.agent_id == agent_id,
             )
         )
-        user_id = await upsert_user(session, profile.id, profile.name)
+        user_id = await upsert_user(session, profile.id, name)
         await upsert_membership(
             session, organization_id, user_id, UserRole.AGENT, agent_id
         )
 
-    manager_id = await upsert_user(session, profiles.manager_id, profiles.manager_name)
+    manager_id = await upsert_user(
+        session,
+        profiles.manager_id,
+        profile_display_name(profiles.manager_id, profiles.manager_name),
+    )
     await upsert_membership(session, organization_id, manager_id, UserRole.MANAGER)
 
     listed = sum(len(profile.conversations) for profile in profiles.agents)

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.core.auth import Permission
+from backend.data.seed_demo_profiles import profile_display_name
 from backend.models import (
     DraftStatus,
     KnowledgeConflict,
@@ -113,7 +114,11 @@ def _decision(draft: KnowledgeDraft) -> KnowledgeDecision | None:
     return KnowledgeDecision(
         outcome=review.action.value,
         reason=review.note,
-        manager_name=member.user.display_name if member else "Unknown reviewer",
+        manager_name=profile_display_name(
+            member.user.external_id, member.user.display_name
+        )
+        if member
+        else "Unknown reviewer",
         decided_at=iso_timestamp(review.reviewed_at),
     )
 

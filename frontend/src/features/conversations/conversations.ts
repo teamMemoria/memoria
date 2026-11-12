@@ -34,7 +34,7 @@ export type Conversation = {
   topic: string
   agentId: string
   agentName: string
-  date: string
+  date: string | null
   automatedResult: AutomatedResult
   reviewStatus: ReviewStatus | null
 }
@@ -48,7 +48,8 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 })
 
-export function formatConversationDate(date: string) {
+export function formatConversationDate(date: string | null) {
+  if (!date) return 'Date not recorded'
   return dateFormatter.format(new Date(`${date}T00:00:00Z`))
 }
 
@@ -58,7 +59,7 @@ export function getAgentConversations(
 ) {
   return conversations
     .filter((conversation) => conversation.agentId === agentId)
-    .sort((first, second) => second.date.localeCompare(first.date))
+    .sort((first, second) => (second.date ?? '').localeCompare(first.date ?? ''))
 }
 
 export function filterConversations(

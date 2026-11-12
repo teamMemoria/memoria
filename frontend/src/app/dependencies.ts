@@ -8,10 +8,7 @@ import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
 import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
 import type { DemoProfilesApi, ViewerApi } from '../types/viewer'
 import { createDevProfilesApi, createDevViewerApi } from '../lib/viewer'
-import {
-  createBackendProfilesApi,
-  createBackendViewerApi,
-} from '../lib/backendViewer'
+import { createHttpApis } from '../lib/httpApi'
 import type { ConversationsApi } from '../features/conversations/conversations'
 import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
 import type { TeamReviewApi } from '../features/review-queue/teamQueue'
@@ -26,17 +23,18 @@ export function createDependencies(): {
   teamReviewApi: TeamReviewApi | null
   knowledgeReviewApi: KnowledgeReviewApi | null
 } {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEMO_BACKEND === 'true') {
+    return createHttpApis(import.meta.env.VITE_API_BASE_URL ?? '')
+  }
+
   if (import.meta.env.DEV) {
     const role =
       import.meta.env.VITE_DEV_ROLE === 'manager' ? 'manager' : 'agent'
     const callApi = createDevCallApi()
     const knowledgeReviewApi = createDevKnowledgeReviewApi()
-    // VITE_DEMO_BACKEND=true signs in with the demo profiles stored in the
-    // backend database instead of the development data.
-    const backend = import.meta.env.VITE_DEMO_BACKEND === 'true'
     return {
-      viewerApi: backend ? createBackendViewerApi() : createDevViewerApi(role),
-      profilesApi: backend ? createBackendProfilesApi() : createDevProfilesApi(),
+      viewerApi: createDevViewerApi(role),
+      profilesApi: createDevProfilesApi(),
       conversationsApi: createDevConversationsApi(callApi),
       callApi,
       knowledgeApi: createDevApprovedKnowledgeApi(knowledgeReviewApi),

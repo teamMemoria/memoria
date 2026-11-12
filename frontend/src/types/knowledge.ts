@@ -58,6 +58,8 @@ export type KnowledgeReviewDetail = {
 }
 
 export interface KnowledgeReviewApi {
+  // Transport capability, separate from the Manager permission returned by the server.
+  decisionsAvailable?: boolean
   listForManager(managerId: string): Promise<KnowledgeDraft[]>
   getForManager(
     managerId: string,

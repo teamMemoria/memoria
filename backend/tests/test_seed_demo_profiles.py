@@ -28,7 +28,7 @@ PROFILES = DemoProfiles(
     dataset="ABCD",
     split="train",
     manager_id="demo-manager-01",
-    manager_name="Demo Manager",
+    manager_name="Manager",
     agents=(
         DemoAgent("demo-agent-01", "Alex", ("1891", "5496")),
         DemoAgent("demo-agent-02", "Amy", ("8215",)),
