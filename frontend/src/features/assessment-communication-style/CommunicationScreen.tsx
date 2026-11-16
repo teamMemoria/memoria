@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCommunication } from './controller'
 import { Card } from '../../components/ui/card'
 import { Icon } from '../../components/Icon'
 import {
@@ -12,7 +12,6 @@ import {
   checkTitle,
   checkLabels,
   checkTurns,
-  featuredChecks,
   type ScreenProps,
 } from '../assessment-shared/assessment'
 import { TranscriptWaveform } from './waveform/TranscriptWaveform'
@@ -23,50 +22,7 @@ export function CommunicationScreen({
   onOpen,
   loadNarration,
 }: ScreenProps) {
-  const checks = featuredChecks(data.checks).filter(
-    (check) => check.outcome === 'supported' || check.outcome === 'breach',
-  )
-  const [selected, setSelected] = useState(
-    checks.flatMap(checkTurns)[0] ?? data.turns[0]?.number,
-  )
-  const evidence = useRef<HTMLDivElement>(null)
-  function selectTurn(turn: number) {
-    setSelected(turn)
-    const target = evidence.current?.querySelector<HTMLButtonElement>(
-      `[data-turn="${turn}"]`,
-    )
-    target?.focus({ preventScroll: true })
-    target?.scrollIntoView({
-      block: 'center',
-      inline: 'center',
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
-    })
-  }
-  const phrases = checks
-    .flatMap((check) =>
-      check.citations.flatMap((citation) =>
-        citation.kind === 'conversation' &&
-        data.turns.some(
-          (turn) =>
-            turn.number === citation.turn_id && turn.speaker === 'Agent',
-        )
-          ? [citation]
-          : [],
-      ),
-    )
-    .filter(
-      (citation, index, all) =>
-        all.findIndex(
-          (other) =>
-            other.turn_id === citation.turn_id &&
-            other.quote === citation.quote,
-        ) === index,
-    )
-  const selectedCheck = checks.find((check) =>
-    checkTurns(check).includes(selected ?? -1),
-  )
+  const { checks, phrases, selectedCheck, selected, setSelected, evidence, selectTurn } = useCommunication(data)
   return (
     <>
       <section
