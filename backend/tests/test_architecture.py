@@ -1,0 +1,177 @@
+"""Executable dependency rules: no exceptions in the business core."""
+
+import ast
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from tests.architecture_rules import violations
+
+ROOT = Path(__file__).resolve().parents[2]
+BACKEND = ROOT / "backend/src/backend"
+
+
+def imports(path):
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Import):
+            yield from (alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            yield node.module or ""
+
+
+def test_business_dependencies_point_inward():
+    for layer in ("entities", "use_cases"):
+        for path in (BACKEND / layer).rglob("*.py"):
+            module = "backend." + ".".join(
+                path.relative_to(BACKEND).with_suffix("").parts
+            )
+            assert not violations(path.read_text(), module), path
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from backend.frameworks.database import models",
+        "from ..frameworks.database import models",
+        "from .. import frameworks",
+        "from backend.schemas.reviews import DecisionInput",
+        "from pathlib import Path; Path('x').read_text()",
+        "import os as system; system.getenv('SETTING')",
+        "from datetime import datetime as clock; clock.now()",
+        "import datetime as d; d.date.today()",
+        "from time import monotonic as tick; tick()",
+        "from builtins import open as read; read('x')",
+        "import importlib as loader; loader.import_module('backend.models')",
+        "__import__('backend.models')",
+    ],
+)
+def test_guard_rejects_boundary_violations(source):
+    assert violations(source, "backend.entities.example")
+
+
+def test_guard_allows_pure_value_operations():
+    assert not violations(
+        "from datetime import datetime; x = datetime(2026, 1, 1)\n"
+        "from urllib.parse import urlparse; urlparse('https://example.test')\n"
+        "from .results import FindingResult\nrequests = []; requests.append(1)",
+        "backend.entities.example",
+    )
+
+
+def test_pure_core_imports_without_database_http_or_ml():
+    code = r"""
+import importlib, importlib.abc, sys
+class Block(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'sqlalchemy', 'fastapi', 'pydantic', 'ml'}:
+            raise RuntimeError(fullname)
+sys.meta_path.insert(0, Block())
+for name in ['entities.assessments', 'entities.scoring', 'entities.knowledge',
+             'entities.knowledge_import', 'use_cases.assessments', 'use_cases.assessment_runs', 'use_cases.reviews', 'use_cases.knowledge']:
+    importlib.import_module('backend.' + name)
+from backend.entities.reviews import ReviewInput, validate_review_input
+try:
+    validate_review_input(ReviewInput('corrected', None, 'Reason', 'Feedback'))
+except ValueError:
+    pass
+else:
+    raise AssertionError('Domain correction rule did not run')
+"""
+    subprocess.run([sys.executable, "-c", code], cwd=ROOT / "backend", check=True)
+
+
+def test_startup_without_optional_engines():
+    code = r"""
+import importlib.abc, sys
+class Block(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'ml', 'openai', 'ollama', 'groq'}:
+            raise RuntimeError(fullname)
+sys.meta_path.insert(0, Block())
+from backend.main import create_app
+from backend.core.config import Settings
+app = create_app(settings=Settings(app_env='test'))
+assert app.openapi()['paths']['/api/manager/knowledge/drafts/{draft_id}/approve']
+"""
+    subprocess.run([sys.executable, "-c", code], cwd=ROOT / "backend", check=True)
+
+
+def test_ml_rules_have_no_io_dependencies():
+    for path in [*(ROOT / "ml/rules").glob("*.py"), *(ROOT / "ml").glob("*.py")]:
+        if path.name.startswith("test_") or (
+            path.parent == ROOT / "ml"
+            and path.name
+            in {
+                "report.py",
+                "generate_narration.py",
+                "procedure_support.py",
+                "completeness_style.py",
+            }
+        ):
+            continue
+        module = ".".join(path.relative_to(ROOT).with_suffix("").parts)
+        assert not violations(path.read_text(), module, layer="ml"), path
+
+
+def test_frontend_presenters_do_not_load_or_score():
+    for path in (ROOT / "frontend/src/features").glob("*/presenter.ts"):
+        source = path.read_text()
+        assert "from 'react'" not in source
+        assert "fetch(" not in source
+        assert "httpApi" not in source
+
+
+def test_presenters_have_no_persistence_dependency():
+    paths = [
+        *(BACKEND / "interface_adapters/presenters").glob("*.py"),
+        BACKEND / "interface_adapters/records.py",
+    ]
+    for path in paths:
+        assert not [
+            name
+            for name in imports(path)
+            if name.startswith(
+                ("sqlalchemy", "backend.frameworks", "backend.models", "backend.db")
+            )
+        ], path
+    code = r"""
+import importlib, importlib.abc, sys
+class Block(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] == 'sqlalchemy':
+            raise RuntimeError(fullname)
+sys.meta_path.insert(0, Block())
+for name in ['assessments', 'reviews', 'knowledge_review']:
+    importlib.import_module('backend.interface_adapters.presenters.' + name)
+"""
+    subprocess.run([sys.executable, "-c", code], cwd=ROOT / "backend", check=True)
+
+
+def test_analysis_http_uses_application_boundary():
+    path = BACKEND / "frameworks/http/analysis.py"
+    assert not [
+        name
+        for name in imports(path)
+        if name.startswith(
+            (
+                "backend.frameworks.data_access",
+                "backend.frameworks.database",
+                "backend.models",
+            )
+        )
+    ]
+    assert "AssessmentRunsInputBoundary" in path.read_text()
+
+
+def test_ml_compatibility_imports_have_fixed_targets():
+    for name in ("procedure_support", "completeness_style"):
+        tree = ast.parse((ROOT / "ml" / (name + ".py")).read_text())
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
+        assert len(calls) == 1
+        assert (
+            isinstance(calls[0].func, ast.Name) and calls[0].func.id == "import_module"
+        )
+        assert ast.literal_eval(calls[0].args[0]) == "ml.rules." + name
+        assert set(imports(ROOT / "ml" / (name + ".py"))) == {"sys", "importlib"}
