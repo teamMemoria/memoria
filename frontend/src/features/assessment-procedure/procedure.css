@@ -1,0 +1,55 @@
+.procedure-checks { margin: 17px 0 10px; }
+.check-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 13px 7px; border: 0; border-bottom: 1px solid #edf0f5; border-radius: 5px; background: transparent; color: var(--color-text); text-align: left; }
+.check-row > span:nth-child(2) { flex: 1; min-width: 0; }
+.check-row strong { display: block; font-size: 18px; font-weight: 600; }
+.check-row small { display: block; margin-top: 5px; color: var(--color-muted); font-size: 16px; line-height: 24px; }
+.check-symbol { display: grid; flex-shrink: 0; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #eaf5ee; color: #16815c; }
+.check-row--attention { background: #fff7f1; border-color: #fae8dc; }
+.check-row--attention .check-symbol { background: #ffebe1; color: #c44b22; }
+.mini-status { color: #16815c; font-size: 14px; font-weight: 600; }
+.mini-status--attention { color: #c44b22; }
+.finding-card { border-top: 3px solid #ff794a; padding-top: 20px; }
+.finding-card > h2 { margin-top: 12px; color: var(--color-heading); font-size: 24px; line-height: 32px; letter-spacing: -.4px; }
+.finding-card > .source-link { margin-top: 9px; }
+.compact-evidence { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; margin-top: 18px; padding: 16px; border-radius: 8px; background: #fff7f2; }
+.compact-evidence .inline-quote { padding-left: 0; border: 0; }
+.compact-evidence .inline-quote blockquote { font-size: 16px; line-height: 24px; }
+.compact-evidence .source-link { font-size: 16px; }
+.event-timeline { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-top: 13px; }
+.timeline-event { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 3px 8px; min-width: 0; padding: 10px; border: 1px solid #edf0f5; border-radius: 7px; background: #fbfcfe; color: var(--color-text); text-align: left; }
+.timeline-event time { grid-column: 2; color: var(--color-muted); font-size: 14px; }
+.timeline-point { grid-column: 1; grid-row: 1/4; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #eaf5ee; color: #16815c; }
+.timeline-event--attention .timeline-point { background: #ffebe2; color: #c44b22; }
+.timeline-event strong { grid-column: 2; font-size: 16px; font-weight: 600; line-height: 24px; }
+.timeline-event small { display: none; }
+.timeline-event[aria-pressed='true'] { border-color: #f4c5ae; background: #fff5ee; }
+.timeline-preview { display: flex; align-items: center; gap: 17px; margin-top: 12px; padding: 16px 20px; border-left: 3px solid var(--color-accent); border-radius: 0 6px 6px 0; background: #f8faff; }
+.timeline-preview-time { color: var(--color-heading); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.timeline-preview-time small { display: block; margin-top: 3px; color: var(--color-muted); font-size: 14px; font-weight: 400; }
+.timeline-preview > div { flex: 1; }
+.timeline-preview .eyebrow { font-size: 14px; }
+.timeline-preview blockquote { margin: 1px 0 0; font-size: 18px; line-height: 28px; }
+.timeline-preview .source-link { flex-shrink: 0; }
+.check-row, .timeline-event { transition: background 160ms, box-shadow 160ms, transform 160ms; }
+.check-row:hover { background: #f5f8fc; }
+.timeline-event:hover { border-color: #b8c9e1; background: #f5f8fd; }
+@media (max-width: 1200px) {
+.dashboard-top--three > .action-area:last-child .procedure-checks { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+}
+@media (max-width: 1000px) {
+.dashboard-top--three > .action-area:last-child .procedure-checks { display: block; }
+.event-timeline { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+.compact-evidence { grid-template-columns: minmax(0,1fr); }
+.event-timeline { grid-template-columns: minmax(0,1fr); }
+.timeline-preview { flex-wrap: wrap; gap: 10px; padding: 12px; }
+.timeline-preview > div { min-width: 100%; }
+.timeline-preview blockquote { font-size: 18px; }
+.check-row { flex-wrap: wrap; }
+.mini-status { margin-left: 36px; }
+.finding-card > h2 { font-size: 22px; line-height: 30px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+.timeline-preview { animation: page-arrive 160ms ease-out; }
+}
