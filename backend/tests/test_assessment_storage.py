@@ -16,7 +16,8 @@ from backend.models import (
     EvaluationFormVersion,
     FindingCategory,
 )
-from backend.providers.database import create_database_providers
+from backend.providers.database import create_database_providers, with_scoring
+from backend.schemas.call_review import CallFinding
 from backend.services.analysis import AnalysisService, parse_report
 from backend.services.assessment_storage import import_prepared
 from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, SAM, seed, sessions_for
@@ -371,12 +372,44 @@ async def test_partial_output_keeps_independent_scores_and_failed_history(sessio
     call = await providers.calls.get_for_agent(
         NORTHWIND, ALEX, data.id(data.processing)
     )
+    assert call.status == "partial"
+    assert call.model_validate(call.model_dump()).status == "partial"
     assert call.overall_scoring.score is None
     assert [c.scoring.score for c in call.criteria] == [100, 100, 100, None]
     assert call.criteria[-1].scoring.processing_error == "Test failure"
     completed = await run(session, data, FakeScorer(), retry=True)
     assert completed.status is AnalysisRunStatus.SUCCEEDED
     assert completed.attempt == 2 and result.assessment_report == history
+
+
+async def test_critical_check_does_not_label_unrelated_findings(session):
+    data = await scoring_data(session)
+    result = await run(session, data, FakeScorer())
+    providers = create_database_providers(sessions_for(session))
+    call = await providers.calls.get_for_agent(
+        NORTHWIND, ALEX, data.id(data.processing)
+    )
+    findings = [
+        CallFinding(
+            id=f"finding-{number}",
+            title=f"Finding {number}",
+            criterion_id="procedure",
+            explanation="Authored finding",
+            suggestion="Review the source",
+            evidence_turn_numbers=[],
+            reference_id=None,
+            reference_step=None,
+            procedure_steps=[],
+        )
+        for number in (1, 2)
+    ]
+    report = deepcopy(result.assessment_report)
+    report["categories"][0]["scoring"]["checks"][0].update(
+        outcome="breach", critical=True
+    )
+    presented = with_scoring(call.model_copy(update={"findings": findings}), report)
+    assert presented.criteria[0].scoring.checks[0].critical
+    assert [finding.critical for finding in presented.findings] == [False, False]
 
 
 async def test_unknown_checks_stay_unscored_without_becoming_failures(session):

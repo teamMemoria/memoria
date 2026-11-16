@@ -191,11 +191,18 @@ function AssessmentContent({
           <p role="status">Assessment results are not ready.</p>
         </Panel>
       ) : (
-        <div
-          className={`metric-content ${(data.criterion?.result === 'needs-review' || data.checks.some((check) => check.outcome === 'breach')) ? 'metric-content--attention' : ''}`}
-        >
-          <Screen data={data} onOpen={openEvidence} loadNarration={loadNarration} />
-        </div>
+        <>
+          {call.status === 'partial' && (
+            <Panel title="Assessment incomplete">
+              <p role="status">Processing failed for part of this assessment. Available checks are shown below; feedback is not ready.</p>
+            </Panel>
+          )}
+          <div
+            className={`metric-content ${(data.criterion?.result === 'needs-review' || data.checks.some((check) => check.outcome === 'breach')) ? 'metric-content--attention' : ''}`}
+          >
+            <Screen data={data} onOpen={openEvidence} loadNarration={loadNarration} />
+          </div>
+        </>
       )}
       <section className="assessment-actions" aria-label="Review actions">
         {data.findings.map((finding) => (

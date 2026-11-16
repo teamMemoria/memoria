@@ -139,6 +139,11 @@ function CallContent({
         </Panel>
       ) : (
         <>
+          {call.status === 'partial' && (
+            <Panel title="Assessment incomplete">
+              <p role="status">Processing failed for part of this assessment. Available checks are shown below; feedback is not ready.</p>
+            </Panel>
+          )}
           <section className="call-audit" aria-label="Automatic feedback">
             <div className="call-audit-diagram">
               <div className="call-audit-root">

@@ -584,20 +584,9 @@ def with_scoring(call, report):
                 }
             )
         )
-    critical_categories = {
-        row["category"]
-        for row in report["categories"]
-        if any(
-            check["critical"] and check["outcome"] == "breach"
-            for check in row["scoring"]["checks"]
-        )
-    }
-    findings = [
-        finding.model_copy(
-            update={"critical": finding.criterion_id in critical_categories}
-        )
-        for finding in call.findings
-    ]
+    # A critical check does not establish that every finding in its category is
+    # critical. Keep the check visible without assigning it to unrelated findings.
+    findings = list(call.findings)
     priorities = report.get("priorities", [])
     order = {}
     for index, priority in enumerate(priorities):
@@ -605,7 +594,7 @@ def with_scoring(call, report):
     findings.sort(key=lambda finding: order.get(finding.criterion_id, len(priorities)))
     return call.model_copy(
         update={
-            "status": "ready",
+            "status": "ready" if call.status == "ready" else "partial",
             "criteria": criteria,
             "overall_scoring": report_overall(report),
             "assessment_version": AssessmentVersion(

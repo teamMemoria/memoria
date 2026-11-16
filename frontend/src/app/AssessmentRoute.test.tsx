@@ -17,6 +17,21 @@ import {
   vi,
 } from './AssessmentTestSupport'
 import type { CallReview } from './AssessmentTestSupport'
+
+it('shows retained partial checks without calling them ready feedback', async () => {
+  const call = await callFixture()
+  await openCategory('procedure', {
+    ...call,
+    status: 'partial',
+    findings: [],
+    reviewRequest: null,
+    decision: null,
+  })
+  expect(screen.getByText('Assessment incomplete')).toBeTruthy()
+  expect(screen.getByText(/feedback is not ready/)).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'Procedure', level: 1 })).toBeTruthy()
+})
+
 it.each(categories)(
   'renders $id from API data without synthetic scores',
   async ({ id, title }) => {

@@ -55,7 +55,7 @@ export type CallReview = {
   date: string | null
   duration: string | null
   summary: string
-  status: 'ready' | 'processing' | 'unavailable'
+  status: 'ready' | 'partial' | 'processing' | 'unavailable'
   overallScoring?: OverallScoring | null
   assessmentVersion?: {
     sourceId?: string

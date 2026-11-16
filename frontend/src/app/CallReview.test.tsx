@@ -103,6 +103,15 @@ describe('Agent call review', () => {
     expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
   })
 
+  it('shows available partial scores without calling the assessment ready', async () => {
+    const call = await callFixture({ status: 'partial', findings: [], reviewRequest: null, decision: null })
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    await screen.findByRole('heading', { name: 'Assessment incomplete' })
+    expect(screen.getByText(/feedback is not ready/)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Automatic feedback' })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
+  })
+
   it('shows the Manager decision separately from the original automated assessment', async () => {
     const call = await callFixture({ decision: {
       outcome: 'cannot-assess', reason: 'The reference was disputed after this audit.',

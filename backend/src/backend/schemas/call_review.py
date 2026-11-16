@@ -154,7 +154,7 @@ class CallReview(ApiModel):
     date: str | None
     duration: str | None
     summary: str
-    status: Literal["ready", "processing", "unavailable"]
+    status: Literal["ready", "partial", "processing", "unavailable"]
     criteria: list[AuditCriterion]
     findings: list[CallFinding]
     transcript: Transcript | None
@@ -173,6 +173,11 @@ class CallReview(ApiModel):
             if self.criteria or self.findings or self.decision or self.review_request:
                 raise ValueError("a processing call has no assessment or decision yet")
             return self
+
+        if self.status == "partial" and (
+            self.findings or self.decision or self.review_request
+        ):
+            raise ValueError("a partial call cannot contain completed feedback")
 
         ids = [criterion.id for criterion in self.criteria]
         if sorted(ids) != sorted(CRITERION_IDS):
