@@ -21,8 +21,8 @@ from backend.api import (
     viewer,
 )
 from backend.core.config import Settings
-from backend.db import session as db_session
 from backend.db.session import get_db_session
+from backend.frameworks.database.session import create_database
 from backend.providers import (
     Providers,
     ProviderUnavailableError,
@@ -35,10 +35,11 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    yield
-    # Close pooled connections so reloads and test runs don't leak them.
-    await db_session.engine.dispose()
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    try:
+        yield
+    finally:
+        await app.state.database.close()
 
 
 def create_app(
@@ -49,14 +50,16 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Call Assist", lifespan=lifespan)
     settings = settings or Settings()
+    database = create_database(settings.database_url)
+    app.state.database = database
     if providers is None:
-        providers = create_database_providers(db_session.async_session_factory)
+        providers = create_database_providers(database.sessions)
     app.state.providers = providers
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
-    app.state.analysis = analysis or AnalysisService(db_session.async_session_factory)
+    app.state.analysis = analysis or AnalysisService(database.sessions)
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
-        db_session.async_session_factory
+        database.sessions
     )
 
     @app.exception_handler(ProviderUnavailableError)
