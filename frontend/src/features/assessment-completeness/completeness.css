@@ -1,0 +1,27 @@
+.request-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; margin-top: 20px; }
+.request-list > button { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-height: 165px; padding: 16px; border: 1px solid #e5ebf2; border-radius: 9px; background: #f8fafc; color: var(--color-text); text-align: left; }
+.request-icon { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 8px; background: #e8f3eb; color: #16815c; }
+.request-icon--blue { background: #eaf0fc; color: #4b6fb4; }
+.request-list strong { display: block; font-size: 20px; font-weight: 600; }
+.request-list small { display: block; margin-top: 5px; color: var(--color-muted); font-size: 16px; line-height: 24px; }
+.request-state { display: inline-flex; align-items: center; gap: 6px; color: #16815c; font-size: 16px; }
+.promise-note { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 12px; border: 1px solid #f5e3c3; border-radius: 8px; background: #fffbf3; }
+.promise-note p { flex: 1; }
+.promise-note strong { display: block; color: #8a651a; font-size: 18px; font-weight: 600; }
+.promise-note p > span { display: block; margin-top: 3px; color: var(--color-muted); font-size: 16px; line-height: 24px; }
+.promise-icon { color: #aa7f22; }
+.promise-note .source-link { flex-shrink: 0; font-size: 16px; }
+.completion-strip { display: flex; align-items: center; gap: 12px; margin-top: 13px; color: var(--color-muted); font-size: 14px; }
+.completion-strip i { flex: 1; height: 2px; background: #c9e3d1; }
+.completion-strip .codicon { color: #16815c; }
+.request-list > button { transition: background 160ms, box-shadow 160ms, transform 160ms; }
+.request-list > button:hover { border-color: #b8c9e1; background: #f5f8fd; }
+@media (max-width: 800px) {
+.promise-note { flex-wrap: wrap; }
+}
+@media (max-width: 500px) {
+.request-list { grid-template-columns: minmax(0,1fr); }
+.request-list > button { min-height: 0; }
+.completion-strip { flex-wrap: wrap; gap: 7px; font-size: 14px; }
+.completion-strip i { min-width: 9px; }
+}
