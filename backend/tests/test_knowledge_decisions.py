@@ -24,9 +24,7 @@ async def setup(session):
     session.add(draft)
     await session.commit()
     providers = create_database_providers(sessions_for(session))
-    app = create_app(
-        providers=providers, settings=Settings(app_env="test", data_source="database")
-    )
+    app = create_app(providers=providers, settings=Settings(app_env="test"))
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:

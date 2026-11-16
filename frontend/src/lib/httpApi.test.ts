@@ -11,6 +11,15 @@ afterEach(() => {
 })
 
 describe('HTTP dependency boundary', () => {
+  it('uses the backend by default in development', async () => {
+    vi.stubEnv('MODE', 'development')
+    vi.stubEnv('DEV', true)
+    const fetch = vi.fn(async () => new Response(JSON.stringify([])))
+    vi.stubGlobal('fetch', fetch)
+    await createDependencies().profilesApi!.listProfiles()
+    expect((fetch.mock.calls as unknown as [string, RequestInit][])[0][0]).toBe('/api/demo/profiles')
+  })
+
   it('uses configured HTTP APIs without falling back to demo records', async () => {
     vi.stubEnv('VITE_API_BASE_URL', '/backend/')
     vi.stubEnv('VITE_DEV_USER', 'test-agent')
@@ -125,7 +134,6 @@ function mockResponse(value: unknown, status = 200) {
 
 describe('database profile HTTP integration', () => {
   it('selects HTTP for every workspace API and never falls back to fixtures', async () => {
-    vi.stubEnv('VITE_DEMO_BACKEND', 'true')
     vi.stubEnv('VITE_API_BASE_URL', '/backend/')
     const fetch = mockResponse([])
     const apis = createDependencies()

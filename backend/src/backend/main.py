@@ -25,7 +25,6 @@ from backend.db.session import get_db_session
 from backend.providers import (
     Providers,
     ProviderUnavailableError,
-    create_fixture_providers,
 )
 from backend.providers.database import create_database_providers
 from backend.services.analysis import AnalysisService
@@ -50,11 +49,7 @@ def create_app(
     app = FastAPI(title="Call Assist", lifespan=lifespan)
     settings = settings or Settings()
     if providers is None:
-        providers = (
-            create_database_providers(db_session.async_session_factory)
-            if settings.data_source == "database"
-            else create_fixture_providers()
-        )
+        providers = create_database_providers(db_session.async_session_factory)
     app.state.providers = providers
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.

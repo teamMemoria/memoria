@@ -57,8 +57,8 @@ conversations listed for it; nothing is assessed, reviewed or approved:
     uv run seed-demo-profiles
 
 To use them from the frontend, start the backend with
-`MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database` and the frontend with
-`VITE_DEMO_BACKEND=true npm run dev`.
+`MEMORIA_APP_ENV=development` and the frontend with `npm run dev`. Runtime
+requests use the database; fixture providers are injected only by tests.
 
 See [the dashboard entry guide](../frontend/DEMO-BACKEND.md) for the single-backend
 setup, supported assessment views and current read-only knowledge limitation.

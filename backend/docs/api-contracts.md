@@ -59,11 +59,10 @@ header:
 2. **Authorization** decides *what they may do*, and always comes from the server. `get_current_user`
    passes the user ID to the identity provider (`Providers.identities`), which returns the
    `CurrentUser`:
-   - With fixtures (`MEMORIA_DATA_SOURCE=fixtures`, the default) it is the matching entry in
-     `DEV_IDENTITIES`.
-   - With the database (`MEMORIA_DATA_SOURCE=database`) it is built from the user's stored
-     `OrganizationMembership`: `organization_id` is the organization's `slug`, and permissions come
-     from `permissions_for_membership` in `backend/core/auth.py`.
+   - At runtime it is built from the user's stored `OrganizationMembership`:
+     `organization_id` is the organization's `slug`, and permissions come from
+     `permissions_for_membership` in `backend/core/auth.py`. Tests can inject
+     fixture providers explicitly.
 
    | Membership | Permissions |
    |---|---|
@@ -85,7 +84,7 @@ they already hold, and without it such a user gets `401`.
 To run on the database:
 
 ```bash
-MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database .venv/bin/uvicorn backend.main:app --reload
+MEMORIA_APP_ENV=development .venv/bin/uvicorn backend.main:app --reload
 ```
 To run locally:
 
@@ -450,18 +449,18 @@ The frontend then sends the chosen `id` as `X-Dev-User`. Access still comes from
 the stored membership: an Agent profile sees only the conversations linked to its
 agent record, whatever its display name.
 
-With the database, the profiles are the users created by `seed-demo-profiles`
-(IDs starting with `demo-`). With fixtures, they are the fixture viewers.
+The profiles are the users created by `seed-demo-profiles` (IDs starting with
+`demo-`). Tests may inject fixture viewers.
 
 ## Providers
 
 Routes read data through the interfaces in `backend/src/backend/providers/base.py`
 (`ViewerProvider`, `ConversationProvider`, `CallReviewProvider`, `KnowledgeProvider`).
 Every method takes an `organization_id` and returns `None` for records that are missing
-or not visible to that agent. `MEMORIA_DATA_SOURCE` picks the fixture providers or the
-PostgreSQL ones in `backend/src/backend/providers/database.py`; tests can pass their own
-`Providers` to `create_app()`. `tests/test_database_providers.py` runs the same checks against
-both, so they cannot drift apart.
+or not visible to that agent. Runtime uses PostgreSQL providers in
+`backend/src/backend/providers/database.py`; tests can pass their own
+`Providers` to `create_app()`. `tests/test_database_providers.py` runs the same
+checks against database and fixture providers, so they cannot drift apart.
 
 ### Database mapping
 

@@ -24,12 +24,12 @@ export function createDependencies(): {
   knowledgeReviewApi: KnowledgeReviewApi | null
 } {
   if (import.meta.env.VITE_API_BASE_URL ||
-      (import.meta.env.DEV && import.meta.env.VITE_DEMO_BACKEND === 'true')) {
+      (import.meta.env.DEV && import.meta.env.MODE !== 'test')) {
     const apis = createHttpApis(import.meta.env.VITE_API_BASE_URL ?? '')
     return { ...apis, profilesApi: import.meta.env.DEV ? apis.profilesApi : null }
   }
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.MODE === 'test') {
     const role =
       import.meta.env.VITE_DEV_ROLE === 'manager' ? 'manager' : 'agent'
     const callApi = createDevCallApi()

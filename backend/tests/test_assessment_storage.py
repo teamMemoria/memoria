@@ -16,6 +16,7 @@ from backend.models import (
     EvaluationFormVersion,
     FindingCategory,
 )
+from backend.providers import create_fixture_providers
 from backend.providers.database import create_database_providers, with_scoring
 from backend.schemas.call_review import CallFinding
 from backend.services.analysis import AnalysisService, parse_report
@@ -338,7 +339,9 @@ async def test_application_starts_without_importing_any_scoring_engine(monkeypat
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", reject_engine)
-    app = create_app(settings=Settings(app_env="development", data_source="fixtures"))
+    app = create_app(
+        providers=create_fixture_providers(), settings=Settings(app_env="development")
+    )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app), base_url="http://test"
     ) as client:

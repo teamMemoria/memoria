@@ -90,7 +90,7 @@ running data. From backend:
 
 ```sh
 uv sync --frozen
-MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database \
+MEMORIA_APP_ENV=development \
   uv run uvicorn backend.main:app --host 127.0.0.1 --port 8061
 ```
 
@@ -98,7 +98,7 @@ From frontend:
 
 ```sh
 npm ci
-VITE_DEMO_BACKEND=true MEMORIA_API_TARGET=http://127.0.0.1:8061 \
+MEMORIA_API_TARGET=http://127.0.0.1:8061 \
   npm run dev -- --host 127.0.0.1 --port 5361
 ```
 

@@ -14,7 +14,10 @@ from backend.providers import (
     Providers,
     create_fixture_providers,
 )
-from backend.providers.database import create_database_providers
+from backend.providers.database import (
+    DatabaseCallReviewProvider,
+    create_database_providers,
+)
 from backend.providers.fixture_data import KNOWLEDGE
 from tests.database_seed import (
     ALEX,
@@ -400,11 +403,9 @@ async def test_ids_outside_the_key_range_are_not_found(
     assert response.status_code == 404
 
 
-def test_settings_choose_the_data_source(monkeypatch):
-    monkeypatch.setenv("MEMORIA_DATA_SOURCE", "database")
-    assert Settings().data_source == "database"
-    monkeypatch.delenv("MEMORIA_DATA_SOURCE")
-    assert Settings().data_source == "fixtures"
+def test_app_uses_database_providers_by_default():
+    app = create_app(settings=Settings(app_env="development"))
+    assert isinstance(app.state.providers.calls, DatabaseCallReviewProvider)
 
 
 async def test_original_abcd_id_is_visible_even_without_an_assessment(

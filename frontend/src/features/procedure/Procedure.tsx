@@ -349,7 +349,7 @@ function AgentProcedure({
     void navigate(`${location.pathname}${location.search}`, { replace: true })
   }
 
-  if (call.status !== 'ready' || (findingId && !finding)) {
+  if ((!fullTranscript && call.status !== 'ready') || (findingId && !finding)) {
     return (
       <div className="procedure">
         {back}
@@ -382,7 +382,6 @@ function AgentProcedure({
             <>
               <span>{call.agentName}</span>
               <span>{turns.length} turns</span>
-              <span>Duration {call.duration}</span>
             </>
           ) : (
             <>

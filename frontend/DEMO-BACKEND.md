@@ -14,7 +14,7 @@ It does not import conversations, generate assessments or approve anything.
 ```sh
 uv run alembic upgrade head
 uv run seed-demo-profiles
-MEMORIA_APP_ENV=development MEMORIA_DATA_SOURCE=database \
+MEMORIA_APP_ENV=development \
   uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -22,16 +22,15 @@ In another terminal, from `frontend`:
 
 ```sh
 npm ci
-VITE_DEMO_BACKEND=true MEMORIA_API_TARGET=http://127.0.0.1:8000 npm run dev
+MEMORIA_API_TARGET=http://127.0.0.1:8000 npm run dev
 ```
 
 All `/api` requests use that single backend. `VITE_API_BASE_URL` is an optional
 path prefix for a configured reverse proxy. The backend URL defaults to
 `http://localhost:8000`. There is no separate profile-service target.
 
-The current local preview uses frontend port 54121 and this branch's backend on
-54122, reading the existing demo database. The other integration backend is not
-involved. No existing database records were altered by browser verification.
+The frontend uses the backend database. The backend fixture providers remain
+available for isolated automated tests, not for the running demo.
 
 ## Scope and behavior
 

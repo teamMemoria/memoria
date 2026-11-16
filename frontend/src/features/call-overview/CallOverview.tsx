@@ -131,7 +131,10 @@ function CallContent({
       </ul>
       <p className="call-overview-summary">{call.summary}</p>
       {call.status === 'unavailable' ? (
-        <Panel title="Assessment unavailable"><p>No assessment is stored for this conversation. This is not an Agent performance result.</p></Panel>
+        <Panel title="Assessment unavailable">
+          <p>No assessment is stored for this conversation. This is not an Agent performance result.</p>
+          {call.transcript && <Link to={transcript}>Transcript</Link>}
+        </Panel>
       ) : call.status === 'processing' ? (
         <Panel title="Feedback is processing">
           <p role="status">Automatic feedback is not ready for this call.</p>

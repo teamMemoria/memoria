@@ -103,6 +103,14 @@ describe('Agent call review', () => {
     expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
   })
 
+  it('keeps the transcript available when no assessment is stored', async () => {
+    const call = await callFixture({ status: 'unavailable', criteria: [], findings: [] })
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    await screen.findByRole('heading', { name: 'Assessment unavailable' })
+    fireEvent.click(screen.getByRole('link', { name: 'Transcript' }))
+    await screen.findByRole('heading', { name: 'Complete conversation' })
+  })
+
   it('shows available partial scores without calling the assessment ready', async () => {
     const call = await callFixture({ status: 'partial', findings: [], reviewRequest: null, decision: null })
     openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
