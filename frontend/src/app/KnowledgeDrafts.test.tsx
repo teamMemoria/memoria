@@ -6,21 +6,42 @@ import { agent, manager, openApp } from './TestSetup'
 
 const path = '/manager/knowledge'
 const asManager = { getViewer: async () => manager }
-const rows = () => within(screen.getByRole('table')).getAllByRole('link').map((link) => link.textContent)
+const rows = () =>
+  within(screen.getByRole('table'))
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => within(row).getAllByRole('link')[0].textContent)
 
 describe('Manager knowledge drafts', () => {
   it('shows each tab with the right entries and counts that match the API', async () => {
     openApp({ path, viewerApi: asManager })
     await screen.findByRole('table')
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Pending (3)', 'Approved (1)', 'Flagged (1)', 'Rejected (1)',
+      'Pending review (3)',
+      'Approved (1)',
+      'Flagged (1)',
+      'Rejected (1)',
     ])
-    expect(rows()).toEqual(['Exchanges for damaged items', 'Refund timing for card payments', 'Missing parcel claims'])
-    const row = screen.getByRole('link', { name: 'Exchanges for damaged items' }).closest('tr')!
+    expect(rows()).toEqual([
+      'Exchanges for damaged items',
+      'Refund timing for card payments',
+      'Missing parcel claims',
+    ])
+    const row = screen
+      .getByRole('link', { name: 'Exchanges for damaged items' })
+      .closest('tr')!
     expect(within(row).getByText('Returns')).toBeTruthy()
-    expect(within(row).getByText('3 conversations')).toBeTruthy()
+    expect(within(row).getByText('3 sources')).toBeTruthy()
     expect(within(row).getByText('Oct 27, 2026')).toBeTruthy()
-    expect(within(row).getByText('Pending')).toBeTruthy()
+    expect(
+      within(row)
+        .getByRole('link', { name: 'Review Exchanges for damaged items' })
+        .getAttribute('href'),
+    ).toBe('/manager/knowledge/KD-104')
+    expect(
+      screen.getByRole('figure', { name: 'Knowledge draft counts' })
+        .textContent,
+    ).toContain('Pending review: 3. Approved: 1. Flagged: 1')
     fireEvent.click(screen.getByRole('tab', { name: 'Approved (1)' }))
     expect(rows()).toEqual(['Refund handling'])
     fireEvent.click(screen.getByRole('tab', { name: 'Flagged (1)' }))
@@ -31,61 +52,110 @@ describe('Manager knowledge drafts', () => {
 
   it('searches within a tab, opens an entry and keeps the tab and search on return', async () => {
     const { router } = openApp({ path, viewerApi: asManager })
-    const search = await screen.findByRole('searchbox', { name: 'Search knowledge entries' })
+    const search = await screen.findByRole('searchbox', {
+      name: 'Search knowledge entries',
+    })
     fireEvent.change(search, { target: { value: 'no such entry' } })
-    expect(screen.getByRole('heading', { name: 'No matching entries' })).toBeTruthy()
+    expect(
+      screen.getByRole('heading', { name: 'No matching entries' }),
+    ).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
     fireEvent.change(search, { target: { value: 'refund' } })
     expect(rows()).toEqual(['Refund timing for card payments'])
     fireEvent.click(screen.getByRole('tab', { name: 'Rejected (1)' }))
     expect(rows()).toEqual(['Refunds without a receipt'])
-    fireEvent.click(screen.getByRole('link', { name: 'Refunds without a receipt' }))
-    await screen.findByRole('heading', { name: 'Refunds without a receipt', level: 1 })
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Refunds without a receipt' }),
+    )
+    await screen.findByRole('heading', {
+      name: 'Refunds without a receipt',
+      level: 1,
+    })
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge drafts' }))
     await screen.findByRole('table')
     expect(router.state.location.search).toBe('?q=refund&tab=rejected')
-    expect(screen.getByRole('tab', { name: 'Rejected (1)' }).getAttribute('aria-selected')).toBe('true')
+    expect(
+      screen
+        .getByRole('tab', { name: 'Rejected (1)' })
+        .getAttribute('aria-selected'),
+    ).toBe('true')
     expect(rows()).toEqual(['Refunds without a receipt'])
   })
 
   it('refreshes counts and rows when returning after a decision', async () => {
-    const before = await createDevKnowledgeReviewApi().listForManager(manager.id)
+    const before = await createDevKnowledgeReviewApi().listForManager(
+      manager.id,
+    )
     const after: KnowledgeDraft[] = before.map((entry) =>
       entry.id === 'KD-103' ? { ...entry, status: 'approved' } : entry,
     )
-    const listForManager = vi.fn().mockResolvedValueOnce(before).mockResolvedValueOnce(after)
-    const { router } = openApp({ path, viewerApi: asManager, knowledgeReviewApi: { ...createDevKnowledgeReviewApi(), listForManager } })
-    await screen.findByRole('tab', { name: 'Pending (3)' })
-    fireEvent.click(screen.getByRole('link', { name: 'Refund timing for card payments' }))
-    await screen.findByRole('heading', { name: 'Refund timing for card payments', level: 1 })
+    const listForManager = vi
+      .fn()
+      .mockResolvedValueOnce(before)
+      .mockResolvedValueOnce(after)
+    const { router } = openApp({
+      path,
+      viewerApi: asManager,
+      knowledgeReviewApi: { ...createDevKnowledgeReviewApi(), listForManager },
+    })
+    await screen.findByRole('tab', { name: 'Pending review (3)' })
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Refund timing for card payments' }),
+    )
+    await screen.findByRole('heading', {
+      name: 'Refund timing for card payments',
+      level: 1,
+    })
     await act(() => router.navigate(path))
-    await screen.findByRole('tab', { name: 'Pending (2)' })
+    await screen.findByRole('tab', { name: 'Pending review (2)' })
     expect(screen.getByRole('tab', { name: 'Approved (2)' })).toBeTruthy()
     expect(rows()).not.toContain('Refund timing for card payments')
     expect(listForManager).toHaveBeenCalledTimes(2)
+    expect(
+      screen.getByRole('figure', { name: 'Knowledge draft counts' })
+        .textContent,
+    ).toContain('Pending review: 2. Approved: 2. Flagged: 1')
   })
 
   it('shows loading, error with retry, and empty states', async () => {
-    const listForManager = vi.fn()
+    const listForManager = vi
+      .fn()
       .mockRejectedValueOnce(new Error('Internal details'))
       .mockResolvedValueOnce([])
-    openApp({ path, viewerApi: asManager, knowledgeReviewApi: { ...createDevKnowledgeReviewApi(), listForManager } })
+    openApp({
+      path,
+      viewerApi: asManager,
+      knowledgeReviewApi: { ...createDevKnowledgeReviewApi(), listForManager },
+    })
     expect(await screen.findByText('Loading knowledge drafts…')).toBeTruthy()
-    expect((await screen.findByRole('alert')).textContent).toBe('Knowledge drafts could not be loaded. Please try again.')
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Knowledge drafts could not be loaded. Please try again.',
+    )
     expect(screen.queryByText('Internal details')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await screen.findByRole('heading', { name: 'No pending entries' })
+    await screen.findByRole('heading', { name: 'No pending review entries' })
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Pending (0)', 'Approved (0)', 'Flagged (0)', 'Rejected (0)',
+      'Pending review (0)',
+      'Approved (0)',
+      'Flagged (0)',
+      'Rejected (0)',
     ])
   })
 
   it('refuses the draft queue to Agents, in the page and in the development API', async () => {
     const listForManager = vi.fn()
-    openApp({ path, viewerApi: { getViewer: async () => agent }, knowledgeReviewApi: { ...createDevKnowledgeReviewApi(), listForManager } })
-    await screen.findByRole('heading', { name: 'Page unavailable for your role' })
+    openApp({
+      path,
+      viewerApi: { getViewer: async () => agent },
+      knowledgeReviewApi: { ...createDevKnowledgeReviewApi(), listForManager },
+    })
+    await screen.findByRole('heading', {
+      name: 'Page unavailable for your role',
+    })
     expect(listForManager).not.toHaveBeenCalled()
     expect(screen.queryByRole('table')).toBeNull()
-    await expect(createDevKnowledgeReviewApi().listForManager(agent.id)).rejects.toThrow()
+    await expect(
+      createDevKnowledgeReviewApi().listForManager(agent.id),
+    ).rejects.toThrow()
   })
 })
