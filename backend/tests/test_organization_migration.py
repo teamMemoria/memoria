@@ -5,12 +5,17 @@ from pathlib import Path
 
 import psycopg
 from psycopg import sql
+from sqlalchemy import make_url
 
-ADMIN_URL = os.getenv(
-    "TEST_ADMIN_URL", "postgresql://app:app@localhost:5432/callassist"
-)
+from backend.core.config import get_settings
+from tests.conftest import ADMIN_URL as SCRATCH_ADMIN_URL
+from tests.conftest import TEST_DATABASE_URL, _same_database
+
+ADMIN_URL = os.getenv("TEST_ADMIN_URL", SCRATCH_ADMIN_URL)
 MIGRATION_DB = os.getenv("TEST_MIGRATION_DB", "callassist_organization_migration_test")
-MIGRATION_URL = ADMIN_URL.rsplit("/", 1)[0] + f"/{MIGRATION_DB}"
+MIGRATION_URL = (
+    make_url(ADMIN_URL).set(database=MIGRATION_DB).render_as_string(hide_password=False)
+)
 ALEMBIC_URL = MIGRATION_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 SOURCE_DIR = Path(__file__).resolve().parents[1] / "src"
 
@@ -27,12 +32,15 @@ def run_alembic(revision: str) -> None:
     subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", revision],
         env=alembic_env(),
+        cwd=SOURCE_DIR.parent,
         check=True,
         capture_output=True,
     )
 
 
 def test_populated_database_is_backfilled_without_losing_reviewer_names():
+    assert not _same_database(MIGRATION_URL, get_settings().database_url)
+    assert not _same_database(MIGRATION_URL, TEST_DATABASE_URL)
     with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
         conn.execute(
             sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
@@ -193,6 +201,7 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
         subprocess.run(
             [sys.executable, "-m", "alembic", "downgrade", "c75d2d9e41af"],
             env=alembic_env(),
+            cwd=SOURCE_DIR.parent,
             check=True,
             capture_output=True,
         )
