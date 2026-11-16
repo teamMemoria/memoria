@@ -178,19 +178,20 @@ async def test_stored_results_use_the_frontend_names(providers, data):
     assert procedure.finding_id == finding.id
 
 
-async def test_evidence_keeps_original_turn_numbers_and_skips_system_actions(
+async def test_evidence_keeps_original_turn_numbers_and_labels_system_actions(
     providers, data
 ):
     call = await providers.calls.get_for_agent(NORTHWIND, ALEX, data.id(data.assessed))
-    assert [turn.number for turn in call.transcript.turns] == [1, 2, 4, 7]
+    assert [turn.number for turn in call.transcript.turns] == [1, 2, 4, 5, 7]
     assert [turn.speaker for turn in call.transcript.turns] == [
         "Customer",
         "Agent",
         "Customer",
+        "System action",
         "Agent",
     ]
-    # Turn 5 is a system action: stored as evidence, but not part of the transcript.
-    assert call.findings[0].evidence_turn_numbers == [2, 7]
+    # Recorded action 5 is included and distinguished from an Agent claim.
+    assert call.findings[0].evidence_turn_numbers == [2, 5, 7]
 
 
 async def test_reference_is_the_version_the_call_was_assessed_against(providers, data):
@@ -218,7 +219,7 @@ async def test_list_statuses_follow_audits_flags_and_reviews(providers, data):
     }
     processing = conversations[data.id(data.processing)]
     assert (processing.automated_result, processing.review_status) == (
-        "processing",
+        "unavailable",
         None,
     )
     assessed = conversations[data.id(data.assessed)]
@@ -250,7 +251,7 @@ async def test_processing_call_has_no_assessment(providers, data):
     call = await providers.calls.get_for_agent(
         NORTHWIND, ALEX, data.id(data.processing)
     )
-    assert call.status == "processing"
+    assert call.status == "unavailable"
     assert (call.criteria, call.findings, call.decision) == ([], [], None)
 
 
@@ -404,3 +405,23 @@ def test_settings_choose_the_data_source(monkeypatch):
     assert Settings().data_source == "database"
     monkeypatch.delenv("MEMORIA_DATA_SOURCE")
     assert Settings().data_source == "fixtures"
+
+
+async def test_original_abcd_id_is_visible_even_without_an_assessment(
+    providers, data, session
+):
+    data.processing.source_dataset = "ABCD"
+    data.processing.original_id = "source-example"
+    session.add(data.processing)
+    await session.commit()
+    call = await providers.calls.get_for_agent(
+        NORTHWIND, ALEX, data.id(data.processing)
+    )
+    assert call.source_id == "source-example"
+    assert call.status == "unavailable"
+    assert call.criteria == []
+    rows = await providers.conversations.list_for_agent(NORTHWIND, ALEX)
+    row = next(row for row in rows if row.id == call.id)
+    assert row.source_id == call.source_id
+    assert row.review_status is None
+    assert row.overall_scoring is None

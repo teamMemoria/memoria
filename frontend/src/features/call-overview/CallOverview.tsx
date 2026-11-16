@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import { Button, Panel, StatusLabel } from '../../components/controls'
 import { useCallReview } from '../../lib/useCallReview'
-import { auditResults as results } from '../../types/callReview'
+import { percentage, auditResults as results } from '../../types/callReview'
 import type {
   AuditCriterion,
   CallApi,
@@ -27,12 +27,6 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
 function formatDate(value: string | null) {
   if (!value) return 'Date not recorded'
   return dateFormatter.format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
-}
-
-function formatDuration(value: string | null) {
-  if (!value) return 'Duration not recorded'
-  const match = /^(\d+):([0-5]\d)$/.exec(value)
-  return match ? `${Number(match[1])} min ${Number(match[2])} sec` : value
 }
 
 export function CallOverview({
@@ -127,18 +121,18 @@ function CallContent({
     <>
       <h1>{call.topic}</h1>
       <ul className="call-overview-metadata" aria-label="Call details">
-        <li>Call {call.id}</li>
+        <li>Call {call.id}{call.sourceId && ` · ABCD ${call.sourceId}`}</li>
         <li>{call.agentName}</li>
         <li>
-          <time dateTime={call.date ?? undefined}>{formatDate(call.date)}</time>
-        </li>
-        <li>
-          <span className="call-overview-sr-only">Duration </span>
-          {formatDuration(call.duration)}
+          {call.transcript
+            ? `${call.transcript.turns.length} ${call.transcript.complete ? '' : 'recorded '}${call.transcript.turns.length === 1 ? 'turn' : 'turns'}`
+            : 'Turns unavailable'}
         </li>
       </ul>
       <p className="call-overview-summary">{call.summary}</p>
-      {call.status === 'processing' ? (
+      {call.status === 'unavailable' ? (
+        <Panel title="Assessment unavailable"><p>No assessment is stored for this conversation. This is not an Agent performance result.</p></Panel>
+      ) : call.status === 'processing' ? (
         <Panel title="Feedback is processing">
           <p role="status">Automatic feedback is not ready for this call.</p>
           <Link to={transcript}>Transcript</Link>
@@ -170,8 +164,9 @@ function CallContent({
                         {criterion.title}
                       </span>
                       <span className="call-criterion-result">
-                        {result.label}
+                        {criterion.scoring ? percentage(criterion.scoring.score) : result.label}
                       </span>
+                      {criterion.scoring && <span className="call-criterion-qualification">Coverage: {percentage(criterion.scoring.coverage, 'Unknown')}</span>}
                       {criterion.id === 'communication-style' && (
                         <span className="call-criterion-qualification">
                           Text only
@@ -194,7 +189,7 @@ function CallContent({
                       <Link
                         className={`call-criterion call-criterion--${result.tone}`}
                         to={evidenceLink(criterion)}
-                        aria-label={`${criterion.title}: ${result.label}`}
+                        aria-label={`${criterion.title}: ${criterion.scoring ? percentage(criterion.scoring.score) : result.label}`}
                       >
                         {cardContent}
                       </Link>
@@ -233,11 +228,7 @@ function CallContent({
                 </Link>
               </div>
             </section>
-          ) : (
-            <Link className="call-transcript-link" to={transcript}>
-              Transcript
-            </Link>
-          )}
+          ) : null}
           {call.decision && (
             <Panel className="call-manager-decision" title="Manager decision">
               <StatusLabel

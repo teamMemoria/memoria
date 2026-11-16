@@ -135,7 +135,8 @@ async def test_queue_shows_the_flag_with_its_finding(session, data):
     ("status", "expected"),
     [
         ("review-complete", ["reviewed"]),
-        ("processing", ["processing"]),
+        ("processing", []),
+        ("unavailable", ["processing"]),
         ("feedback-ready", ["sam_call", "undated"]),
     ],
 )
@@ -183,7 +184,7 @@ async def test_detail_has_finding_evidence_context_and_permission(session, data)
     detail = response.json()
     assert detail["canDecide"] is True
     call = detail["call"]
-    assert call["findings"][0]["evidenceTurnNumbers"] == [2, 7]
+    assert call["findings"][0]["evidenceTurnNumbers"] == [2, 5, 7]
     assert call["agentContext"]["text"] == "The order screen was open the whole time."
     assert call["reviewRequest"]["status"] == "requested"
     assert call["decision"] is None

@@ -131,8 +131,8 @@ def matches(conversation: TeamConversation, query: str) -> bool:
 def has_status(conversation: TeamConversation, status: str) -> bool:
     if status == "all":
         return True
-    if status == "processing":
-        return conversation.automated_result == "processing"
+    if status in ("processing", "unavailable"):
+        return conversation.automated_result == status
     return conversation.review_status == status
 
 

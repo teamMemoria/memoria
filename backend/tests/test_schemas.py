@@ -32,7 +32,7 @@ def test_serializes_with_frontend_field_names():
 
 def test_round_trips_without_losing_fields():
     raw = c1042()
-    assert CallReview.model_validate(raw).model_dump() == raw
+    assert CallReview.model_validate(raw).model_dump(exclude_unset=True) == raw
 
 
 @pytest.mark.parametrize("result", ["meets-criteria", "needs-review", "cannot-assess"])

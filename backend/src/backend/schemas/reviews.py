@@ -10,7 +10,12 @@ from backend.schemas.feedback import text_field
 # Matches frontend/src/features/review-queue/teamQueue.ts.
 DecisionOutcome = Literal["confirmed", "corrected", "dismissed", "cannot-assess"]
 QueueStatus = Literal[
-    "all", "feedback-ready", "review-requested", "review-complete", "processing"
+    "all",
+    "feedback-ready",
+    "review-requested",
+    "review-complete",
+    "processing",
+    "unavailable",
 ]
 
 

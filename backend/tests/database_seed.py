@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
@@ -176,6 +177,8 @@ def four_findings(org, **overrides):
 
 
 async def seed(session: AsyncSession) -> Seed:
+    # The migrated default form must not compete with this isolated test form.
+    await session.execute(update(EvaluationFormVersion).values(is_active=False))
     northwind = Organization(slug=NORTHWIND, name="Northwind Support")
     harbor = Organization(slug=HARBOR, name="Harbor Retail")
     alex_agent = Agent(organization=northwind, external_id="speaker-11", name="A11")

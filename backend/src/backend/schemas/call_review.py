@@ -1,6 +1,6 @@
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, FiniteFloat, model_validator
 
 from backend.schemas.base import ApiModel
 from backend.schemas.knowledge import KnowledgeEntry
@@ -20,7 +20,7 @@ CRITERION_IDS: tuple[CriterionId, ...] = (
 
 class TranscriptTurn(ApiModel):
     number: int  # original turn number; gaps are allowed and must be kept
-    speaker: Literal["Agent", "Customer"]
+    speaker: Literal["Agent", "Customer", "System action"]
     text: str
     time: str | None
 
@@ -38,6 +38,41 @@ class Transcript(ApiModel):
         return self
 
 
+class ScoringCheck(ApiModel):
+    id: str
+    rule_id: str
+    requirement: str
+    outcome: Literal["supported", "breach", "unresolved", "not-applicable"]
+    earned: FiniteFloat | None = Field(ge=0, strict=True)
+    maximum: FiniteFloat = Field(gt=0, strict=True)
+    explanation: str
+    advice: str
+    citations: list[dict[str, Any]]
+    critical: bool
+
+
+class CategoryScoring(ApiModel):
+    score: FiniteFloat | None = Field(ge=0, le=100)
+    coverage: FiniteFloat | None = Field(ge=0, le=100)
+    earned: FiniteFloat = Field(ge=0)
+    assessable: FiniteFloat = Field(ge=0)
+    possible: FiniteFloat | None = Field(ge=0)
+    checks: list[ScoringCheck]
+    limitations: list[str]
+    processing_error: str | None
+    interpretation_limits: list[str]
+    inventory_complete: bool = True
+
+
+class OverallScoring(ApiModel):
+    score: FiniteFloat | None = Field(ge=0, le=100)
+    coverage: FiniteFloat | None = Field(ge=0, le=100)
+    profile_id: str | None
+    profile_version: str | None
+    reason: str | None
+    weights: dict[CriterionId, float] | None
+
+
 class AuditCriterion(ApiModel):
     id: CriterionId
     title: str
@@ -46,6 +81,7 @@ class AuditCriterion(ApiModel):
     evidence_turn_numbers: list[int]
     finding_id: str | None
     reference_id: str | None
+    scoring: CategoryScoring | None = None
 
 
 class ProcedureStep(ApiModel):
@@ -65,6 +101,7 @@ class CallFinding(ApiModel):
     reference_id: str | None
     reference_step: int | None
     procedure_steps: list[ProcedureStep]
+    critical: bool = False
 
 
 class AgentContext(ApiModel):
@@ -91,7 +128,24 @@ class ManagerDecision(ApiModel):
     decided_at: str
 
 
+class AssessmentVersion(ApiModel):
+    source_id: str
+    as_of: str
+    rules: str
+    transcript: str
+
+
+class RequestLink(ApiModel):
+    id: str
+    text: str
+    state: Literal["active", "answered", "refused", "promised", "changed", "withdrawn"]
+    request_turns: list[int]
+    response_turns: list[int]
+    limitations: list[str]
+
+
 class CallReview(ApiModel):
+    source_id: str | None = None
     id: str
     agent_id: str
     agent_name: str
@@ -100,7 +154,7 @@ class CallReview(ApiModel):
     date: str | None
     duration: str | None
     summary: str
-    status: Literal["ready", "processing"]
+    status: Literal["ready", "processing", "unavailable"]
     criteria: list[AuditCriterion]
     findings: list[CallFinding]
     transcript: Transcript | None
@@ -109,10 +163,13 @@ class CallReview(ApiModel):
     review_request: ReviewRequest | None
     # The Manager decision lives beside the automated assessment, never inside it.
     decision: ManagerDecision | None
+    overall_scoring: OverallScoring | None = None
+    assessment_version: AssessmentVersion | None = None
+    request_links: list[RequestLink] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_assessment_shape(self) -> Self:
-        if self.status == "processing":
+        if self.status in ("processing", "unavailable"):
             if self.criteria or self.findings or self.decision or self.review_request:
                 raise ValueError("a processing call has no assessment or decision yet")
             return self

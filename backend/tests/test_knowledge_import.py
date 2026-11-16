@@ -513,3 +513,30 @@ async def test_concurrent_imports_store_each_draft_once(committed_sessions):
     async with committed_sessions() as session:
         imported = select(func.count()).where(KnowledgeDraft.source_key.is_not(None))
         assert await session.scalar(imported) == 3
+
+
+async def test_canonical_source_version_and_exact_span_are_required(session, data):
+    data.assessed.canonical_evidence = {
+        "conversations": [{"transcript_version": "canonical-test-version"}]
+    }
+    session.add(data.assessed)
+    await session.commit()
+    output = pipeline_output(data)
+    first = output["drafts"][0]
+    result = await service_for(session).import_output(NORTHWIND, output)
+    assert {
+        "draftId": first["draft_id"],
+        "reason": "source-version-mismatch",
+    } in result.skipped
+    for passage in [
+        *first["question_passages"],
+        *first["answer_passages"],
+        *(c["passage"] for c in first["conditions"] if c.get("passage")),
+    ]:
+        passage["source_version"] = "canonical-test-version"
+    first["answer_passages"][0]["span"] = [1, 3]
+    result = await service_for(session).import_output(NORTHWIND, output)
+    assert {
+        "draftId": first["draft_id"],
+        "reason": "passage-not-in-transcript",
+    } in result.skipped

@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from sqlalchemy import (
     CheckConstraint,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
@@ -76,6 +78,7 @@ class AnalysisRun(Base):
     # The evidence and report versions the run used, for reproducing it later.
     transcript_version: Mapped[str | None] = mapped_column(String(100))
     report_version: Mapped[str | None] = mapped_column(String(100))
+    assessment_report: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     audit_id: Mapped[int | None] = mapped_column(
         ForeignKey("audits.id", ondelete="RESTRICT")
     )

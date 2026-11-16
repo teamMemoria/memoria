@@ -46,15 +46,17 @@ def test_agent_gets_own_conversations_newest_first():
 def test_response_matches_frontend_conversation_shape():
     expected = next(c for c in CONVERSATIONS[NORTHWIND] if c["id"] == "C1042")
     c1042 = next(c for c in get(ALEX).json() if c["id"] == "C1042")
-    assert c1042 == expected
+    assert c1042 == {**expected, "overallScoring": None, "sourceId": None}
     assert set(c1042) == {
         "id",
+        "sourceId",
         "topic",
         "agentId",
         "agentName",
         "date",
         "automatedResult",
         "reviewStatus",
+        "overallScoring",
     }
 
 

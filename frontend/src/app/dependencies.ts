@@ -23,8 +23,10 @@ export function createDependencies(): {
   teamReviewApi: TeamReviewApi | null
   knowledgeReviewApi: KnowledgeReviewApi | null
 } {
-  if (import.meta.env.DEV && import.meta.env.VITE_DEMO_BACKEND === 'true') {
-    return createHttpApis(import.meta.env.VITE_API_BASE_URL ?? '')
+  if (import.meta.env.VITE_API_BASE_URL ||
+      (import.meta.env.DEV && import.meta.env.VITE_DEMO_BACKEND === 'true')) {
+    const apis = createHttpApis(import.meta.env.VITE_API_BASE_URL ?? '')
+    return { ...apis, profilesApi: import.meta.env.DEV ? apis.profilesApi : null }
   }
 
   if (import.meta.env.DEV) {

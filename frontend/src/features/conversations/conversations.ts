@@ -5,6 +5,7 @@ export const automatedResultLabels = {
   'meets-criteria': 'Meets criteria',
   'cannot-assess': 'Cannot assess',
   processing: 'Processing',
+  unavailable: 'Assessment unavailable',
 } as const
 
 export const reviewStatusLabels = {
@@ -17,6 +18,7 @@ export const conversationStatusLabels = {
   all: 'All statuses',
   ...reviewStatusLabels,
   processing: automatedResultLabels.processing,
+  unavailable: automatedResultLabels.unavailable,
 }
 
 export type AutomatedResult = keyof typeof automatedResultLabels
@@ -30,6 +32,7 @@ export const reviewRequestStatuses = {
 export type ConversationStatusFilter = keyof typeof conversationStatusLabels
 
 export type Conversation = {
+  sourceId?: string | null
   id: string
   topic: string
   agentId: string
@@ -71,11 +74,12 @@ export function filterConversations(
   return conversations.filter((conversation) => {
     const statusMatches =
       status === 'all' ||
-      (status === 'processing'
-        ? conversation.automatedResult === 'processing'
+      ((status === 'processing' || status === 'unavailable')
+        ? conversation.automatedResult === status
         : conversation.reviewStatus === status)
     const searchableText = [
       conversation.id,
+      conversation.sourceId,
       conversation.topic,
       conversation.agentName,
       conversation.date,

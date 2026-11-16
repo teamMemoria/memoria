@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -19,6 +20,7 @@ from sqlalchemy import (
     and_,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.database import Base
@@ -115,6 +117,7 @@ class KnowledgeDraft(Base):
     # importing the same output again updates the row instead of adding one.
     source_key: Mapped[str | None] = mapped_column(String(100))
     question: Mapped[str | None] = mapped_column(Text)
+    verification_reference: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # The pipeline's grouping of similar drafts, replaced on every import.
     group_key: Mapped[str | None] = mapped_column(String(100))
     duplicate_of_id: Mapped[int | None] = mapped_column()
@@ -187,6 +190,7 @@ class KnowledgeReview(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     note: Mapped[str | None] = mapped_column(Text)
+    verified_reference_url: Mapped[str | None] = mapped_column(Text)
 
     organization: Mapped[Organization] = relationship(
         overlaps="draft,reviews,reviewer_membership"
