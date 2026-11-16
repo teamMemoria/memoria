@@ -22,6 +22,7 @@ from backend.api import (
 )
 from backend.core.config import Settings
 from backend.db.session import get_db_session
+from backend.frameworks.data_access.analysis import AnalysisRunsAdapter
 from backend.frameworks.database.session import create_database
 from backend.providers import (
     Providers,
@@ -30,6 +31,7 @@ from backend.providers import (
 from backend.providers.database import create_database_providers
 from backend.services.analysis import AnalysisService
 from backend.services.knowledge_import import KnowledgeImportService
+from backend.use_cases.assessment_runs import AssessmentRunsInteractor
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,9 @@ def create_app(
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
     app.state.analysis = analysis or AnalysisService(database.sessions)
+    app.state.assessment_runs = AssessmentRunsInteractor(
+        AnalysisRunsAdapter(app.state.analysis)
+    )
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
         database.sessions
     )
