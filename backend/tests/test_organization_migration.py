@@ -4,11 +4,12 @@ import sys
 from pathlib import Path
 
 import psycopg
+from psycopg import sql
 
 ADMIN_URL = os.getenv(
     "TEST_ADMIN_URL", "postgresql://app:app@localhost:5432/callassist"
 )
-MIGRATION_DB = "callassist_organization_migration_test"
+MIGRATION_DB = os.getenv("TEST_MIGRATION_DB", "callassist_organization_migration_test")
 MIGRATION_URL = ADMIN_URL.rsplit("/", 1)[0] + f"/{MIGRATION_DB}"
 ALEMBIC_URL = MIGRATION_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 SOURCE_DIR = Path(__file__).resolve().parents[1] / "src"
@@ -33,8 +34,12 @@ def run_alembic(revision: str) -> None:
 
 def test_populated_database_is_backfilled_without_losing_reviewer_names():
     with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-        conn.execute(f"DROP DATABASE IF EXISTS {MIGRATION_DB} WITH (FORCE)")
-        conn.execute(f"CREATE DATABASE {MIGRATION_DB}")
+        conn.execute(
+            sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
+                sql.Identifier(MIGRATION_DB)
+            )
+        )
+        conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(MIGRATION_DB)))
 
     try:
         with psycopg.connect(MIGRATION_URL, autocommit=True) as conn:
@@ -201,4 +206,8 @@ def test_populated_database_is_backfilled_without_losing_reviewer_names():
         run_alembic("head")
     finally:
         with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-            conn.execute(f"DROP DATABASE IF EXISTS {MIGRATION_DB} WITH (FORCE)")
+            conn.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
+                    sql.Identifier(MIGRATION_DB)
+                )
+            )

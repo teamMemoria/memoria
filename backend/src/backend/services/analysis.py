@@ -88,6 +88,7 @@ class AnalysisRequest:
     evaluation_form_version: int
     as_of: str
     scope: str
+    canonical_evidence: dict[str, Any] | None = None
 
 
 class AnalysisAdapter(Protocol):
@@ -128,6 +129,7 @@ class ParsedReport:
     categories: dict[str, CategoryResult]
     summary: str | None
     report_version: str | None
+    assessment_report: dict[str, Any] | None = None
 
 
 def transcript_version(conversation_id: str, events: list[dict[str, Any]]) -> str:
@@ -199,6 +201,17 @@ def parse_report(request: AnalysisRequest, report: Any) -> ParsedReport:
     nothing from it is saved.
     """
     try:
+        if isinstance(report, dict) and (
+            "overall" in report
+            or any(
+                isinstance(row, dict) and "scoring" in row
+                for row in report.get("categories", [])
+            )
+        ):
+            _reject(
+                "unconfigured-assessment-validator",
+                "Scored output requires an explicitly configured policy validator.",
+            )
         return _parse_report(request, report)
     except (TypeError, KeyError, AttributeError, ValueError):
         raise ReportRejectedError(
@@ -358,6 +371,9 @@ class AnalysisService:
     now: Callable[[], datetime] = utc_now
     # How long a queued or running run may go before a retry may replace it.
     stale_after: timedelta = STALE_RUN_AFTER
+    # Engine-specific approval and point-policy validation is explicitly composed.
+    # The default legacy parser cannot accept a proposed scored payload.
+    report_parser: Callable[[AnalysisRequest, Any], ParsedReport] = parse_report
 
     async def _conversation(
         self, session: AsyncSession, organization_id: str, conversation_id: str
@@ -543,10 +559,30 @@ class AnalysisService:
                 )
 
             try:
-                parsed = parse_report(request, report)
+                parsed = self.report_parser(request, report)
+                if parsed.assessment_report is not None:
+                    from backend.services.assessment_storage import validate_payload
+
+                    try:
+                        validate_payload(request, parsed)
+                    except (TypeError, ValueError, KeyError, AttributeError) as error:
+                        raise ReportRejectedError(
+                            "invalid-assessment",
+                            "Assessment contract validation failed",
+                        ) from error
             except ReportRejectedError as error:
                 return await self._fail(session, run, error.code, error.message)
 
+            if parsed.assessment_report is not None:
+                run.assessment_report = parsed.assessment_report
+                run.report_version = parsed.report_version
+                if parsed.assessment_report["processing_status"] != "completed":
+                    return await self._fail(
+                        session,
+                        run,
+                        "partial-report",
+                        "Some categories failed; independently valid checks are retained.",
+                    )
             try:
                 audit = await self._save(session, run, form_version_id, parsed)
                 run.status = AnalysisRunStatus.SUCCEEDED
@@ -651,6 +687,25 @@ class AnalysisService:
             }
             for criterion in form_version.criteria
         ]
+        canonical = conversation.canonical_evidence
+        if canonical is not None:
+            from backend.services.assessment_storage import validate_prepared
+
+            try:
+                prepared = validate_prepared(canonical)
+                stored = [
+                    (t.line_number, EVENT_SPEAKERS[t.speaker], t.text)
+                    for t in conversation.turns
+                ]
+                expected = [
+                    (e["turn_id"], e["speaker"], e["text"]) for e in prepared["events"]
+                ]
+                if stored != expected:
+                    raise ValueError("Stored turns differ from canonical evidence")
+            except (TypeError, ValueError, KeyError) as error:
+                raise ReportRejectedError(
+                    "invalid-canonical-evidence", str(error)
+                ) from None
         request = AnalysisRequest(
             conversation={
                 "id": public_id,
@@ -662,6 +717,7 @@ class AnalysisService:
             evaluation_form_version=form_version.id,
             as_of=self.now().date().isoformat(),
             scope=conversation.organization.slug,
+            canonical_evidence=canonical,
         )
         return request, form_version
 
@@ -702,6 +758,7 @@ class AnalysisService:
             conversation_id=conversation.id,
             evaluation_form_version_id=form_version_id,
             summary=parsed.summary,
+            assessment_report=parsed.assessment_report,
             findings=[
                 Finding(
                     organization_id=conversation.organization_id,
@@ -711,10 +768,11 @@ class AnalysisService:
                     suggestion=category.suggestion,
                     evidence=[turns[number] for number in category.turn_numbers],
                     # The audit model links one entry per finding: the first cited.
-                    knowledge_entry=(
-                        entries.get(category.reference_ids[0])
+                    **(
+                        {"knowledge_entry": entries[category.reference_ids[0]]}
                         if category.reference_ids
-                        else None
+                        and category.reference_ids[0] in entries
+                        else {}
                     ),
                 )
                 for name, category in parsed.categories.items()

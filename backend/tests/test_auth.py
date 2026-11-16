@@ -23,7 +23,10 @@ RILEY = "agent-riley-chen"
 
 
 def make_client(app_env="test", providers=None):
-    app = create_app(providers=providers, settings=Settings(app_env=app_env))
+    app = create_app(
+        providers=create_fixture_providers() if providers is None else providers,
+        settings=Settings(app_env=app_env),
+    )
 
     # A route per permission, so the checks can be exercised over HTTP.
     for permission in Permission:

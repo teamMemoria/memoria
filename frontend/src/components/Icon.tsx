@@ -14,6 +14,10 @@ const icons = {
   phone: 'device-mobile',
   info: 'info',
   check: 'check',
+  close: 'close',
+  lock: 'lock',
+  plus: 'add',
+  link: 'link',
 }
 
 export function Icon({

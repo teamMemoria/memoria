@@ -1,11 +1,14 @@
 """The knowledge review queue: drafts waiting on an authorized reviewer.
 
-Reads only. Every query is scoped to the reviewer's organization, and drafts
+Every query is scoped to the reviewer's organization, and drafts
 are never shown to agents: the approved-knowledge routes read
 ``knowledge_entries`` only.
 """
 
+import hashlib
+import json
 from collections import defaultdict
+from urllib.parse import urlparse
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +46,7 @@ from backend.schemas.knowledge_review import (
     PossibleConflict,
 )
 from backend.schemas.knowledge_review import KnowledgeDraft as KnowledgeDraftSchema
+from backend.services.knowledge_approval import approve_draft
 
 STATUS_NAMES = {
     DraftStatus.PENDING: "draft",
@@ -123,6 +127,26 @@ def _decision(draft: KnowledgeDraft) -> KnowledgeDecision | None:
     )
 
 
+class KnowledgeDecisionRejected(ValueError):
+    pass
+
+
+def draft_version(draft):
+    # Content-bound: a changed answer or reference requires another review.
+    content = [
+        draft.id,
+        draft.topic_id,
+        draft.question,
+        draft.answer_text,
+        draft.verification_reference,
+        str(draft.updated_at),
+    ]
+    return (
+        "sha256:"
+        + hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
+    )
+
+
 def draft_schema(
     draft: KnowledgeDraft,
     distinct_conversations: int,
@@ -152,7 +176,7 @@ def draft_schema(
         status=STATUS_NAMES[draft.status],
         # Drafts are not available to any agent.
         available_to_agent_ids=[],
-        version=f"draft-{draft.id}",
+        version=draft_version(draft),
         approved_at=None,
         approved_by=None,
         effective_at=None,
@@ -170,7 +194,7 @@ def draft_schema(
         ),
         updated_at=iso_timestamp(draft.updated_at or draft.created_at),
         passages=passages,
-        verification_reference=None,
+        verification_reference=draft.verification_reference,
         decision=_decision(draft),
         question=draft.question,
         distinct_conversation_count=distinct_conversations,
@@ -325,3 +349,77 @@ class DatabaseKnowledgeReviewProvider:
             return None
         # Only knowledge approvers reach this, so they hold the permission to decide.
         return KnowledgeReviewDetail(entry=drafts[0], can_decide=True)
+
+    @unavailable_on_database_error
+    async def decide(self, organization_id, user_id, draft_id, outcome, decision):
+        key = parse_id(draft_id)
+        async with self._sessions() as session:
+            membership = await _approver(session, organization_id, user_id)
+            # Serialize with pipeline imports so newly discovered conflicts cannot race approval.
+            await session.execute(
+                select(func.pg_advisory_xact_lock(7901, membership.organization_id))
+            )
+            draft = await session.scalar(
+                select(KnowledgeDraft)
+                .where(
+                    KnowledgeDraft.organization_id == membership.organization_id,
+                    KnowledgeDraft.id == key,
+                )
+                .with_for_update()
+                .options(selectinload(KnowledgeDraft.topic))
+            )
+            if draft is None:
+                raise RecordNotFoundError("Knowledge draft not found")
+            if draft.status != DraftStatus.PENDING or decision.version != draft_version(
+                draft
+            ):
+                raise KnowledgeDecisionRejected(
+                    "Draft changed or already decided. Reload before reviewing."
+                )
+            if outcome == "approved":
+                reference = draft.verification_reference
+                if (
+                    not reference
+                    or urlparse(reference.get("url", "")).scheme
+                    not in {"http", "https"}
+                    or reference["url"] != decision.verified_reference_url
+                ):
+                    raise KnowledgeDecisionRejected(
+                        "Check the stored authoritative reference before approval."
+                    )
+                conflicts = await session.scalar(
+                    select(KnowledgeConflict.id)
+                    .where(
+                        KnowledgeConflict.organization_id == membership.organization_id,
+                        (KnowledgeConflict.draft_id == draft.id)
+                        | (KnowledgeConflict.other_draft_id == draft.id),
+                        KnowledgeConflict.status.in_(
+                            ["possible_conflict", "unresolved"]
+                        ),
+                    )
+                    .limit(1)
+                )
+                if conflicts or draft.duplicate_of_id:
+                    raise KnowledgeDecisionRejected(
+                        "Resolve the draft's conflict or duplicate before approval."
+                    )
+                entry = await approve_draft(session, draft, membership)
+                entry.approved_review.verified_reference_url = reference["url"]
+            elif outcome == "rejected":
+                if not decision.reason or not decision.reason.strip():
+                    raise KnowledgeDecisionRejected("A rejection reason is required.")
+                draft.status = DraftStatus.REJECTED
+                session.add(
+                    KnowledgeReview(
+                        organization_id=draft.organization_id,
+                        draft=draft,
+                        reviewer_membership=membership,
+                        action=ReviewAction.REJECTED,
+                        note=decision.reason.strip(),
+                    )
+                )
+            else:
+                raise KnowledgeDecisionRejected("Unknown decision.")
+            await session.commit()
+        detail = await self.get_for_approver(organization_id, user_id, draft_id)
+        return detail.entry

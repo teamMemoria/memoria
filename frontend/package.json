@@ -14,6 +14,8 @@
     "@radix-ui/react-dropdown-menu": "2.2.1",
     "@radix-ui/react-select": "2.4.1",
     "@vscode/codicons": "0.0.45",
+    "cn": "0.5.2",
+    "radix-ui": "1.8.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "~7.18.4"
