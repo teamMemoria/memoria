@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
 import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
@@ -7,12 +7,28 @@ import { agent, deferred, manager, openApp } from './TestSetup'
 
 const asManager = { getViewer: async () => manager }
 const reviewPath = (id: string) => `/manager/knowledge/${id}`
-const approve = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Approve' })
+const approve = () =>
+  screen.getByRole<HTMLButtonElement>('button', { name: 'Approve' })
 const checkbox = () => screen.getByRole<HTMLInputElement>('checkbox')
-const openReference = () => fireEvent.click(screen.getByRole('link', { name: /Open verification reference/ }))
+const openVerification = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Verify reference' }))
+const openReference = () => {
+  const trigger = screen.getByRole('button', { name: 'Verify reference' })
+  if (trigger.getAttribute('data-state') === 'closed') fireEvent.click(trigger)
+  fireEvent.click(
+    screen.getByRole('link', { name: /Open verification reference/ }),
+  )
+}
 
-function openReview(id: string, knowledgeReviewApi: KnowledgeReviewApi = createDevKnowledgeReviewApi()) {
-  return openApp({ path: reviewPath(id), viewerApi: asManager, knowledgeReviewApi })
+function openReview(
+  id: string,
+  knowledgeReviewApi: KnowledgeReviewApi = createDevKnowledgeReviewApi(),
+) {
+  return openApp({
+    path: reviewPath(id),
+    viewerApi: asManager,
+    knowledgeReviewApi,
+  })
 }
 
 describe('Manager knowledge verification and approval', () => {
@@ -31,21 +47,41 @@ describe('Manager knowledge verification and approval', () => {
 
   it('shows the draft, its supporting passages and the verification reference', async () => {
     openReview('KD-103')
-    await screen.findByRole('heading', { name: 'Refund timing for card payments', level: 1 })
-    const draft = screen.getByRole('region', { name: 'Draft' })
-    expect(within(draft).getByText('Card refunds usually appear within 5–10 business days.')).toBeTruthy()
-    const passages = screen.getByRole('region', { name: 'Supporting conversations' })
-    expect(within(passages).getByText('Call C1058')).toBeTruthy()
+    await screen.findByRole('heading', {
+      name: 'Refund timing for card payments',
+      level: 1,
+    })
+    const draft = screen.getByRole('region', { name: 'Knowledge entry' })
+    expect(
+      within(draft).getByText(
+        'Card refunds usually appear within 5–10 business days.',
+      ),
+    ).toBeTruthy()
+    const sources = screen.getByRole('region', { name: 'Sources' })
+    fireEvent.click(
+      within(sources).getByRole('button', { name: 'View source call C1058' }),
+    )
+    const passages = screen.getByRole('dialog', { name: 'Call C1058' })
     expect(within(passages).getByText('Turn 11')).toBeTruthy()
-    expect(within(passages).getByText('It can take 5 to 10 business days to reach your card.')).toBeTruthy()
-    const link = screen.getByRole('link', { name: /Open verification reference: Card refund policy RF-04 v2/ })
-    expect(link.getAttribute('href')).toBe('https://example.test/policies/RF-04')
+    expect(
+      within(passages).getByText(
+        'It can take 5 to 10 business days to reach your card.',
+      ),
+    ).toBeTruthy()
+    fireEvent.click(within(passages).getByRole('button', { name: 'Close' }))
+    const link = screen.getByRole('link', {
+      name: /Open verification reference: Card refund policy RF-04 v2/,
+    })
+    expect(link.getAttribute('href')).toBe(
+      'https://example.test/policies/RF-04',
+    )
   })
 
   it('does not unlock approval with permission alone', async () => {
     openReview('KD-103')
     await screen.findByRole('region', { name: 'Decision' })
     expect(approve().disabled).toBe(true)
+    openVerification()
     expect(checkbox().disabled).toBe(true)
     openReference()
     expect(approve().disabled).toBe(true)
@@ -55,11 +91,12 @@ describe('Manager knowledge verification and approval', () => {
 
   it('requires fresh verification when navigating directly to another draft', async () => {
     const api = createDevKnowledgeReviewApi()
-    const response = deferred<Awaited<ReturnType<KnowledgeReviewApi['getForManager']>>>()
+    const response =
+      deferred<Awaited<ReturnType<KnowledgeReviewApi['getForManager']>>>()
     const { router } = openReview('KD-103', {
       ...api,
-      getForManager: (managerId, id) => id === 'KD-102'
-        ? response.promise : api.getForManager(managerId, id),
+      getForManager: (managerId, id) =>
+        id === 'KD-102' ? response.promise : api.getForManager(managerId, id),
     })
     await screen.findByRole('region', { name: 'Decision' })
     openReference()
@@ -67,8 +104,13 @@ describe('Manager knowledge verification and approval', () => {
     expect(approve().disabled).toBe(false)
     await act(() => router.navigate(reviewPath('KD-102')))
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
-    expect(screen.getByRole('status').textContent).toBe('Loading knowledge entry…')
-    await act(async () => response.resolve(await api.getForManager(manager.id, 'KD-102')))
+    expect(screen.getByRole('status').textContent).toBe(
+      'Loading knowledge entry…',
+    )
+    await act(async () =>
+      response.resolve(await api.getForManager(manager.id, 'KD-102')),
+    )
+    openVerification()
     expect(checkbox().checked).toBe(false)
     expect(checkbox().disabled).toBe(true)
     expect(approve().disabled).toBe(true)
@@ -76,16 +118,24 @@ describe('Manager knowledge verification and approval', () => {
     expect(approve().disabled).toBe(true)
     fireEvent.click(checkbox())
     fireEvent.click(approve())
-    await within(screen.getByRole('region', { name: 'Decision' })).findByText('Approved')
-    expect((await api.getForManager(manager.id, 'KD-102'))?.entry.status).toBe('approved')
-    expect((await api.getForManager(manager.id, 'KD-103'))?.entry.status).toBe('draft')
+    await within(screen.getByRole('region', { name: 'Decision' })).findByText(
+      'Approved',
+    )
+    expect((await api.getForManager(manager.id, 'KD-102'))?.entry.status).toBe(
+      'approved',
+    )
+    expect((await api.getForManager(manager.id, 'KD-103'))?.entry.status).toBe(
+      'draft',
+    )
   })
 
   it('does not treat repeated answers as verification when no reference exists', async () => {
     const reviewApi = createDevKnowledgeReviewApi()
     openReview('KD-104', reviewApi)
     await screen.findByText(/Found in 3 conversations/)
-    expect(screen.getByText(/No authoritative reference is available/)).toBeTruthy()
+    expect(
+      screen.getByText(/No authoritative reference is available/),
+    ).toBeTruthy()
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(approve().disabled).toBe(true)
     await expect(reviewApi.approve(manager.id, 'KD-104', '')).rejects.toThrow()
@@ -100,7 +150,9 @@ describe('Manager knowledge verification and approval', () => {
         return detail && { ...detail, canDecide: false }
       },
     })
-    await screen.findByText('You do not have permission to approve or reject knowledge.')
+    await screen.findByText(
+      'You do not have permission to approve or reject knowledge.',
+    )
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull()
   })
@@ -108,7 +160,12 @@ describe('Manager knowledge verification and approval', () => {
   it('approves a verified entry, shows the outcome and makes it available to Agents', async () => {
     const reviewApi = createDevKnowledgeReviewApi()
     const knowledgeApi = createDevApprovedKnowledgeApi(reviewApi)
-    const { router } = openApp({ path: reviewPath('KD-103'), viewerApi: asManager, knowledgeReviewApi: reviewApi, knowledgeApi })
+    const { router } = openApp({
+      path: reviewPath('KD-103'),
+      viewerApi: asManager,
+      knowledgeReviewApi: reviewApi,
+      knowledgeApi,
+    })
     await screen.findByRole('region', { name: 'Decision' })
     openReference()
     fireEvent.click(checkbox())
@@ -116,27 +173,45 @@ describe('Manager knowledge verification and approval', () => {
     const decision = screen.getByRole('region', { name: 'Decision' })
     await within(decision).findByText('Approved')
     expect(within(decision).getByText('Maya Chen')).toBeTruthy()
-    expect(within(decision).getByText('This entry is available on Agent knowledge pages.')).toBeTruthy()
+    expect(
+      within(decision).getByText(
+        'This entry is available on Agent knowledge pages.',
+      ),
+    ).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge drafts' }))
     await screen.findByRole('tab', { name: 'Approved (2)' })
-    expect(screen.getByRole('tab', { name: 'Pending (2)' })).toBeTruthy()
-    expect(await knowledgeApi.getForAgent(agent.id, 'KD-103')).toMatchObject({ status: 'approved', approvedBy: 'Maya Chen' })
+    expect(screen.getByRole('tab', { name: 'Pending review (2)' })).toBeTruthy()
+    expect(await knowledgeApi.getForAgent(agent.id, 'KD-103')).toMatchObject({
+      status: 'approved',
+      approvedBy: 'Maya Chen',
+    })
     await act(() => router.navigate('/manager/knowledge?tab=approved'))
-    expect(screen.getByRole('link', { name: 'Refund timing for card payments' })).toBeTruthy()
+    expect(
+      screen.getByRole('link', { name: 'Refund timing for card payments' }),
+    ).toBeTruthy()
   })
 
   it('requires a reason to reject and moves the entry to the Rejected queue', async () => {
     openReview('KD-102')
-    const reject = await screen.findByRole<HTMLButtonElement>('button', { name: 'Reject' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+    const reject = within(
+      screen.getByRole('dialog'),
+    ).getByRole<HTMLButtonElement>('button', { name: 'Reject' })
     expect(reject.disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Reason for rejection'), { target: { value: 'Superseded by DL-03.' } })
+    fireEvent.change(screen.getByLabelText('Reason for rejection'), {
+      target: { value: 'Superseded by DL-03.' },
+    })
     fireEvent.click(reject)
-    const decision = screen.getByRole('region', { name: 'Decision' })
+    const decision = await screen.findByRole('region', { name: 'Decision' })
     await within(decision).findByText('Rejected')
-    expect(within(decision).getByText('Reason: Superseded by DL-03.')).toBeTruthy()
+    expect(
+      within(decision).getByText('Reason: Superseded by DL-03.'),
+    ).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge drafts' }))
     fireEvent.click(await screen.findByRole('tab', { name: 'Rejected (2)' }))
-    expect(screen.getByRole('link', { name: 'Missing parcel claims' })).toBeTruthy()
+    expect(
+      screen.getByRole('link', { name: 'Missing parcel claims' }),
+    ).toBeTruthy()
   })
 
   it('keeps the form and shows an error when a decision fails to save', async () => {
@@ -149,19 +224,92 @@ describe('Manager knowledge verification and approval', () => {
     await screen.findByRole('region', { name: 'Decision' })
     openReference()
     fireEvent.click(checkbox())
-    fireEvent.change(screen.getByLabelText('Reason for rejection'), { target: { value: 'Draft reason' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+    fireEvent.change(screen.getByLabelText('Reason for rejection'), {
+      target: { value: 'Draft reason' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(approve())
-    expect((await screen.findByRole('alert')).textContent).toBe('The decision could not be saved. Please try again.')
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'The decision could not be saved. Please try again.',
+    )
     expect(checkbox().checked).toBe(true)
     expect(approve().disabled).toBe(false)
-    expect(screen.getByLabelText<HTMLTextAreaElement>('Reason for rejection').value).toBe('Draft reason')
-    expect(screen.queryByText('This entry is available on Agent knowledge pages.')).toBeNull()
+    expect(
+      screen.queryByText('This entry is available on Agent knowledge pages.'),
+    ).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+    expect(
+      screen.getByLabelText<HTMLTextAreaElement>('Reason for rejection').value,
+    ).toBe('Draft reason')
   })
 
   it('shows the saved outcome for an entry that was already decided', async () => {
     openReview('KD-095')
     const decision = await screen.findByRole('region', { name: 'Decision' })
-    expect(within(decision).getByText('Reason: Policy requires proof of purchase.')).toBeTruthy()
+    expect(
+      within(decision).getByText('Reason: Policy requires proof of purchase.'),
+    ).toBeTruthy()
     expect(within(decision).queryByRole('button')).toBeNull()
+  })
+
+  it('returns focus after inspecting evidence without treating it as verification', async () => {
+    openReview('KD-103')
+    const source = await screen.findByRole('button', {
+      name: 'View source call C1042',
+    })
+    source.focus()
+    fireEvent.click(source)
+    const dialog = await screen.findByRole('dialog', { name: 'Call C1042' })
+    expect(within(dialog).getByText('Turn 15')).toBeTruthy()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'View source call C1042' }),
+      ).toBe(document.activeElement),
+    )
+    openVerification()
+    expect(checkbox().disabled).toBe(true)
+    expect(approve().disabled).toBe(true)
+  })
+
+  it('shows missing source evidence without inventing a passage', async () => {
+    openReview('KD-104')
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'View source call C1042' }),
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Call C1042' })
+    expect(
+      within(dialog).getByText(
+        'No conversation passages are available for this source.',
+      ),
+    ).toBeTruthy()
+    expect(within(dialog).queryByRole('blockquote')).toBeNull()
+  })
+
+  it('keeps the rejection reason and allows retry when saving fails', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const reject = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockImplementationOnce(api.reject)
+    openReview('KD-102', { ...api, reject })
+    fireEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Reason for rejection'), {
+      target: { value: 'Superseded by DL-03.' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject' }))
+    await within(dialog).findByRole('alert')
+    expect(
+      within(dialog).getByLabelText<HTMLTextAreaElement>('Reason for rejection')
+        .value,
+    ).toBe('Superseded by DL-03.')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject' }))
+    await within(
+      await screen.findByRole('region', { name: 'Decision' }),
+    ).findByText('Rejected')
+    expect(reject).toHaveBeenCalledTimes(2)
   })
 })
