@@ -1,4 +1,5 @@
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useKnowledgeDecision } from './controller'
+import { useEffect, useId, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import {
@@ -20,7 +21,6 @@ import {
   DialogTrigger,
 } from '../../components/ui/dialog'
 import {
-  canDecideKnowledge,
   type KnowledgeDraft,
   type KnowledgeReviewApi,
 } from '../../types/knowledge'
@@ -88,49 +88,9 @@ function ReviewContent({
 }) {
   const verifiedId = useId()
   const reasonId = useId()
-  const reference = entry.verificationReference
-  const [referenceOpened, setReferenceOpened] = useState(false)
-  const [verified, setVerified] = useState(false)
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState<'approve' | 'reject' | null>(null)
-  const [failed, setFailed] = useState<'approve' | 'reject' | null>(null)
-  canDecide = canDecide && api.decisionsAvailable !== false
-  const needsDecision = canDecideKnowledge(entry)
-  const canApprove =
-    reference !== null &&
-    referenceOpened &&
-    verified &&
-    !entry.duplicateOfId &&
-    !entry.possibleConflicts?.length
+  const { reference, referenceOpened, setReferenceOpened, verified, setVerified, reason, setReason, saving, failed, canDecide: decisionAllowed, needsDecision, canApprove, decide, reject } = useKnowledgeDecision(api, managerId, entry, canDecide, onDecided)
+  canDecide = decisionAllowed
   const tab = queueTabFor(entry)
-
-  async function decide(outcome: 'approve' | 'reject') {
-    if (saving || !canDecide || !needsDecision) return
-    if (outcome === 'approve' && !canApprove) return
-    if (outcome === 'reject' && !reason.trim()) return
-    setSaving(outcome)
-    setFailed(null)
-    try {
-      onDecided(
-        outcome === 'approve'
-          ? await api.approve(
-              managerId,
-              entry.id,
-              reference!.url,
-              entry.version,
-            )
-          : await api.reject(managerId, entry.id, reason, entry.version),
-      )
-    } catch {
-      setFailed(outcome)
-      setSaving(null)
-    }
-  }
-
-  function reject(event: FormEvent) {
-    event.preventDefault()
-    void decide('reject')
-  }
 
   return (
     <>
