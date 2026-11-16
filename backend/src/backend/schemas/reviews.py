@@ -2,6 +2,7 @@ from typing import Literal, Self
 
 from pydantic import model_validator
 
+from backend.entities.reviews import ReviewInput, validate_review_input
 from backend.schemas.base import ApiModel
 from backend.schemas.call_review import AuditResult, CallReview, ReviewRequest
 from backend.schemas.conversations import Conversation
@@ -50,9 +51,7 @@ class DecisionInput(ApiModel):
 
     @model_validator(mode="after")
     def reviewed_result_only_when_corrected(self) -> Self:
-        if (self.outcome == "corrected") != (self.reviewed_result is not None):
-            raise ValueError(
-                "reviewedResult is required when the outcome is corrected, "
-                "and only then"
-            )
+        validate_review_input(
+            ReviewInput(self.outcome, self.reviewed_result, self.reason, self.feedback)
+        )
         return self
