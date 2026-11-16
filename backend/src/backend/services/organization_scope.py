@@ -1,19 +1,8 @@
-from sqlalchemy import Select, select
+"""Compatibility import; implementation lives in frameworks.data_access.organization_scope."""
 
-from backend.models import Conversation, KnowledgeDraft, KnowledgeEntry
+import sys
+from importlib import import_module
 
-
-def conversations_for(organization_id: int) -> Select[tuple[Conversation]]:
-    return select(Conversation).where(Conversation.organization_id == organization_id)
-
-
-def knowledge_drafts_for(organization_id: int) -> Select[tuple[KnowledgeDraft]]:
-    return select(KnowledgeDraft).where(
-        KnowledgeDraft.organization_id == organization_id
-    )
-
-
-def knowledge_entries_for(organization_id: int) -> Select[tuple[KnowledgeEntry]]:
-    return select(KnowledgeEntry).where(
-        KnowledgeEntry.organization_id == organization_id
-    )
+sys.modules[__name__] = import_module(
+    "backend.frameworks.data_access.organization_scope"
+)
