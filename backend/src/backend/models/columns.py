@@ -1,15 +1,6 @@
-from enum import StrEnum
+"""Compatibility import for backend.frameworks.database.models.columns."""
 
-from sqlalchemy import Enum
+import sys
+from importlib import import_module
 
-
-def str_enum(enum: type[StrEnum], name: str) -> Enum:
-    """Store a StrEnum as varchar with a CHECK constraint on its values."""
-    return Enum(
-        enum,
-        name=name,
-        native_enum=False,
-        create_constraint=True,
-        length=20,
-        values_callable=lambda e: [m.value for m in e],
-    )
+sys.modules[__name__] = import_module("backend.frameworks.database.models.columns")
