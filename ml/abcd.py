@@ -8,6 +8,7 @@ ABCD_COMMIT = "6b8700ce67c6b37b062dd7a60abc76d7ef832a97"
 ABCD_SHA256 = "005d425e890b30a1cdaf0d29d83b08bb7abf038d90fc4924a12e82228e587789"
 CONVERSATION_IDS = ("7921", "8570")
 MASKING_VERSION = "4"
+UNMASKED_DEMO_VERSION = "unmasked-demo-v1"
 MIT_NOTICE = """MIT License
 
 Copyright (c) 2021 ASAPP Research
@@ -128,15 +129,21 @@ def _labelled_secrets(text: str, metadata_values: set[str]):
         yield value, quoted
 
 
-def mask_texts(texts: list[str], scenario: dict) -> list[str]:
+def mask_texts(
+    texts: list[str], scenario: dict, *, masking_version: str = MASKING_VERSION
+) -> list[str]:
     """Discover explicit secrets before masking every turn, including earlier ones.
 
     Quoted values have exact boundaries. Unknown unquoted values extend to the
     end of the turn, including punctuation; separators or additional sentences
     make their boundary ambiguous and fail without exporting text. Matching
     metadata can establish the full unquoted value, not an arbitrary prefix.
+    Version 5 also masks possible financial IDs containing 13–19 digits,
+    including space/hyphen grouping; version 4 remains the legacy default.
     This is conservative lexical redaction, not general personal-data detection.
     """
+    if masking_version not in ("4", "5"):
+        raise ValueError("Unsupported masking version.")
     if not isinstance(scenario, dict):
         raise TypeError("Customer masking metadata must be an object.")
     if not isinstance(texts, list) or any(not isinstance(text, str) for text in texts):
@@ -147,7 +154,7 @@ def mask_texts(texts: list[str], scenario: dict) -> list[str]:
     def token(value, kind):
         spellings.add(value)
         key = _normalized(value)
-        if kind == "PHONE":
+        if kind in ("PHONE", "FINANCIAL_ID"):
             key = re.sub(r"\D", "", value) or key
         if key not in replacements:
             counters[kind] = counters.get(kind, 0) + 1
@@ -213,7 +220,12 @@ def mask_texts(texts: list[str], scenario: dict) -> list[str]:
             spellings | replacements.keys(), key=lambda item: (-len(item), item)
         )
     )
-    patterns = [r"(?P<email>[\w.+-]+@(?:[\w-]+\.)+[\w-]+)"]
+    patterns = []
+    if masking_version == "5":
+        patterns.append(
+            r"(?P<financial>(?<!\w)\d(?:[ \t\u00a0-]*\d){12,18}(?!\w|[ \t\u00a0-]+\d))"
+        )
+    patterns.append(r"(?P<email>[\w.+-]+@(?:[\w-]+\.)+[\w-]+)")
     patterns.extend(
         (
             r"(?P<phone>(?<!\w)(?:\+\d{1,3}[ .-]?)?(?:\(\d{3}\)|\d{3})[ .-]?\d{3}[ .-]?\d{4}(?!\w))",
@@ -230,7 +242,12 @@ def mask_texts(texts: list[str], scenario: dict) -> list[str]:
             return replacements.get(_normalized(value)) or token(value, "IDENTIFIER")
         return token(
             value,
-            {"email": "EMAIL", "phone": "PHONE", "identifier": "IDENTIFIER"}[kind],
+            {
+                "email": "EMAIL",
+                "phone": "PHONE",
+                "identifier": "IDENTIFIER",
+                "financial": "FINANCIAL_ID",
+            }[kind],
         )
 
     masked = []
@@ -239,7 +256,7 @@ def mask_texts(texts: list[str], scenario: dict) -> list[str]:
             (*match.span(), match.lastgroup)
             for match in pattern.finditer(text)
             if not (
-                match.lastgroup in ("phone", "identifier")
+                match.lastgroup in ("phone", "identifier", "financial")
                 and re.search(r"[$€£¥]\s*[+-]?\d[\d,.]*$", text[: match.end()])
             )
         ]
@@ -266,14 +283,18 @@ def mask_texts(texts: list[str], scenario: dict) -> list[str]:
     return masked
 
 
-def transcript_version(conversation: dict) -> str:
+def transcript_version(
+    conversation: dict, *, masking_version: str = MASKING_VERSION
+) -> str:
+    if masking_version not in ("4", "5", UNMASKED_DEMO_VERSION):
+        raise ValueError("Unsupported masking version.")
     return _hash(
         {
             field: conversation[field]
             for field in ("id", "split", "source_pointer", "events", "coverage")
         }
         | {
-            "masking_version": MASKING_VERSION,
+            "masking_version": masking_version,
             "source_commit": ABCD_COMMIT,
             "source_sha256": ABCD_SHA256,
         }
@@ -281,10 +302,17 @@ def transcript_version(conversation: dict) -> str:
 
 
 def prepare_conversation(
-    record: dict, *, split: str, index: int, turn_ids: list[int] | None = None
+    record: dict,
+    *,
+    split: str,
+    index: int,
+    turn_ids: list[int] | None = None,
+    masking_version: str = MASKING_VERSION,
 ) -> dict:
     """Coverage describes the supplied record, not unrecorded real-world actions."""
     location = f"/{split}/{index}"
+    if masking_version == UNMASKED_DEMO_VERSION and split != "train":
+        raise ValueError("Unmasked demo preparation accepts training records only.")
     if (
         not isinstance(split, str)
         or split not in {"train", "dev", "test"}
@@ -340,7 +368,15 @@ def prepare_conversation(
         ):
             raise ValueError("Selected turn IDs must be unique source positions.")
         selected = set(turn_ids)
-    masked = mask_texts([event[1] for event in original], record.get("scenario", {}))
+    masked = (
+        [event[1] for event in original]
+        if masking_version == UNMASKED_DEMO_VERSION
+        else mask_texts(
+            [event[1] for event in original],
+            record.get("scenario", {}),
+            masking_version=masking_version,
+        )
+    )
     events = [
         {
             "turn_id": turn,
@@ -385,7 +421,9 @@ def prepare_conversation(
         "events": events,
         "coverage": coverage,
     }
-    conversation["transcript_version"] = transcript_version(conversation)
+    conversation["transcript_version"] = transcript_version(
+        conversation, masking_version=masking_version
+    )
     return conversation
 
 
@@ -446,7 +484,7 @@ def validate_evidence(evidence: dict) -> None:
         or evidence["schema_version"] != 1
     ):
         raise ValueError("Unsupported evidence schema or fields.")
-    if evidence["masking_version"] != MASKING_VERSION:
+    if evidence["masking_version"] not in ("4", "5", UNMASKED_DEMO_VERSION):
         raise ValueError(
             "Unsupported masking version; regenerate evidence with prepare."
         )
@@ -464,6 +502,8 @@ def validate_evidence(evidence: dict) -> None:
         ):
             raise ValueError("Conversation fields are missing or unsupported.")
         identifier, split = conversation["id"], conversation["split"]
+        if evidence["masking_version"] == UNMASKED_DEMO_VERSION and split != "train":
+            raise ValueError("Unmasked demo evidence accepts training records only.")
         if (
             not isinstance(identifier, str)
             or not re.fullmatch(r"[0-9]+", identifier)
@@ -513,8 +553,12 @@ def validate_evidence(evidence: dict) -> None:
             ):
                 raise ValueError("Event fields, order or source positions are invalid.")
             previous = event["turn_id"]
-        if conversation["transcript_version"] != transcript_version(conversation):
-            raise ValueError("Transcript version does not match the masked evidence.")
+        if conversation["transcript_version"] != transcript_version(
+            conversation, masking_version=evidence["masking_version"]
+        ):
+            raise ValueError(
+                "Transcript version does not match the canonical evidence."
+            )
 
 
 def conversation_passages(conversations: list[dict]) -> list[dict]:
