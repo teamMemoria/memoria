@@ -1,8 +1,11 @@
+"""Business policy checks using only in-memory ports and authored values."""
+
 from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 
+from backend.entities.assessments import AnalysisRequest, ParsedReport
 from backend.entities.knowledge import (
     DraftDecisionState,
     KnowledgeDecisionRejected,
@@ -10,6 +13,7 @@ from backend.entities.knowledge import (
     validate_decision,
 )
 from backend.errors import ConflictError
+from backend.use_cases.assessments import AssessmentInteractor
 from backend.use_cases.knowledge import KnowledgeInteractor
 from backend.use_cases.record_review_decision import (
     RecordReviewDecision,
@@ -92,6 +96,28 @@ async def test_knowledge_rejection_does_not_require_reference_but_checks_version
     decision = KnowledgeInput("rejected", "v1", None, "Missing reference")
     assert await KnowledgeInteractor().execute(decision, repository) == decision
     assert repository.saved == [decision]
+
+
+async def test_assessment_validation_is_required_before_returning():
+    calls = []
+    request = AnalysisRequest({}, [], [], 1, "2026-11-15", "test")
+    parsed = ParsedReport({}, None, None, {"authored": True})
+
+    async def generate(value):
+        calls.append(("generate", value))
+        return {"candidate": True}
+
+    def parse(value, report):
+        calls.append(("parse", report))
+        return parsed
+
+    def validate(value, report):
+        calls.append(("validate", report))
+        raise ValueError("unsupported evidence")
+
+    with pytest.raises(ValueError, match="unsupported evidence"):
+        await AssessmentInteractor(generate, parse, validate).execute(request)
+    assert [name for name, _ in calls] == ["generate", "parse", "validate"]
 
 
 async def test_application_settings_own_separate_resources():
