@@ -2,6 +2,7 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
+
 from backend.entities.knowledge import (
     DraftDecisionState,
     KnowledgeDecisionRejected,
