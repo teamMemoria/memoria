@@ -1,6 +1,6 @@
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from backend.entities.identity import DEV_IDENTITIES, CurrentUser
 from backend.errors import (
@@ -36,6 +36,7 @@ from backend.use_cases.record_review_decision import ReviewDecisionRepository
 # when the record does not exist or is not visible to that agent.
 
 
+@runtime_checkable
 class IdentityProvider(Protocol):
     async def resolve(
         self, subject: str, organization_id: str | None = None
@@ -59,28 +60,33 @@ class FixtureIdentityProvider:
         return user
 
 
+@runtime_checkable
 class DemoProfileProvider(Protocol):
     async def list_profiles(self) -> list[DemoProfile]:
         """Profiles the demo entry screen offers. Only served in development and test."""
         ...
 
 
+@runtime_checkable
 class ViewerProvider(Protocol):
     async def get_viewer(self, organization_id: str, user_id: str) -> Viewer | None: ...
 
 
+@runtime_checkable
 class ConversationProvider(Protocol):
     async def list_for_agent(
         self, organization_id: str, agent_id: str
     ) -> list[Conversation]: ...
 
 
+@runtime_checkable
 class CallReviewProvider(Protocol):
     async def get_for_agent(
         self, organization_id: str, agent_id: str, conversation_id: str
     ) -> CallReview | None: ...
 
 
+@runtime_checkable
 class KnowledgeProvider(Protocol):
     async def list_for_agent(
         self, organization_id: str, agent_id: str
@@ -91,6 +97,7 @@ class KnowledgeProvider(Protocol):
     ) -> KnowledgeEntry | None: ...
 
 
+@runtime_checkable
 class FeedbackProvider(Protocol):
     """An agent's own writes on their calls."""
 
@@ -116,6 +123,7 @@ class FeedbackProvider(Protocol):
         ...
 
 
+@runtime_checkable
 class ReviewProvider(Protocol):
     """A Manager's review queue and decisions, scoped to their organization."""
 
@@ -140,6 +148,7 @@ class ReviewProvider(Protocol):
     ) -> AbstractAsyncContextManager[ReviewDecisionRepository]: ...
 
 
+@runtime_checkable
 class KnowledgeReviewProvider(Protocol):
     """Knowledge drafts for an authorized reviewer (knowledge:approve)."""
 

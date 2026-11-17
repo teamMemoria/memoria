@@ -17,9 +17,9 @@ from sqlalchemy.orm import selectinload
 
 from backend.frameworks.data_access.database import (
     SessionFactory,
+    agent_context_schema,
     assessment,
     audits_by_conversation,
-    iso_timestamp,
     load_membership,
     owned_conversations,
     parse_id,
@@ -29,7 +29,6 @@ from backend.frameworks.data_access.database import (
 from backend.frameworks.database.models import AgentContext as AgentContextRecord
 from backend.frameworks.database.models import Conversation, FeedbackFlag
 from backend.interface_adapters.ports import RecordNotFoundError
-from backend.schemas import AgentContext
 from backend.services.clock import utc_now
 
 CONVERSATION_NOT_FOUND = "Conversation not found"
@@ -88,7 +87,7 @@ class DatabaseFeedbackProvider:
                 )
             ).one()
             await session.commit()
-        return AgentContext(text=row.text, saved_at=iso_timestamp(row.saved_at))
+        return agent_context_schema(row)
 
     @unavailable_on_database_error
     async def request_review(
