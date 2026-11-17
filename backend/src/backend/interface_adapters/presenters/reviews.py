@@ -2,17 +2,17 @@
 
 from backend.data.demo_profiles import profile_display_name
 from backend.entities.results import OUTCOME_NAMES, RESULT_NAMES
-from backend.entities.reviews import ReviewOutput
 from backend.interface_adapters.presenters.assessments import iso_timestamp
 from backend.interface_adapters.records import ManagerReview
 from backend.schemas import ManagerDecision
 from backend.schemas.reviews import TeamConversation
+from backend.use_cases.record_review_decision import ReviewDecisionResult
 
 
-def decision_output(review: ManagerReview) -> ReviewOutput:
+def decision_output(review: ManagerReview) -> ReviewDecisionResult:
     """Detach the result before it crosses the application boundary."""
     user = review.reviewer_membership.user
-    return ReviewOutput(
+    return ReviewDecisionResult(
         OUTCOME_NAMES[review.outcome],
         RESULT_NAMES[review.reviewed_result]
         if review.reviewed_result is not None
@@ -25,7 +25,7 @@ def decision_output(review: ManagerReview) -> ReviewOutput:
     )
 
 
-def present_decision(review: ReviewOutput) -> ManagerDecision:
+def present_decision(review: ReviewDecisionResult) -> ManagerDecision:
     return ManagerDecision(
         outcome=review.outcome,
         reason=review.reason,
