@@ -4,15 +4,14 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
-
 from backend.entities.assessments import AnalysisRequest, ParsedReport
-from backend.errors import ConflictError
 from backend.entities.knowledge import (
     DraftDecisionState,
     KnowledgeDecisionRejected,
     KnowledgeInput,
     validate_decision,
 )
+from backend.errors import ConflictError
 from backend.use_cases.assessments import AssessmentInteractor
 from backend.use_cases.knowledge import KnowledgeInteractor
 from backend.use_cases.record_review_decision import (
