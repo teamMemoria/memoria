@@ -1,4 +1,41 @@
+from dataclasses import replace
 from types import SimpleNamespace
+
+import pytest
+
+from backend.errors import ConflictError
+from backend.use_cases.record_review_decision import (
+    RecordReviewDecision,
+    ReviewDecisionInput,
+)
+
+
+class Reviews:
+    def __init__(self, existing=None):
+        self.value = existing
+        self.saved = 0
+
+    async def existing(self):
+        return self.value
+
+    async def result(self):
+        return self.value
+
+    async def save(self, decision):
+        self.saved += 1
+        self.value = decision
+        return decision, True
+
+
+async def test_review_is_idempotent_and_conflicts_do_not_write():
+    value = ReviewDecisionInput("confirmed", None, "Source checked", "Keep it up")
+    repository = Reviews()
+    interactor = RecordReviewDecision()
+    assert await interactor.execute(value, repository) == (value, True)
+    assert await interactor.execute(value, repository) == (value, False)
+    with pytest.raises(ConflictError):
+        await interactor.execute(replace(value, reason="Different"), repository)
+    assert repository.saved == 1
 
 
 async def test_application_settings_own_separate_resources():

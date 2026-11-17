@@ -21,6 +21,7 @@ from backend.providers.base import ConflictError
 from backend.providers.database import create_database_providers
 from backend.providers.reviews import DatabaseReviewProvider
 from backend.schemas.reviews import DecisionInput
+from backend.use_cases.record_review_decision import RecordReviewDecision
 from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, SAM, seed, sessions_for
 
 NOW = datetime(2026, 11, 2, 11, 0, tzinfo=UTC)
@@ -488,13 +489,16 @@ async def test_concurrent_decisions_record_one_and_answer_the_rest(committed_ses
 
     async def attempt(outcome):
         try:
-            _, created = await provider.decide(
+            async with provider.decision_repository(
                 NORTHWIND,
                 MAYA,
                 data.id(data.assessed),
                 data.id(data.procedure_finding),
-                DecisionInput.model_validate(decision_body(outcome)),
-            )
+            ) as repository:
+                _, created = await RecordReviewDecision().execute(
+                    DecisionInput.model_validate(decision_body(outcome)).to_decision(),
+                    repository,
+                )
             return "created" if created else "same"
         except ConflictError:
             return "conflict"
