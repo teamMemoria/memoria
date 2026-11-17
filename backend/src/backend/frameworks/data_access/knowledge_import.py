@@ -75,16 +75,60 @@ class KnowledgeImportService:
         default_factory=UnconfiguredKnowledgePipeline
     )
     now: Callable[[], datetime] = utc_now
+    generate: Callable[[str, list[dict]], dict] | None = None
+    source_ids: tuple[str, ...] = ()
 
     async def run(self, organization_id: str) -> ImportResult:
         """Run the configured pipeline and store its output."""
 
         async def run_pipeline(scope):
-            return await asyncio.to_thread(self.adapter.run, scope)
+            if self.generate is None:
+                return await asyncio.to_thread(self.adapter.run, scope)
+            if not self.source_ids:
+                raise KnowledgePipelineUnavailableError(
+                    "No frozen cohort is configured."
+                )
+            evidence = await self._generation_sources(scope)
+            output = await asyncio.to_thread(self.generate, scope, evidence)
+            found = {r["conversation_id"] for r in output.get("records", [])}
+            output.setdefault("records", []).extend(
+                {
+                    "conversation_id": identifier,
+                    "status": "unavailable",
+                    "drafts": 0,
+                    "reason": "No canonical training evidence in this organization.",
+                }
+                for identifier in self.source_ids
+                if identifier not in found
+            )
+            return output
 
         return await KnowledgeImportInteractor(self, run_pipeline).execute(
             organization_id
         )
+
+    async def _generation_sources(self, organization_id):
+        async with self.sessions() as session:
+            return list(
+                await session.scalars(
+                    select(Conversation.canonical_evidence)
+                    .join(Organization, Organization.id == Conversation.organization_id)
+                    .where(
+                        Organization.slug == organization_id,
+                        Conversation.source_dataset == "ABCD",
+                        Conversation.original_id.in_(self.source_ids),
+                        Conversation.canonical_evidence["conversations"][0][
+                            "id"
+                        ].as_string()
+                        == Conversation.original_id,
+                        Conversation.canonical_evidence["conversations"][0][
+                            "split"
+                        ].as_string()
+                        == "train",
+                    )
+                    .order_by(Conversation.original_id)
+                )
+            )
 
     @unavailable_on_database_error
     async def import_output(self, organization_id: str, output: Any) -> ImportResult:

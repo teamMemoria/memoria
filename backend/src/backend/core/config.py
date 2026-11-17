@@ -17,6 +17,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MEMORIA_APP_ENV", "app_env"),
     )
 
+    knowledge_engine: Literal["unconfigured", "rules"] = Field(
+        default="unconfigured",
+        validation_alias=AliasChoices("MEMORIA_KNOWLEDGE_ENGINE", "knowledge_engine"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
