@@ -106,7 +106,9 @@ def test_readiness_returns_503_without_traceback_when_database_is_down(caplog):
 
 def test_app_shutdown_disposes_the_engine(monkeypatch):
     engine = AsyncMock()
-    monkeypatch.setattr(session_module, "engine", engine)
+    monkeypatch.setattr(
+        app.state, "database", type("Database", (), {"close": engine.dispose})()
+    )
 
     with TestClient(app) as client:
         assert client.get("/health").status_code == 200
