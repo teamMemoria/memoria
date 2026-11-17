@@ -1,13 +1,6 @@
-from typing import Annotated
+"""Compatibility import; implementation lives in frameworks.http.dependencies."""
 
-from fastapi import Depends, Request
+import sys
+from importlib import import_module
 
-from backend.providers import Providers
-
-
-def get_providers(request: Request) -> Providers:
-    """The providers the app was started with. Tests override this to inject their own."""
-    return request.app.state.providers
-
-
-ProvidersDep = Annotated[Providers, Depends(get_providers)]
+sys.modules[__name__] = import_module("backend.frameworks.http.dependencies")

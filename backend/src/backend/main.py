@@ -9,8 +9,14 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api import analysis as analysis_api
-from backend.api import (
+from backend.core.config import Settings
+from backend.db.session import get_db_session
+from backend.frameworks.data_access.analysis import AnalysisRunsAdapter, AnalysisService
+from backend.frameworks.data_access.database import create_database_providers
+from backend.frameworks.data_access.knowledge_import import KnowledgeImportService
+from backend.frameworks.database.session import create_database
+from backend.frameworks.http import analysis as analysis_api
+from backend.frameworks.http import (
     calls,
     conversations,
     demo,
@@ -20,17 +26,10 @@ from backend.api import (
     reviews,
     viewer,
 )
-from backend.core.config import Settings
-from backend.db.session import get_db_session
-from backend.frameworks.data_access.analysis import AnalysisRunsAdapter
-from backend.frameworks.database.session import create_database
 from backend.providers import (
     Providers,
     ProviderUnavailableError,
 )
-from backend.providers.database import create_database_providers
-from backend.services.analysis import AnalysisService
-from backend.services.knowledge_import import KnowledgeImportService
 from backend.use_cases.assessment_runs import AssessmentRunsInteractor
 
 logger = logging.getLogger(__name__)
