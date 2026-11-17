@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCompleteness } from './controller'
 import { Card } from '../../components/ui/card'
 import { Icon } from '../../components/Icon'
 import {
@@ -15,31 +15,7 @@ import { ConversationChart } from '../assessment-shared/ConversationChart'
 import './completeness.css'
 
 export function CompletenessScreen({ data, onOpen }: ScreenProps) {
-  const requests = data.call.requestLinks ?? []
-  const promises = requests.filter((request) => request.state === 'promised')
-  const unresolved = data.checks.filter(
-    (check) => check.outcome === 'unresolved',
-  )
-  const answered = requests.filter(
-    (request) => request.state === 'answered' && request.responseTurns.length,
-  )
-  const [selection, setSelection] = useState<string | undefined>(
-    requests[0]?.id,
-  )
-  const selected =
-    requests.find((request) => request.id === selection) ?? requests[0]
-  const previewTurns = data.turns.filter(
-    (turn) =>
-      selected &&
-      [...selected.requestTurns, ...selected.responseTurns].includes(
-        turn.number,
-      ),
-  )
-  function selectResponse(turn: number) {
-    setSelection(
-      answered.find((request) => request.responseTurns.includes(turn))?.id,
-    )
-  }
+  const { requests, promises, unresolved, answered, selected, previewTurns, setSelection, selectResponse } = useCompleteness(data)
   return (
     <>
       <section
