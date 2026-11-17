@@ -3,7 +3,14 @@ from types import SimpleNamespace
 
 import pytest
 
+from backend.entities.knowledge import (
+    DraftDecisionState,
+    KnowledgeDecisionRejected,
+    KnowledgeInput,
+    validate_decision,
+)
 from backend.errors import ConflictError
+from backend.use_cases.knowledge import KnowledgeInteractor
 from backend.use_cases.record_review_decision import (
     RecordReviewDecision,
     ReviewDecisionInput,
@@ -36,6 +43,55 @@ async def test_review_is_idempotent_and_conflicts_do_not_write():
     with pytest.raises(ConflictError):
         await interactor.execute(replace(value, reason="Different"), repository)
     assert repository.saved == 1
+
+
+@pytest.mark.parametrize(
+    "change,decision_change,message",
+    [
+        ({"pending": False}, {}, "already decided"),
+        ({}, {"version": "old"}, "Draft changed"),
+        ({"reference": None}, {}, "authoritative reference"),
+        ({"reference": {"url": "file:///private"}}, {}, "authoritative reference"),
+        ({"has_conflict": True}, {}, "conflict"),
+        ({"duplicate": True}, {}, "duplicate"),
+        (
+            {},
+            {"verified_reference_url": "https://example.test/wrong"},
+            "authoritative reference",
+        ),
+        ({}, {"outcome": "rejected", "reason": "   "}, "reason"),
+        ({}, {"outcome": "unknown"}, "Unknown decision"),
+    ],
+)
+def test_knowledge_gate_without_database(change, decision_change, message):
+    state = DraftDecisionState(
+        True, "v1", {"url": "https://example.test/reference"}, False, False
+    )
+    decision = KnowledgeInput("approved", "v1", "https://example.test/reference", None)
+    with pytest.raises(KnowledgeDecisionRejected, match=message):
+        validate_decision(
+            replace(state, **change), replace(decision, **decision_change)
+        )
+
+
+async def test_knowledge_rejection_does_not_require_reference_but_checks_version():
+    state = DraftDecisionState(True, "v1", None, True, False)
+
+    class Store:
+        def __init__(self):
+            self.saved = []
+
+        async def state(self):
+            return state
+
+        async def save(self, decision):
+            self.saved.append(decision)
+            return decision
+
+    repository = Store()
+    decision = KnowledgeInput("rejected", "v1", None, "Missing reference")
+    assert await KnowledgeInteractor().execute(decision, repository) == decision
+    assert repository.saved == [decision]
 
 
 async def test_application_settings_own_separate_resources():
