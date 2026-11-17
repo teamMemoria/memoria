@@ -4,6 +4,7 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
+
 from backend.entities.assessments import AnalysisRequest, ParsedReport
 from backend.entities.knowledge import (
     DraftDecisionState,
