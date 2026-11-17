@@ -6,9 +6,13 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from backend.entities.reviews import ReviewInput, ReviewOutput, validate_review_input
 from backend.schemas.reviews import DecisionInput
-from backend.use_cases.reviews import ReviewInteractor
+from backend.use_cases.record_review_decision import (
+    RecordReviewDecision,
+    ReviewDecisionInput,
+    ReviewDecisionResult,
+    validate_review_decision,
+)
 
 
 class Store:
@@ -20,7 +24,7 @@ class Store:
 
     async def save(self, value):
         self.writes.append(value)
-        return ReviewOutput(
+        return ReviewDecisionResult(
             value.outcome,
             value.reviewed_result,
             value.reason,
@@ -48,10 +52,12 @@ class Store:
     ],
 )
 async def test_invalid_decision_is_rejected_before_any_write(changes):
-    value = replace(ReviewInput("confirmed", None, "Reason", "Feedback"), **changes)
+    value = replace(
+        ReviewDecisionInput("confirmed", None, "Reason", "Feedback"), **changes
+    )
     store = Store()
     with pytest.raises(ValueError):
-        await ReviewInteractor().execute(value, store)
+        await RecordReviewDecision().execute(value, store)
     assert not store.writes
     with pytest.raises(ValidationError):
         DecisionInput(
@@ -64,8 +70,10 @@ async def test_invalid_decision_is_rejected_before_any_write(changes):
 
 async def test_neutral_output_and_normalization():
     store = Store()
-    value = ReviewInput("corrected", "needs-review", "  Reason  ", "  Feedback  ")
-    output, created = await ReviewInteractor().execute(value, store)
-    assert type(output) is ReviewOutput and created
+    value = ReviewDecisionInput(
+        "corrected", "needs-review", "  Reason  ", "  Feedback  "
+    )
+    output, created = await RecordReviewDecision().execute(value, store)
+    assert type(output) is ReviewDecisionResult and created
     assert output.reason == "Reason" and output.feedback == "Feedback"
-    assert store.writes == [validate_review_input(value)]
+    assert store.writes == [validate_review_decision(value)]
