@@ -1,19 +1,19 @@
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from backend.entities.errors import (
+from backend.entities.identity import DEV_IDENTITIES, CurrentUser
+from backend.errors import (
     ConflictError,
     ProviderUnavailableError,
     RecordNotFoundError,
 )
-from backend.entities.identity import DEV_IDENTITIES, CurrentUser
 from backend.schemas import (
     AgentContext,
     CallReview,
     Conversation,
     DemoProfile,
     KnowledgeEntry,
-    ManagerDecision,
     ReviewRequest,
     Viewer,
 )
@@ -25,11 +25,11 @@ from backend.schemas.knowledge_review import (
     KnowledgeReviewDetail,
 )
 from backend.schemas.reviews import (
-    DecisionInput,
     FindingReviewDetail,
     QueueStatus,
     TeamConversation,
 )
+from backend.use_cases.record_review_decision import ReviewDecisionRepository
 
 # Every read is scoped to one organization. Methods mirror the frontend's
 # ViewerApi, ConversationsApi, CallApi and ApprovedKnowledgeApi, and return None
@@ -131,20 +131,13 @@ class ReviewProvider(Protocol):
         self, organization_id: str, manager_id: str, conversation_id: str
     ) -> FindingReviewDetail | None: ...
 
-    async def decide(
+    def decision_repository(
         self,
         organization_id: str,
         manager_id: str,
         conversation_id: str,
         finding_id: str,
-        decision: DecisionInput,
-    ) -> tuple[ManagerDecision, bool]:
-        """Record a decision on a review request; returns (decision, created).
-
-        Repeating the same decision returns the stored one with created=False.
-        A different decision on an already decided request is a ConflictError.
-        """
-        ...
+    ) -> AbstractAsyncContextManager[ReviewDecisionRepository]: ...
 
 
 class KnowledgeReviewProvider(Protocol):

@@ -7,16 +7,16 @@ finding and never changes it.
 """
 
 from collections.abc import Callable
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.data.demo_profiles import profile_display_name
 from backend.entities.identity import Permission
-from backend.entities.reviews import ReviewInput, require_same_decision
 from backend.frameworks.data_access.database import (
     OUTCOME_NAMES,
     RESULT_NAMES,
@@ -46,23 +46,27 @@ from backend.frameworks.database.models import (
     User,
 )
 from backend.frameworks.database.models import AgentContext as AgentContextRecord
-from backend.interface_adapters.ports import RecordNotFoundError
+from backend.interface_adapters.ports import (
+    ProviderUnavailableError,
+    RecordNotFoundError,
+)
 from backend.interface_adapters.presenters.reviews import (
     decision_output,
     decision_schema,
     has_status,
     matches,
-    present_decision,
 )
-from backend.schemas import AgentContext, ManagerDecision
+from backend.schemas import AgentContext
 from backend.schemas.reviews import (
-    DecisionInput,
     FindingReviewDetail,
     FlaggedFeedback,
     TeamConversation,
 )
 from backend.services.clock import utc_now
-from backend.use_cases.reviews import ReviewInteractor
+from backend.use_cases.record_review_decision import (
+    ReviewDecisionInput,
+    require_same_decision,
+)
 
 OUTCOMES = {name: outcome for outcome, name in OUTCOME_NAMES.items()}
 RESULTS = {name: result for result, name in RESULT_NAMES.items()}
@@ -99,7 +103,7 @@ async def agent_identities(
     return identities
 
 
-def reviewed_result_of(decision: DecisionInput) -> FindingResult | None:
+def reviewed_result_of(decision: ReviewDecisionInput) -> FindingResult | None:
     """The corrected result a Manager chose; only corrected decisions have one."""
     if decision.reviewed_result is None:
         return None
@@ -218,53 +222,41 @@ class DatabaseReviewProvider:
             call = call.model_copy(update={"agent_context": snapshot})
         return FindingReviewDetail(call=call, can_decide=True)
 
-    @unavailable_on_database_error
-    async def decide(
-        self, organization_id, manager_id, conversation_id, finding_id, decision
+    @asynccontextmanager
+    async def decision_repository(
+        self, organization_id, manager_id, conversation_id, finding_id
     ):
         conversation_key, finding_key = parse_id(conversation_id), parse_id(finding_id)
-        async with self._sessions() as session:
-            membership = await self._reviewer(session, organization_id, manager_id)
-            flag = None
-            if conversation_key is not None and finding_key is not None:
-                flag = await session.scalar(
-                    select(FeedbackFlag)
-                    .join(Finding, Finding.id == FeedbackFlag.finding_id)
-                    .join(Audit, Audit.id == Finding.audit_id)
-                    .join(Conversation, Conversation.id == Audit.conversation_id)
-                    .where(
-                        FeedbackFlag.finding_id == finding_key,
-                        Conversation.id == conversation_key,
-                        Conversation.organization_id == membership.organization_id,
-                    )
-                    .options(
-                        selectinload(FeedbackFlag.manager_review).options(
-                            *reviewer_options()
+        try:
+            async with self._sessions() as session:
+                membership = await self._reviewer(session, organization_id, manager_id)
+                flag = None
+                if conversation_key is not None and finding_key is not None:
+                    flag = await session.scalar(
+                        select(FeedbackFlag)
+                        .join(Finding, Finding.id == FeedbackFlag.finding_id)
+                        .join(Audit, Audit.id == Finding.audit_id)
+                        .join(Conversation, Conversation.id == Audit.conversation_id)
+                        .where(
+                            FeedbackFlag.finding_id == finding_key,
+                            Conversation.id == conversation_key,
+                            Conversation.organization_id == membership.organization_id,
+                        )
+                        .options(
+                            selectinload(FeedbackFlag.manager_review).options(
+                                *reviewer_options()
+                            )
                         )
                     )
-                )
-            if flag is None:
-                raise RecordNotFoundError("Review request not found")
-
-            record, created = await ReviewInteractor().execute(
-                review_input(decision),
-                ReviewTransaction(session, flag, membership, self._now),
-            )
-            return present_decision(record), created
-
-    @staticmethod
-    def _repeat(existing: ManagerReview, decision: DecisionInput) -> ManagerDecision:
-        return decision_schema(repeat_decision(existing, review_input(decision)))
-
-
-def review_input(decision):
-    return ReviewInput(
-        decision.outcome, decision.reviewed_result, decision.reason, decision.feedback
-    )
+                if flag is None:
+                    raise RecordNotFoundError("Review request not found")
+                yield ReviewTransaction(session, flag, membership, self._now)
+        except (SQLAlchemyError, OSError) as exc:
+            raise ProviderUnavailableError("database unavailable") from exc
 
 
 def stored_decision(review):
-    return ReviewInput(
+    return ReviewDecisionInput(
         OUTCOME_NAMES[review.outcome],
         RESULT_NAMES[review.reviewed_result]
         if review.reviewed_result is not None
