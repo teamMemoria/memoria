@@ -2,11 +2,14 @@ from typing import Literal, Self
 
 from pydantic import model_validator
 
-from backend.entities.reviews import ReviewInput, validate_review_input
 from backend.schemas.base import ApiModel
 from backend.schemas.call_review import AuditResult, CallReview, ReviewRequest
 from backend.schemas.conversations import Conversation
 from backend.schemas.feedback import text_field
+from backend.use_cases.record_review_decision import (
+    ReviewDecisionInput,
+    validate_review_decision,
+)
 
 # Matches frontend/src/features/review-queue/teamQueue.ts.
 DecisionOutcome = Literal["confirmed", "corrected", "dismissed", "cannot-assess"]
@@ -51,7 +54,14 @@ class DecisionInput(ApiModel):
 
     @model_validator(mode="after")
     def reviewed_result_only_when_corrected(self) -> Self:
-        validate_review_input(
-            ReviewInput(self.outcome, self.reviewed_result, self.reason, self.feedback)
+        validate_review_decision(
+            ReviewDecisionInput(
+                self.outcome, self.reviewed_result, self.reason, self.feedback
+            )
         )
         return self
+
+    def to_decision(self) -> ReviewDecisionInput:
+        return ReviewDecisionInput(
+            self.outcome, self.reviewed_result, self.reason, self.feedback
+        )
