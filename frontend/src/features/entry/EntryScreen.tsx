@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react'
+import { useEntry } from './controller'
+import { useId, useState } from 'react'
 import { Button } from '../../components/controls'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import type {
@@ -7,11 +8,6 @@ import type {
   ViewerRole,
 } from '../../types/viewer'
 import './entry.css'
-
-type ProfilesState =
-  | { status: 'loading' }
-  | { status: 'ready'; profiles: DemoProfile[] }
-  | { status: 'error' }
 
 const roles: { value: ViewerRole; label: string }[] = [
   { value: 'agent', label: 'Agent' },
@@ -36,35 +32,11 @@ export function EntryScreen({
   notice?: string | null
   onSelect: (profile: DemoProfile) => void
 }) {
-  const [state, setState] = useState<ProfilesState>({ status: 'loading' })
-  const [attempt, setAttempt] = useState(0)
-  const [role, setRole] = useState<ViewerRole>('agent')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [reducedMotion] = useState(prefersReducedMotion)
   const headingId = useId()
   const roleName = useId()
   const profileName = useId()
-
-  useEffect(() => {
-    let active = true
-    void api.listProfiles().then(
-      (profiles) => {
-        if (active) setState({ status: 'ready', profiles })
-      },
-      () => {
-        if (active) setState({ status: 'error' })
-      },
-    )
-    return () => {
-      active = false
-    }
-  }, [api, attempt])
-
-  const profiles =
-    state.status === 'ready'
-      ? state.profiles.filter((profile) => profile.role === role)
-      : []
-  const selected = profiles.find((profile) => profile.id === selectedId)
+  const { state, setState, setAttempt, role, setRole, setSelectedId, profiles, selected } = useEntry(api)
 
   return (
     <div className="entry">
