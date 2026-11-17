@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from backend.entities.identity import DEV_IDENTITIES, CurrentUser
 from backend.errors import (
     ConflictError,
     ProviderUnavailableError,
     RecordNotFoundError,
 )
-from backend.entities.identity import DEV_IDENTITIES, CurrentUser
 from backend.schemas import (
     AgentContext,
     CallReview,
