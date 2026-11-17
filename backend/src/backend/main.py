@@ -62,6 +62,21 @@ def create_app(
     app.state.assessment_runs = AssessmentRunsInteractor(
         AnalysisRunsAdapter(app.state.analysis)
     )
+    if knowledge_import is None and settings.knowledge_engine == "rules":
+        from ml.knowledge_candidates import generate_candidates
+
+        from backend.data.demo_profiles import load_profiles
+
+        profiles = load_profiles()
+        if profiles.dataset != "ABCD" or profiles.split != "train":
+            raise ValueError(
+                "Knowledge generation requires the frozen ABCD training profiles"
+            )
+        knowledge_import = KnowledgeImportService(
+            database.sessions,
+            generate=generate_candidates,
+            source_ids=tuple(c for a in profiles.agents for c in a.conversations),
+        )
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
         database.sessions
     )

@@ -50,4 +50,6 @@ class KnowledgeImportInteractor:
                 f"The knowledge pipeline failed with {type(error).__name__}."
             ) from error
         check_output(organization_id, output)
-        return await self.repository.import_output(organization_id, output)
+        result = await self.repository.import_output(organization_id, output)
+        result.generation = output.get("records", [])
+        return result

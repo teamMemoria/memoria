@@ -102,3 +102,30 @@ artifact. The sidecar name is `<artifact filename>.provenance.json`; for
 example, `evaluation.csv` uses `evaluation.csv.provenance.json`. Call
 `write_manifest(artifact_path, manifest)` from `backend.data.provenance` to
 apply this convention and write deterministic JSON.
+
+
+### Optional pending knowledge candidates
+
+Set `MEMORIA_KNOWLEDGE_ENGINE=rules` when starting the backend to enable the
+bounded local generator at the existing Manager `POST /api/manager/knowledge/imports`
+endpoint. The default remains unconfigured. Run from the repository with both
+`backend/src` and the repository root on `PYTHONPATH`; no model, scoring engine,
+new dependency or migration is required.
+
+The cohort comes from the existing `backend/src/backend/data/demo_profiles.toml`
+ABCD training mapping. Only matching canonical records in the requesting
+organization are loaded. Absent, invalid and unsupported records are reported
+separately; they do not become fabricated drafts. No source data is downloaded.
+
+The generator recognizes bounded price, duration, product-property, material,
+color, warranty, care and policy Q&A patterns. Short answers require the preceding
+question. Quoted speech, personal/account information, ambiguous conditions,
+changes and corrections are excluded conservatively. Unrecognized phrasing
+produces no candidate; this is not complete extraction or semantic verification.
+Exact canonical passages and versions are retained without changing masking.
+
+Every generated candidate is untrusted, unverifiable and pending. Reimporting
+the same version does not duplicate drafts or overwrite decided content.
+Existing Manager approval/rejection, ownership and citation checks still apply;
+Agent statements never establish policy correctness. This bounded option does
+not replace the broader extraction/grouping/conflict/verification PRs.

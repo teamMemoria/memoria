@@ -45,6 +45,7 @@ class ImportResult:
     # Drafts and conflicts that could not be stored, with the reason.
     skipped: list[dict[str, str]] = field(default_factory=list)
     conflicts_stored: int = 0
+    generation: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _text(value: Any) -> bool:
