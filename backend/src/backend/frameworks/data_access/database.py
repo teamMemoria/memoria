@@ -19,7 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.data.demo_profiles import DEMO_PREFIX, profile_display_name
+from backend.data.demo_profiles import DEMO_PREFIX
 from backend.entities.identity import CurrentUser, permissions_for_membership
 from backend.entities.results import (
     CATEGORY_FOR_CRITERION,
@@ -72,9 +72,9 @@ from backend.interface_adapters.presenters.assessments import (
     visible_evidence,
     with_scoring,
 )
-from backend.schemas import (
-    DemoProfile,
-    Viewer,
+from backend.interface_adapters.presenters.profiles import (
+    demo_profile,
+    viewer,
 )
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
@@ -237,12 +237,7 @@ class DatabaseDemoProfileProvider:
                 .order_by(OrganizationMembership.role, User.external_id)
             )
         return [
-            DemoProfile(
-                id=external_id,
-                display_name=profile_display_name(external_id, name),
-                role="agent" if role is UserRole.AGENT else "manager",
-                conversation_count=count if role is UserRole.AGENT else None,
-            )
+            demo_profile(external_id, name, role is UserRole.AGENT, count)
             for external_id, name, role, count in rows
         ]
 
@@ -257,12 +252,10 @@ class DatabaseViewerProvider:
             membership = await load_membership(session, organization_id, user_id)
         if membership is None:
             return None
-        return Viewer(
-            id=membership.user.external_id,
-            display_name=profile_display_name(
-                membership.user.external_id, membership.user.display_name
-            ),
-            role="agent" if membership.role is UserRole.AGENT else "manager",
+        return viewer(
+            membership.user.external_id,
+            membership.user.display_name,
+            membership.role is UserRole.AGENT,
         )
 
 
