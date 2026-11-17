@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useProcedure } from './controller'
 import { ConversationChart } from '../assessment-shared/ConversationChart'
 import { Icon } from '../../components/Icon'
 import { Card } from '../../components/ui/card'
@@ -13,23 +13,13 @@ import {
   MaterialLimits,
 } from '../assessment-shared/AssessmentElements'
 import {
-  checkTurns,
   checkTitle,
-  featuredChecks,
   type ScreenProps,
 } from '../assessment-shared/assessment'
 import './procedure.css'
 
 export function ProcedureScreen({ data, onOpen }: ScreenProps) {
-  const featured = featuredChecks(data.checks)[0]
-  const selected = featured
-    ? checkTurns(featured)
-    : data.turns.map((turn) => turn.number)
-  const actions = data.turns.filter((turn) => turn.speaker === 'System action')
-  const [activeNumber, setActiveNumber] = useState(actions[0]?.number)
-  const activeTurn =
-    actions.find((turn) => turn.number === activeNumber) ?? actions[0]
-  const steps = data.findings.flatMap((finding) => finding.procedureSteps)
+  const { featured, selected, actions, activeTurn, steps, setActiveNumber } = useProcedure(data)
   return (
     <>
       <section
