@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from backend.entities.errors import (
+from backend.errors import (
     ConflictError,
     ProviderUnavailableError,
     RecordNotFoundError,
