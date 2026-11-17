@@ -133,7 +133,9 @@ def main():
                 f"{index}/{len(jobs)} generated {key[:12]} {duration:.2f}s", flush=True
             )
         except Exception as error:
-            logging.getLogger(__name__).exception("Narration generation failed for %s", key)
+            logging.getLogger(__name__).exception(
+                "Narration generation failed for %s", key
+            )
             failure = {"key": key, "error": str(error)}
             failures.append(failure)
             with (args.output / "failures.jsonl").open("a") as history:

@@ -71,14 +71,14 @@ def _recreate_test_database() -> None:
     )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def migrated_database():
     """Recreate the test database and run every migration against it."""
     _recreate_test_database()
 
 
 @pytest.fixture
-async def session():
+async def session(migrated_database):
     """A session whose changes are rolled back after each test."""
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
     async with engine.connect() as conn:
@@ -92,7 +92,7 @@ async def session():
 
 
 @pytest.fixture
-async def committed_sessions():
+async def committed_sessions(migrated_database):
     """A session factory whose sessions really commit, for concurrency tests.
 
     Each session gets its own connection, as in the running app. The database
