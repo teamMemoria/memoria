@@ -3,9 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from backend.entities.errors import ConflictError
-from backend.entities.reviews import ReviewInput
-from backend.use_cases.reviews import ReviewInteractor
+from backend.errors import ConflictError
+from backend.use_cases.record_review_decision import (
+    RecordReviewDecision,
+    ReviewDecisionInput,
+)
 
 
 class Reviews:
@@ -26,9 +28,9 @@ class Reviews:
 
 
 async def test_review_is_idempotent_and_conflicts_do_not_write():
-    value = ReviewInput("confirmed", None, "Source checked", "Keep it up")
+    value = ReviewDecisionInput("confirmed", None, "Source checked", "Keep it up")
     repository = Reviews()
-    interactor = ReviewInteractor()
+    interactor = RecordReviewDecision()
     assert await interactor.execute(value, repository) == (value, True)
     assert await interactor.execute(value, repository) == (value, False)
     with pytest.raises(ConflictError):
