@@ -1,5 +1,28 @@
 # #130 local verification
 
+## PR review corrections (November 17, 2026)
+
+The combined `acceptance` stack was checked again after the shared-error,
+review-decision and data-access boundary corrections. A disposable pgvector
+container hosted the migrated test database; no application records were used.
+
+| Check | Result |
+|---|---|
+| Backend pytest | **595 passed** |
+| ML regression suite | **189 passed; 631 subtests passed; 3 existing skips** |
+| Frontend Vitest | **161 passed across 15 files** |
+| Backend Ruff lint, formatting and Python compilation | Passed |
+| Frontend lint, TypeScript and production build | Passed |
+
+The active review route now calls `RecordReviewDecision` with an injected scoped
+SQL repository. The repository preserves the existing authorization, transaction
+and concurrent-decision behavior. Database providers are checked against their
+existing read/write ports, and simple profile formatting is outside SQL access.
+The OpenAPI models and frontend views were not edited by these corrections.
+
+The results below record the earlier pre-PR baseline and remain as historical
+comparison evidence.
+
 Worktree: `/Users/nicol/Desktop/PROJECTS/memoria-worktrees/clean-architecture`
 
 Branch: `clean-architecture`. Base: `5664bc15d94dc65c3e3d9c36281b4005d634c83a`.

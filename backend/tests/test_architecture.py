@@ -69,11 +69,11 @@ class Block(importlib.abc.MetaPathFinder):
             raise RuntimeError(fullname)
 sys.meta_path.insert(0, Block())
 for name in ['entities.assessments', 'entities.scoring', 'entities.knowledge',
-             'entities.knowledge_import', 'use_cases.assessments', 'use_cases.assessment_runs', 'use_cases.reviews', 'use_cases.knowledge']:
+             'entities.knowledge_import', 'use_cases.assessments', 'use_cases.assessment_runs', 'use_cases.record_review_decision', 'use_cases.knowledge']:
     importlib.import_module('backend.' + name)
-from backend.entities.reviews import ReviewInput, validate_review_input
+from backend.use_cases.record_review_decision import ReviewDecisionInput, validate_review_decision
 try:
-    validate_review_input(ReviewInput('corrected', None, 'Reason', 'Feedback'))
+    validate_review_decision(ReviewDecisionInput('corrected', None, 'Reason', 'Feedback'))
 except ValueError:
     pass
 else:
@@ -163,6 +163,14 @@ def test_analysis_http_uses_application_boundary():
         )
     ]
     assert "AssessmentRunsInputBoundary" in path.read_text()
+
+
+def test_review_http_uses_interactor_and_sql_does_not_construct_it():
+    route = BACKEND / "frameworks/http/reviews.py"
+    repository = BACKEND / "frameworks/data_access/reviews.py"
+    assert "RecordReviewDecision().execute" in route.read_text()
+    assert "decision_repository" in route.read_text()
+    assert "RecordReviewDecision" not in repository.read_text()
 
 
 def test_ml_compatibility_imports_have_fixed_targets():

@@ -48,7 +48,7 @@ after authorization, commit the reviewed deltas in dependency order.
 | 01-baseline | CI, disposable test configuration; one prerequisite formatting correction | Full baseline backend/frontend/ML checks |
 | 02-runtime | Per-app engine/session lifetime | Backend suite and resource-isolation tests |
 | 03-shared-contracts | Neutral vocabulary, identity/errors, record shapes, model relocation | Backend suite and unchanged HTTP schema |
-| 04-reviews | Domain decision validation, neutral output, ReviewInteractor | Pure invalid-input regressions; persistence/concurrency tests |
+| 04-reviews | Decision validation, neutral output, RecordReviewDecision | Pure invalid-input regressions; persistence/concurrency tests |
 | 05-knowledge-decisions | Reference/version/permission decisions | Backend approval/rejection, conflict and visibility tests |
 | 06-assessments | Run input/output boundary, report validation and storage | Backend retry/evidence tests; fake-repository HTTP test |
 | 07-data-access | Shared read/feedback adapters and compatibility paths | Backend suite and unchanged projections |

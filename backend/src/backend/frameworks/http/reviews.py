@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from backend.entities.identity import CurrentUser, Permission
 from backend.frameworks.http.auth import require_permission
 from backend.frameworks.http.dependencies import ProvidersDep
+from backend.interface_adapters.presenters.reviews import present_decision
 from backend.providers import (
     ConflictError,
     Providers,
@@ -19,6 +20,7 @@ from backend.schemas.reviews import (
     QueueStatus,
     TeamConversation,
 )
+from backend.use_cases.record_review_decision import RecordReviewDecision
 
 router = APIRouter(prefix="/api/manager")
 
@@ -95,13 +97,16 @@ async def decide(
     200, and a different one is a 409.
     """
     try:
-        decision, created = await review_provider(providers).decide(
-            user.organization_id, user.user_id, conversation_id, finding_id, body
-        )
+        async with review_provider(providers).decision_repository(
+            user.organization_id, user.user_id, conversation_id, finding_id
+        ) as repository:
+            result, created = await RecordReviewDecision().execute(
+                body.to_decision(), repository
+            )
     except RecordNotFoundError as error:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from None
     except ConflictError as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from None
     if not created:
         response.status_code = status.HTTP_200_OK
-    return decision
+    return present_decision(result)

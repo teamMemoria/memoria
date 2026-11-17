@@ -33,17 +33,17 @@ structural interfaces and never issue queries.
 
 ```text
 backend/src/backend/
+├── errors.py                # dependency-free shared application errors
 ├── entities/
 │   ├── identity.py           # ownership and permissions
 │   ├── results.py            # shared stored vocabulary and display mappings
-│   ├── reviews.py            # review input and decision invariants
+│   ├── reviews.py            # review permission rule
 │   ├── knowledge.py          # decision input, version and reference gates
 │   ├── knowledge_import.py   # pipeline input/output and validation
 │   ├── assessments.py        # assessment input/output, evidence and retry rules
-│   ├── scoring.py            # arithmetic and evidence validation
-│   └── errors.py             # shared business errors
+│   └── scoring.py            # arithmetic and evidence validation
 ├── use_cases/
-│   ├── reviews.py            # ReviewInteractor + Data Access Interface
+│   ├── record_review_decision.py  # input, result, repository, interactor
 │   ├── knowledge.py          # decision/import Interactors + interfaces
 │   ├── assessments.py        # AssessmentInteractor + Input Boundary
 │   └── assessment_runs.py    # run commands/status, input and data-access boundaries
@@ -90,8 +90,8 @@ frontend/src/
 └── app/                      # routing, profile context, dependency composition
 ```
 
-Input/Output Data are the existing typed values (`ReviewInput`,
-`KnowledgeInput`, `ReviewOutput`, `RunOutput`, `StartOutput`, `RunStatusOutput`,
+Input/Output Data are the existing typed values (`ReviewDecisionInput`,
+`KnowledgeInput`, `ReviewDecisionResult`, `RunOutput`, `StartOutput`, `RunStatusOutput`,
 `AnalysisRequest`, `ParsedReport`, `ImportResult`). Boundaries
 are colocated with the use case that needs them. A separate file or class for
 every diagram box would add indirection without changing the dependency rule.
@@ -112,7 +112,7 @@ flowchart LR
 | Database engine created from global settings | `create_app(settings)` owns its engine and session factory; shutdown disposes it | Two independent applications, request-scoped sessions, restart tests |
 | Unit tests recreated PostgreSQL automatically | Only database fixtures request migrations | Core/boundary tests pass with an unreachable database URL |
 | ORM, formatting and shared rules mixed in a large provider | Rules → entities; formatting → presenters; SQL → data access | Inward import tests; presenters load with SQLAlchemy blocked |
-| Review rules embedded in persistence | ReviewInteractor and neutral inputs; locks/commit remain in repository | Idempotency, conflicting/concurrent decisions, ownership tests |
+| Review rules embedded in persistence | RecordReviewDecision and neutral inputs; locks/commit remain in repository | Idempotency, conflicting/concurrent decisions, ownership tests |
 | Knowledge eligibility mixed with writes | Pure draft state validation, injected transaction repository | Version, reference, permission, conflict/duplicate and visibility tests |
 | Assessment generation coupled to storage | Injected generation/parsing/validation; storage remains a transaction edge | Optional-engine startup, invalid report, retry and persistence tests |
 | Knowledge pipeline execution mixed with validation | Injected pipeline; pure validation; existing transactional import | Idempotency, source counts, failure and concurrency tests |
@@ -156,13 +156,17 @@ assessments. No new database migration is required by this refactor.
 
 ## Completed review corrections
 
-- Review input validation now belongs to the domain. Both the Pydantic HTTP
-  schema and ReviewInteractor call it. An invalid corrected decision cannot
+- Review input validation is independent of HTTP and SQL. Both the Pydantic HTTP
+  schema and RecordReviewDecision call it. An invalid corrected decision cannot
   reach a repository, even through a non-HTTP caller. Existing 422 behavior,
   whitespace normalization and text bounds remain intact.
-- ReviewDataAccess returns immutable ReviewOutput, never an arbitrary generic
+- ReviewDecisionRepository returns immutable ReviewDecisionResult, never an arbitrary generic
   value or ORM record. The presenter formats that output. The compatibility
   formatter for already-loaded records remains available outside the core.
+- The review route calls the interactor with a scoped SQL repository. SQL data
+  access does not construct the interactor. Existing read and write provider
+  ports are checked against their database adapters; simple identity response
+  mapping lives in a presenter.
 - Analysis routes depend on AssessmentRunsInputBoundary. The interactor
   coordinates start/status and returns neutral records. AnalysisRunsAdapter
   converts the legacy SQL service's results at the outer boundary. Existing
