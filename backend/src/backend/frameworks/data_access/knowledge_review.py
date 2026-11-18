@@ -137,6 +137,7 @@ class DatabaseKnowledgeReviewProvider:
                 select(KnowledgeConflict)
                 .where(
                     KnowledgeConflict.organization_id == organization_id,
+                    KnowledgeConflict.lifecycle_status == "open",
                     KnowledgeConflict.draft_id.in_(ids)
                     | KnowledgeConflict.other_draft_id.in_(ids),
                 )
@@ -268,6 +269,7 @@ class KnowledgeTransaction:
             select(KnowledgeConflict.id)
             .where(
                 KnowledgeConflict.organization_id == membership.organization_id,
+                KnowledgeConflict.lifecycle_status == "open",
                 (KnowledgeConflict.draft_id == draft.id)
                 | (KnowledgeConflict.other_draft_id == draft.id),
                 KnowledgeConflict.status.in_(["possible_conflict", "unresolved"]),

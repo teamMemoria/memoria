@@ -17,6 +17,17 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MEMORIA_APP_ENV", "app_env"),
     )
 
+    knowledge_draft_threshold: int = Field(default=10, ge=1)
+    knowledge_conflict_threshold_override: int | None = Field(default=None, ge=1)
+    knowledge_recent_call_days: int = Field(default=30, ge=1)
+    knowledge_stale_entry_days: int = Field(default=60, ge=1)
+
+    @property
+    def knowledge_conflict_threshold(self) -> int:
+        if self.knowledge_conflict_threshold_override is not None:
+            return self.knowledge_conflict_threshold_override
+        return (self.knowledge_draft_threshold + 1) // 2
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

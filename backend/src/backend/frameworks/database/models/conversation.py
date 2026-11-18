@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -59,6 +60,9 @@ class Topic(Base):
     source_dataset: Mapped[str] = mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(Text)
+    disputed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
 
     organization: Mapped[Organization] = relationship()
     conversations: Mapped[list["Conversation"]] = relationship(
