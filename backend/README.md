@@ -102,3 +102,15 @@ artifact. The sidecar name is `<artifact filename>.provenance.json`; for
 example, `evaluation.csv` uses `evaluation.csv.provenance.json`. Call
 `write_manifest(artifact_path, manifest)` from `backend.data.provenance` to
 apply this convention and write deterministic JSON.
+
+## Database index verification
+
+Tenant-scoped foreign-key indexes, conversation date indexes, and knowledge
+status/topic indexes are declared in
+`src/backend/frameworks/database/models/indexes.py` and created by Alembic.
+Existing primary/unique indexes and HNSW cosine indexes are retained.
+
+The full suite verifies foreign-key index coverage in the migrated schema and
+runs unforced `EXPLAIN ANALYZE` plans on synthetic conversations/audits/knowledge.
+See [the captured query plans](docs/query-plans.md) for data sizes, timings,
+planner limitations, and the scratch-only reproduction command.
