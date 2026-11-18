@@ -7,11 +7,14 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
+    String,
     Table,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -130,12 +133,17 @@ class Finding(Base):
     knowledge_entry: Mapped[KnowledgeEntry | None] = relationship(
         overlaps="audit,findings,organization"
     )
-    feedback_flag: Mapped["FeedbackFlag | None"] = relationship(
+    feedback_flags: Mapped[list["FeedbackFlag"]] = relationship(
         back_populates="finding",
         cascade="all, delete-orphan",
-        uselist=False,
+        order_by="FeedbackFlag.id",
         overlaps="organization,audit",
     )
+
+    @property
+    def feedback_flag(self) -> "FeedbackFlag | None":
+        """The latest request, preserving the existing call/review read contract."""
+        return self.feedback_flags[-1] if self.feedback_flags else None
 
 
 class FeedbackFlag(Base):
@@ -143,6 +151,19 @@ class FeedbackFlag(Base):
 
     __tablename__ = "feedback_flags"
     __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'resolved')", name="ck_feedback_flags_status"
+        ),
+        CheckConstraint(
+            "(status = 'resolved') = (resolved_at IS NOT NULL)",
+            name="ck_feedback_flags_resolved_at",
+        ),
+        Index(
+            "uq_feedback_flags_open_finding",
+            "finding_id",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+        ),
         UniqueConstraint("organization_id", "id"),
         ForeignKeyConstraint(
             ["organization_id", "finding_id"],
@@ -159,19 +180,23 @@ class FeedbackFlag(Base):
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
-    finding_id: Mapped[int] = mapped_column(unique=True)
+    finding_id: Mapped[int] = mapped_column(index=True)
     agent_id: Mapped[int] = mapped_column(index=True)
     reason: Mapped[str] = mapped_column(Text)
     agent_context: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        String(20), default="open", server_default="open"
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     flagged_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     organization: Mapped[Organization] = relationship(overlaps="finding,agent")
     finding: Mapped[Finding] = relationship(
-        back_populates="feedback_flag", overlaps="organization,agent,feedback_flag"
+        back_populates="feedback_flags", overlaps="organization,agent,feedback_flags"
     )
-    agent: Mapped[Agent] = relationship(overlaps="organization,finding,feedback_flag")
+    agent: Mapped[Agent] = relationship(overlaps="organization,finding,feedback_flags")
     manager_review: Mapped["ManagerReview | None"] = relationship(
         back_populates="feedback_flag",
         cascade="all, delete-orphan",

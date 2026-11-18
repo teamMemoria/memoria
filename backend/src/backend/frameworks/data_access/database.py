@@ -154,7 +154,7 @@ def audit_options():
     findings = selectinload(Audit.findings)
     return (
         findings.selectinload(Finding.evidence),
-        findings.selectinload(Finding.feedback_flag)
+        findings.selectinload(Finding.feedback_flags)
         .selectinload(FeedbackFlag.manager_review)
         .selectinload(ManagerReview.reviewer_membership)
         .selectinload(OrganizationMembership.user),
