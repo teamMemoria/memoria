@@ -103,8 +103,27 @@ After changing models, create a new migration:
 
     uv run alembic revision --autogenerate -m "describe the change"
 
+## Database checks and deployment startup
 
-### Knowledge health defaults
+The `Checks / backend` GitHub Actions job runs on every pull request and on
+pushes to `main`, using a disposable Postgres 17 service with pgvector. After
+`uv sync --frozen`, it enables the vector extension, requires exactly one
+Alembic head, runs upgrade → downgrade one revision → upgrade plus
+`alembic check`, then runs the full backend tests and plain `uv run ruff check`
+(including migration files). Broken migrations and multiple heads fail the PR
+check. Existing ML and frontend checks still run.
+
+For deployment from this source repository, use `./backend/start.sh` as the
+hosting dashboard's start command (or `./start.sh` if the service root is
+`backend/`). Install dependencies during the build with `uv sync --frozen` in
+`backend/`. Set `DATABASE_URL` through hosting secrets and enable pgvector first.
+The start script runs `uv run alembic upgrade head` before launching Uvicorn;
+a failed migration exits without starting the app. It listens on the hosting
+platform's `PORT`, defaulting to 8000. For multiple replicas, run migrations once
+as a release/pre-deploy step before starting replicas, to avoid concurrent DDL.
+No production database is provisioned by this change.
+
+## Knowledge health defaults
 
 The application settings in `backend/src/backend/core/config.py` read these
 values from environment variables (or your untracked `backend/.env`):

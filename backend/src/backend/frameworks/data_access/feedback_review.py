@@ -36,4 +36,5 @@ async def record_manager_review(
     )
     session.add(review)
     await session.flush()
+    await session.refresh(flag, ["status", "resolved_at"])
     return review

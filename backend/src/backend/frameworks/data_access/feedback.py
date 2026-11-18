@@ -117,7 +117,10 @@ class DatabaseFeedbackProvider:
             )
             if finding is None:
                 raise RecordNotFoundError(FINDING_NOT_FOUND)
-            if finding.feedback_flag is not None:
+            if (
+                finding.feedback_flag is not None
+                and finding.feedback_flag.status == "open"
+            ):
                 return review_request_schema(finding.feedback_flag), False
 
             context = await session.scalar(
@@ -144,7 +147,10 @@ class DatabaseFeedbackProvider:
                 await session.rollback()
                 existing = await session.scalar(
                     select(FeedbackFlag)
-                    .where(FeedbackFlag.finding_id == finding_key)
+                    .where(
+                        FeedbackFlag.finding_id == finding_key,
+                        FeedbackFlag.status == "open",
+                    )
                     .options(selectinload(FeedbackFlag.manager_review))
                 )
                 if existing is None:

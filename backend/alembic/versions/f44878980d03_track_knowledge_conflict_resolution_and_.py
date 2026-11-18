@@ -1,7 +1,7 @@
 """track knowledge conflict resolution and disputed topics
 
 Revision ID: f44878980d03
-Revises: 92c6a85f041d
+Revises: 4886ba0a2c60
 Create Date: 2026-11-17 23:31:15.408254
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f44878980d03"
-down_revision: str | Sequence[str] | None = "92c6a85f041d"
+down_revision: str | Sequence[str] | None = "4886ba0a2c60"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
