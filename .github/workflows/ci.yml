@@ -1,5 +1,8 @@
 name: Checks
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches: [main]
 permissions:
   contents: read
 jobs:
@@ -27,11 +30,34 @@ jobs:
       - run: uv python install 3.13
       - run: uv sync --frozen
         working-directory: backend
-      - run: uv run ruff check src tests ../ml
+      - name: Enable pgvector on the migration database
+        working-directory: backend
+        run: |
+          uv run python - <<'PY'
+          import psycopg
+          from sqlalchemy import make_url
+          from backend.core.config import get_settings
+          url = make_url(get_settings().database_url).set(drivername="postgresql")
+          with psycopg.connect(url.render_as_string(hide_password=False), autocommit=True) as conn:
+              conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+          PY
+      - name: Require exactly one Alembic head
+        run: uv run python -m backend.frameworks.database.migrations
+        working-directory: backend
+      - name: Upgrade, downgrade one revision, and upgrade again
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+          uv run alembic check
+        working-directory: backend
+      - run: uv run ruff check
+        working-directory: backend
+      - run: uv run ruff check ../ml
         working-directory: backend
       - run: uv run ruff format --check src tests ../ml
         working-directory: backend
-      - run: uv run pytest -q
+      - run: uv run pytest
         working-directory: backend
       - run: backend/.venv/bin/python -m pytest ml -q
       - run: backend/.venv/bin/python -m compileall -q backend/src ml
