@@ -28,6 +28,10 @@ the database running:
 
 ## Importing the curated conversations
 
+`uv run setup-demo` runs all four steps below in order (import, topics, dates,
+demo profiles). It is also what `docker compose up` runs; see "Running it
+locally" in the top-level README. The steps can still be run one at a time:
+
 The conversation data lives in the
 [uoft-ftli-2026-genesys-docs](https://github.com/marcomarchesanogenesys/uoft-ftli-2026-genesys-docs)
 repo, not here. Clone it next to this repo, then from `backend/` with the database

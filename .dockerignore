@@ -1,0 +1,14 @@
+# Keep local environments, secrets and build output out of the backend image.
+.git
+.github
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+**/.env
+**/.env.*
+frontend
+docs
+ml/raw
+ml/output
