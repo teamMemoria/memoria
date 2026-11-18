@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from sqlalchemy import Select, func, select
@@ -183,3 +183,112 @@ async def compare_agent_performance_windows(
         for key in keys
         for category, topic_id, topic_name in [key]
     ]
+
+
+@dataclass(frozen=True)
+class WeeklyScore:
+    week_start: datetime
+    category: FindingCategory | None
+    counts: ResultCounts
+
+    @property
+    def average_score(self) -> float | None:
+        """PASS=1, NEEDS_WORK=0; cannot-assess findings are not scored."""
+        return self.counts.pass_rate
+
+
+def _weeks(window: DateWindow) -> list[datetime]:
+    if any(value.utcoffset() is None for value in (window.start, window.end)):
+        raise ValueError("weekly score windows require timezone-aware datetimes")
+    start = window.start.astimezone(UTC)
+    week = start.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
+        days=start.weekday()
+    )
+    weeks = []
+    while week < window.end:
+        weeks.append(week)
+        week += timedelta(days=7)
+    return weeks
+
+
+async def _weekly_scores(
+    session: AsyncSession,
+    *,
+    organization_id: int,
+    agent_id: int,
+    window: DateWindow,
+    by_category: bool,
+) -> list[WeeklyScore]:
+    weeks = _weeks(window)
+    # Explicit UTC bucketing makes results independent of the DB session timezone.
+    week = func.date_trunc("week", Conversation.synthetic_started_at, "UTC").label(
+        "week_start"
+    )
+    groups = [week, Finding.category] if by_category else [week]
+    statement = (
+        _base_query(agent_id, window)
+        .where(Conversation.organization_id == organization_id)
+        .add_columns(
+            *groups,
+            _count_result(FindingResult.PASS).label("passes"),
+            _count_result(FindingResult.NEEDS_WORK).label("needs_work"),
+            _count_result(FindingResult.CANNOT_ASSESS).label("cannot_assess"),
+        )
+        .group_by(*groups)
+    )
+    rows = (await session.execute(statement)).all()
+    counts = {
+        (row.week_start, row.category if by_category else None): _counts_from_row(row)
+        for row in rows
+    }
+    categories = (
+        sorted(FindingCategory, key=lambda item: item.value) if by_category else [None]
+    )
+    empty = ResultCounts(passes=0, needs_work=0, cannot_assess=0)
+    return [
+        WeeklyScore(week_start, category, counts.get((week_start, category), empty))
+        for week_start in weeks
+        for category in categories
+    ]
+
+
+async def get_agent_weekly_category_scores(
+    session: AsyncSession,
+    *,
+    organization_id: int,
+    agent_id: int,
+    window: DateWindow,
+) -> list[WeeklyScore]:
+    """One average per UTC week/category across topics, including empty weeks.
+
+    Date ranges are half-open; partial first/last weeks use only in-range calls.
+    Empty and wholly unassessable buckets have an average of None, never zero.
+    """
+    return await _weekly_scores(
+        session,
+        organization_id=organization_id,
+        agent_id=agent_id,
+        window=window,
+        by_category=True,
+    )
+
+
+async def get_agent_overall_trend(
+    session: AsyncSession,
+    *,
+    organization_id: int,
+    agent_id: int,
+    window: DateWindow,
+) -> list[WeeklyScore]:
+    """Weekly overall scores weighted by assessed findings, across categories.
+
+    Count findings directly rather than averaging category or topic percentages,
+    which would give sparse categories disproportionate weight.
+    """
+    return await _weekly_scores(
+        session,
+        organization_id=organization_id,
+        agent_id=agent_id,
+        window=window,
+        by_category=False,
+    )
