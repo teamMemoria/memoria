@@ -125,3 +125,15 @@ findings return `None` for the average, allowing a graph to show a gap instead
 of a failure. Queries require both the agent and organization IDs; no other
 agent's findings contribute. Existing topic-level trend/comparison queries
 remain available.
+
+## Database index verification
+
+Tenant-scoped foreign-key indexes, conversation date indexes, and knowledge
+status/topic indexes are declared in
+`src/backend/frameworks/database/models/indexes.py` and created by Alembic.
+Existing primary/unique indexes and HNSW cosine indexes are retained.
+
+The full suite verifies foreign-key index coverage in the migrated schema and
+runs unforced `EXPLAIN ANALYZE` plans on synthetic conversations/audits/knowledge.
+See [the captured query plans](docs/query-plans.md) for data sizes, timings,
+planner limitations, and the scratch-only reproduction command.
