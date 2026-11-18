@@ -371,6 +371,7 @@ def create_database_providers(sessions: SessionFactory) -> Providers:
     from backend.frameworks.data_access.knowledge_review import (
         DatabaseKnowledgeReviewProvider,
     )
+    from backend.frameworks.data_access.progress import DatabaseProgressProvider
     from backend.frameworks.data_access.reviews import DatabaseReviewProvider
 
     return Providers(
@@ -383,6 +384,7 @@ def create_database_providers(sessions: SessionFactory) -> Providers:
         reviews=DatabaseReviewProvider(sessions),
         knowledge_review=DatabaseKnowledgeReviewProvider(sessions),
         demo_profiles=DatabaseDemoProfileProvider(sessions),
+        progress=DatabaseProgressProvider(sessions),
     )
 
 

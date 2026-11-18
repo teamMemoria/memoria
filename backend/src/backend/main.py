@@ -23,6 +23,7 @@ from backend.frameworks.http import (
     knowledge,
     knowledge_review,
     narration,
+    progress,
     reviews,
     viewer,
 )
@@ -101,6 +102,7 @@ def create_app(
     app.include_router(knowledge.router)
     app.include_router(analysis_api.router)
     app.include_router(reviews.router)
+    app.include_router(progress.router)
     app.include_router(knowledge_review.router)
     return app
 
