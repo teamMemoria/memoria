@@ -1,7 +1,7 @@
 """index tenant foreign keys and common query filters
 
 Revision ID: 5b92ee84d4b6
-Revises: 92c6a85f041d
+Revises: f44878980d03
 Create Date: 2026-11-17 23:42:00.934164
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "5b92ee84d4b6"
-down_revision: str | Sequence[str] | None = "92c6a85f041d"
+down_revision: str | Sequence[str] | None = "f44878980d03"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

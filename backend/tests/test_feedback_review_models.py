@@ -101,6 +101,8 @@ async def test_agent_flag_and_manager_review_round_trip(session, finding, manage
         "The verification happened before the recorded transcript."
     )
     assert isinstance(loaded.flagged_at, datetime)
+    assert loaded.status == "resolved"
+    assert loaded.resolved_at == loaded.manager_review.reviewed_at
     assert loaded.manager_review.outcome == ManagerReviewOutcome.CORRECTED
     assert loaded.manager_review.reviewed_result == FindingResult.PASS
     assert loaded.manager_review.reviewer_membership_id == manager.id
@@ -166,7 +168,7 @@ async def test_reviewed_result_is_required_only_for_corrections(
         await session.flush()
 
 
-async def test_finding_can_only_be_flagged_once(session, finding):
+async def test_finding_can_only_have_one_open_flag(session, finding):
     agent = finding.audit.conversation.agent
     session.add_all(
         [
@@ -244,3 +246,64 @@ async def test_unknown_manager_review_outcome_is_rejected(session, finding, mana
                 feedback="Invalid outcome.",
             )
         )
+
+
+async def test_review_resolves_flag_and_allows_a_new_open_request(
+    session, finding, manager
+):
+    first = FeedbackFlag(
+        organization=finding.organization,
+        finding=finding,
+        agent=finding.audit.conversation.agent,
+        reason="First request",
+    )
+    session.add(first)
+    await session.flush()
+    assert first.status == "open" and first.resolved_at is None
+    review = ManagerReview(
+        organization=finding.organization,
+        feedback_flag=first,
+        outcome=ManagerReviewOutcome.CONFIRMED,
+        reviewer_membership=manager,
+        reason="Checked",
+        feedback="Confirmed",
+    )
+    session.add(review)
+    await session.flush()
+    await session.refresh(first, ["status", "resolved_at"])
+    assert first.status == "resolved"
+    assert first.resolved_at == review.reviewed_at
+    second = FeedbackFlag(
+        organization=finding.organization,
+        finding=finding,
+        agent=finding.audit.conversation.agent,
+        reason="More evidence",
+    )
+    session.add(second)
+    await session.flush()
+    session.expunge_all()
+    loaded = await session.scalar(
+        select(Finding)
+        .where(Finding.id == finding.id)
+        .options(selectinload(Finding.feedback_flags))
+    )
+    assert [flag.id for flag in loaded.feedback_flags] == [first.id, second.id]
+    assert loaded.feedback_flag.id == second.id
+
+
+@pytest.mark.parametrize("status,resolved_at", [("invalid", None), ("resolved", None)])
+async def test_invalid_flag_lifecycle_is_rejected(
+    session, finding, status, resolved_at
+):
+    session.add(
+        FeedbackFlag(
+            organization=finding.organization,
+            finding=finding,
+            agent=finding.audit.conversation.agent,
+            reason="Request",
+            status=status,
+            resolved_at=resolved_at,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await session.flush()

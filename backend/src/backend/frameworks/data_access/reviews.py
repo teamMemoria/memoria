@@ -242,6 +242,8 @@ class DatabaseReviewProvider:
                             Conversation.id == conversation_key,
                             Conversation.organization_id == membership.organization_id,
                         )
+                        .order_by(FeedbackFlag.id.desc())
+                        .limit(1)
                         .options(
                             selectinload(FeedbackFlag.manager_review).options(
                                 *reviewer_options()

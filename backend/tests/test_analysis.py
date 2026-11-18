@@ -579,3 +579,17 @@ async def test_a_recent_run_is_not_replaced_by_a_retry(session, data):
         NORTHWIND, data.id(data.processing), requested_by=MAYA, retry=True
     )
     assert (again.created, again.run.id) == (False, first.run.id)
+
+
+async def test_disputed_topic_is_excluded_from_accuracy_references(session, data):
+    from backend.models import Topic
+
+    topic = await session.get(Topic, data.approved_entry.topic_id)
+    topic.disputed = True
+    await session.commit()
+    # Capture the real analysis input without needing a report based on a
+    # deliberately unavailable baseline.
+    adapter = ScriptedAdapter(error=RuntimeError("Captured input"))
+    await run_once(session, data, adapter)
+    assert len(adapter.requests) == 1
+    assert adapter.requests[0].references == []

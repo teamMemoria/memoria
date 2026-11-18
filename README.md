@@ -102,3 +102,56 @@ From the `backend/` folder, with the database running:
 After changing models, create a new migration:
 
     uv run alembic revision --autogenerate -m "describe the change"
+
+## Database checks and deployment startup
+
+The `Checks / backend` GitHub Actions job runs on every pull request and on
+pushes to `main`, using a disposable Postgres 17 service with pgvector. After
+`uv sync --frozen`, it enables the vector extension, requires exactly one
+Alembic head, runs upgrade → downgrade one revision → upgrade plus
+`alembic check`, then runs the full backend tests and plain `uv run ruff check`
+(including migration files). Broken migrations and multiple heads fail the PR
+check. Existing ML and frontend checks still run.
+
+For deployment from this source repository, use `./backend/start.sh` as the
+hosting dashboard's start command (or `./start.sh` if the service root is
+`backend/`). Install dependencies during the build with `uv sync --frozen` in
+`backend/`. Set `DATABASE_URL` through hosting secrets and enable pgvector first.
+The start script runs `uv run alembic upgrade head` before launching Uvicorn;
+a failed migration exits without starting the app. It listens on the hosting
+platform's `PORT`, defaulting to 8000. For multiple replicas, run migrations once
+as a release/pre-deploy step before starting replicas, to avoid concurrent DDL.
+No production database is provisioned by this change.
+
+## Knowledge health defaults
+
+The application settings in `backend/src/backend/core/config.py` read these
+values from environment variables (or your untracked `backend/.env`):
+
+| Setting | Default | Change with |
+| --- | --- | --- |
+| Draft threshold X (calls needed before creating a draft) | 10 | `KNOWLEDGE_DRAFT_THRESHOLD` |
+| Conflict threshold | ceil(X / 2), so 5 | `KNOWLEDGE_CONFLICT_THRESHOLD_OVERRIDE` for an independent override |
+| Recent supporting-call window | 30 days | `KNOWLEDGE_RECENT_CALL_DAYS` |
+| Stale approved-entry window | 60 days | `KNOWLEDGE_STALE_ENTRY_DAYS` |
+
+Changing X changes the conflict threshold unless the override is set. All four
+settings must be positive integers. No earlier draft threshold setting existed;
+X is defined once in `Settings` for reuse by draft creation. These database
+queries do not themselves generate drafts or infer contradictions from text.
+
+`frameworks/data_access/knowledge_health.py` reports stored draft/baseline
+conflicts with enough distinct supporting calls in the inclusive recent window
+and approved entries last confirmed before the stale cutoff. A never-confirmed
+entry ages from its approval date; an entry exactly at the cutoff is not stale.
+Calls use synthetic timestamps where present, otherwise their source date;
+future and undated calls do not count. Every query requires an organization ID.
+
+Pipeline suspected-conflict names stay unchanged. `knowledge_conflicts` adds
+`lifecycle_status` (`open`/`resolved`), creation and resolution timestamps so
+reviewer resolution remains separate from pipeline hints. An authorized manager
+can call `mark_topic_disputed` to pause a topic's use as an accuracy reference,
+and `resolve_knowledge_conflict` to preserve conflict history and resume
+scoring after the last open conflict is resolved. Imports retain resolved
+conflicts and conflicts on disputed topics. These are database operations;
+commit the surrounding session to persist them.

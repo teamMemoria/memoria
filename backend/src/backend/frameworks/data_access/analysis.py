@@ -68,6 +68,7 @@ from backend.frameworks.database.models import (
     KnowledgeEntry,
     Organization,
     Speaker,
+    Topic,
 )
 from backend.services.clock import utc_now
 from backend.use_cases.assessment_runs import RunOutput, StartOutput
@@ -376,7 +377,9 @@ class AnalysisService:
         ]
         entries = await session.scalars(
             select(KnowledgeEntry)
+            .join(KnowledgeEntry.topic)
             .where(
+                Topic.disputed.is_(False),
                 KnowledgeEntry.organization_id == conversation.organization_id,
                 KnowledgeEntry.status == EntryStatus.APPROVED,
                 *(

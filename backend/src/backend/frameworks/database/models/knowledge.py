@@ -308,6 +308,14 @@ class KnowledgeConflict(Base):
     __tablename__ = "knowledge_conflicts"
     __table_args__ = (
         CheckConstraint(
+            "lifecycle_status IN ('open', 'resolved')",
+            name="ck_knowledge_conflict_lifecycle",
+        ),
+        CheckConstraint(
+            "(lifecycle_status = 'resolved') = (resolved_at IS NOT NULL)",
+            name="ck_knowledge_conflict_resolution",
+        ),
+        CheckConstraint(
             "status IN ('possible_conflict', 'unresolved')",
             name="ck_knowledge_conflict_status",
         ),
@@ -337,6 +345,14 @@ class KnowledgeConflict(Base):
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE")
     )
+    # Keep the pipeline status separate from a reviewer's resolution lifecycle.
+    lifecycle_status: Mapped[str] = mapped_column(
+        String(20), default="open", server_default="open"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The pipeline's conflict ID.
     source_key: Mapped[str] = mapped_column(String(100))
     kind: Mapped[str] = mapped_column(String(30))

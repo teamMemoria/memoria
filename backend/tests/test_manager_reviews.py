@@ -506,3 +506,49 @@ async def test_concurrent_decisions_record_one_and_answer_the_rest(committed_ses
     results = await asyncio.gather(*[attempt(outcome) for outcome in outcomes])
     assert results.count("created") == 1
     assert set(results) <= {"created", "same", "conflict"}
+
+
+async def test_agent_can_request_and_manager_can_review_again(session, data):
+    async with client_for(session) as client:
+        path = decision_path(data, data.assessed, data.procedure_finding)
+        first = await client.post(
+            path, json=decision_body("confirmed"), headers=MANAGER
+        )
+        assert first.status_code == 201
+        session.expunge_all()
+        request = await client.post(
+            f"/api/agent/conversations/{data.id(data.assessed)}/review-requests",
+            json={
+                "findingId": data.id(data.procedure_finding),
+                "reason": "New evidence",
+            },
+            headers={"X-Dev-User": ALEX},
+        )
+        assert request.status_code == 201
+        assert request.json()["status"] == "requested"
+        session.expunge_all()
+        detail = await client.get(
+            f"/api/manager/conversations/{data.id(data.assessed)}", headers=MANAGER
+        )
+        assert detail.json()["call"]["reviewRequest"]["reason"] == "New evidence"
+        second = await client.post(
+            path, json=decision_body("dismissed"), headers=MANAGER
+        )
+        assert second.status_code == 201
+        session.expunge_all()
+        reviews = (
+            await session.scalars(
+                select(ManagerReview)
+                .join(FeedbackFlag)
+                .where(FeedbackFlag.finding_id == data.procedure_finding.id)
+            )
+        ).all()
+        assert len(reviews) == 2
+        flags = (
+            await session.scalars(
+                select(FeedbackFlag).where(
+                    FeedbackFlag.finding_id == data.procedure_finding.id
+                )
+            )
+        ).all()
+        assert all(flag.status == "resolved" and flag.resolved_at for flag in flags)
