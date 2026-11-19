@@ -13,7 +13,7 @@ Set these variables on the **Railway backend service**:
 | --- | --- |
 | `MEMORIA_APP_ENV` | `production` |
 | `MEMORIA_PUBLIC_DEMO` | `true` |
-| `MEMORIA_CORS_ORIGINS` | Rayaan's exact HTTPS frontend origin, such as `https://frontend.example` |
+| `MEMORIA_CORS_ORIGINS` | `https://memoria-ftl.netlify.app` |
 
 `MEMORIA_PUBLIC_DEMO` defaults to `false`. When enabled, `X-Dev-User` can name
 only a profile ID in `backend/src/backend/data/demo_profiles.toml`. The identity
@@ -43,7 +43,7 @@ the configured origin. Vite embeds these values at build time.
 
 ## Hosted verification
 
-1. Record Rayaan's exact frontend origin and the Railway API URL below.
+1. Record the Railway API URL below and configure the frontend build with it.
 2. Check a preflight from that origin to `/api/agent/conversations` with
    `Access-Control-Request-Method: GET` and
    `Access-Control-Request-Headers: x-dev-user`. Check a JSON `POST` preflight
@@ -56,7 +56,7 @@ the configured origin. Vite embeds these values at build time.
 
 | Item | Value |
 | --- | --- |
-| Frontend origin | Pending from Rayaan |
+| Frontend origin | `https://memoria-ftl.netlify.app` (confirmed by Rayaan, November 18) |
 | Railway API URL | Pending #157 |
 | Seeded profiles and conversation handoff | Pending Derek / #158 |
 | Hosted browser and preflight checks | Pending deployment |

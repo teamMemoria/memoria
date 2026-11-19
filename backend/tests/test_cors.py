@@ -5,7 +5,7 @@ from backend.core.config import Settings
 from backend.main import create_app
 from backend.providers import create_fixture_providers
 
-FRONTEND = "https://memoria.example"
+FRONTEND = "https://memoria-ftl.netlify.app"
 OTHER = "https://other.example"
 
 
