@@ -21,7 +21,9 @@ services:
   # Runs once: migrations, then the demo data. Safe to run on every start.
   setup:
     # The same image Railway deploys (backend/Dockerfile).
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment: &backend-environment
       DATABASE_URL: postgresql+psycopg://app:app@db:5432/callassist
       MEMORIA_APP_ENV: development
@@ -36,7 +38,9 @@ services:
 
   backend:
     # The same image Railway deploys (backend/Dockerfile).
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     # Development mode turns on X-Dev-User and the demo profiles. Never use it in production.
     environment: *backend-environment
     ports:
