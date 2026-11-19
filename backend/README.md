@@ -3,7 +3,10 @@
 ## Railway deployment (issue #157)
 
 Create a Railway service from `teamMemoria/memoria` with **Root Directory**
-`/backend`. Railway detects `backend/Dockerfile` in that root. It uses Python
+`/` and **Dockerfile Path** `/backend/Dockerfile` (or set the service variable
+`RAILWAY_DOCKERFILE_PATH=/backend/Dockerfile`). The repository root must be the
+build context because the backend imports code from the sibling `ml/` directory.
+The Dockerfile copies that directory into the image. It uses Python
 3.13 and installs the production dependencies from `uv.lock` with
 `uv sync --locked --no-dev`; no dashboard build or start command is needed.
 The image runs `./start.sh`, which applies Alembic migrations and starts

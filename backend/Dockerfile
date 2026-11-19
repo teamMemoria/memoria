@@ -2,14 +2,16 @@ FROM python:3.13-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.10.0 /uv /uvx /bin/
 
-WORKDIR /app
+WORKDIR /app/backend
 ENV UV_PYTHON_DOWNLOADS=0 \
-    UV_NO_DEV=1
+    UV_NO_DEV=1 \
+    PYTHONPATH=/app
 
-COPY pyproject.toml uv.lock README.md ./
-COPY src ./src
-COPY alembic ./alembic
-COPY alembic.ini start.sh ./
+COPY backend/pyproject.toml backend/uv.lock backend/README.md ./
+COPY backend/src ./src
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini backend/start.sh ./
+COPY ml /app/ml
 
 RUN uv sync --locked --no-dev
 
