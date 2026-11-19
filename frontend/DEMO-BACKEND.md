@@ -53,11 +53,12 @@ available for isolated automated tests, not for the running demo.
 - Percentage scoring, extended evidence contracts, assessment generation and new
   knowledge decision endpoints are separate work. This PR does not implement them.
 
-For a hosted school demo, enable the public seeded-profile mode explicitly on
-both frontend and backend. See
-[`../backend/docs/deployed-frontend-access.md`](../backend/docs/deployed-frontend-access.md)
-for the variables and verification steps. A normal production build does not
-enable the demo login.
+This is a local school demo. The development identity header is sent only in
+Vite development mode, and accepted only by a backend explicitly configured for
+development/test. Production authentication remains outside this ticket; a
+production build only enables the demo login when built with
+`VITE_DEMO_LOGIN=true`, as the hosted demo is (see "Deploying" in
+[`README.md`](README.md)).
 
 ## Verification
 

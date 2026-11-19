@@ -22,6 +22,49 @@ Every company has its own knowledge base and they must never mix.
 
 ## Running it locally
 
+One command starts the database, loads the demo data and starts the backend. You need Docker Desktop
+running, and the conversation data cloned next to this repo:
+
+```
+git clone https://github.com/marcomarchesanogenesys/uoft-ftli-2026-genesys-docs.git ../uoft-ftli-2026-genesys-docs
+```
+
+Then, from the repo root:
+
+```
+docker compose up --build
+```
+
+This:
+
+1. starts PostgreSQL with pgvector (`db`)
+2. runs the migrations and `setup-demo` (`setup`): it imports the conversations, assigns topics and
+   dates, and creates the demo profiles, then exits
+3. starts the backend in development mode on http://localhost:8000 (`backend`)
+
+The backend is ready when http://localhost:8000/ready returns `{"status":"ready"}`. The endpoints are
+listed at http://localhost:8000/docs.
+
+Run it again whenever you like: every step updates the same rows, so you get the same data, not
+duplicates. Data is kept between runs; `docker compose down -v` deletes it so the next run starts
+fresh. If the docs repo is somewhere else, point at its conversations first:
+`MEMORIA_CONVERSATIONS_DIR=/path/to/uoft-ftli-2026-genesys-docs/curated/conversations docker compose up --build`.
+
+Then start the frontend in a second terminal, from inside the `frontend` folder. It sends `/api` to the
+backend on port 8000:
+
+```
+npm install
+VITE_DEMO_BACKEND=true npm run dev
+```
+
+It runs on http://localhost:5173. Pick a demo profile to sign in.
+
+Development mode accepts the `X-Dev-User` header and lists the demo profiles. Never run it this way in
+production.
+
+### Running the backend without Docker
+
 Copy the example env file. The real `.env` is ignored by git, so put your keys there and never commit it.
 
 ```
@@ -30,36 +73,27 @@ cp .env.example .env
 
 On Windows PowerShell use `Copy-Item .env.example .env` instead.
 
-Start the database:
+Start only the database, then the backend from inside the `backend` folder:
 
 ```
-docker compose up -d
-```
-
-Start the backend. Run this from inside the `backend` folder:
-
-```
+docker compose up -d db
+cd backend
 uv sync
-uv run uvicorn backend.main:app --reload
+uv run alembic upgrade head
+uv run setup-demo
+MEMORIA_APP_ENV=development uv run uvicorn backend.main:app --reload
 ```
 
-It runs on http://localhost:8000. Try http://localhost:8000/health, you should get `{"status":"ok"}`. FastAPI also gives you a page for poking at the endpoints at http://localhost:8000/docs.
-
-Start the frontend in a second terminal, from inside the `frontend` folder:
-
-```
-npm install
-npm run dev
-```
-
-It runs on http://localhost:5173.
+`setup-demo` loads the same demo data as above; it looks for the docs repo next to this one, or takes
+its `curated/conversations` path as an argument. Without `MEMORIA_APP_ENV=development` the backend
+runs in production mode and rejects every request, because there is no login yet.
 
 ## Where things are
 
 ```
 backend/     FastAPI app, code lives in src/backend
 frontend/    React + TypeScript + Vite
-docker-compose.yml   Postgres with the pgvector extension
+docker-compose.yml   Postgres with pgvector, the demo data setup and the backend
 ```
 
 Inside `backend/src/backend` there are folders for api routes, core (config), models (database tables) and services (the RAG and extraction logic). They're mostly empty for now.
@@ -85,9 +119,9 @@ The login in `docker-compose.yml` is for local development only.
 This will eventually handle real call transcripts, so keep the repo private and don't commit any real call data. Use made-up examples for tests.
 ## Database setup
 
-Start Postgres (with pgvector):
+Start only Postgres (with pgvector). Plain `docker compose up` also starts the backend:
 
-    docker compose up -d
+    docker compose up -d db
 
 Check that pgvector is enabled:
 

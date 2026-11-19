@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from backend.entities.identity import DEV_IDENTITIES, CurrentUser
+from backend.entities.progress import DateRange, ProgressPeriod
 from backend.errors import (
     ConflictError,
     ProviderUnavailableError,
@@ -24,6 +25,7 @@ from backend.schemas.knowledge_review import (
     KnowledgeQueueCounts,
     KnowledgeReviewDetail,
 )
+from backend.schemas.progress import AgentProgress
 from backend.schemas.reviews import (
     FindingReviewDetail,
     QueueStatus,
@@ -179,6 +181,32 @@ class KnowledgeReviewProvider(Protocol):
     ) -> KnowledgeDraft: ...
 
 
+@runtime_checkable
+class ProgressProvider(Protocol):
+    """An agent's results over time. None when the agent is not visible."""
+
+    async def for_agent(
+        self,
+        organization_id: str,
+        user_id: str,
+        dates: DateRange,
+        period: ProgressPeriod,
+    ) -> AgentProgress | None:
+        """The requester's own progress; None unless they are an agent."""
+        ...
+
+    async def for_manager(
+        self,
+        organization_id: str,
+        manager_id: str,
+        agent_id: str,
+        dates: DateRange,
+        period: ProgressPeriod,
+    ) -> AgentProgress | None:
+        """Any agent's progress in the Manager's own organization."""
+        ...
+
+
 @dataclass(frozen=True)
 class Providers:
     viewers: ViewerProvider
@@ -191,6 +219,7 @@ class Providers:
     reviews: ReviewProvider | None = None
     knowledge_review: KnowledgeReviewProvider | None = None
     demo_profiles: DemoProfileProvider | None = None
+    progress: ProgressProvider | None = None
 
 
 __all__ = ["ConflictError", "ProviderUnavailableError", "RecordNotFoundError"]

@@ -1,3 +1,5 @@
+# `docker compose up --build` starts the database, loads the demo data and
+# starts the backend on http://localhost:8000. See "Running it locally" in the README.
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -10,7 +12,47 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d callassist"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Runs once: migrations, then the demo data. Safe to run on every start.
+  setup:
+    # The same image Railway deploys (backend/Dockerfile).
+    build: ./backend
+    environment: &backend-environment
+      DATABASE_URL: postgresql+psycopg://app:app@db:5432/callassist
+      MEMORIA_APP_ENV: development
+      MEMORIA_CONVERSATIONS_DIR: /data/conversations
+    volumes:
+      # The curated conversations stay in the docs repo; they are only read.
+      - ${MEMORIA_CONVERSATIONS_DIR:-../uoft-ftli-2026-genesys-docs/curated/conversations}:/data/conversations:ro
+    command: ["sh", "-c", "uv run alembic upgrade head && uv run setup-demo"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    # The same image Railway deploys (backend/Dockerfile).
+    build: ./backend
+    # Development mode turns on X-Dev-User and the demo profiles. Never use it in production.
+    environment: *backend-environment
+    ports:
+      - "8000:8000"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   pgdata:
-  

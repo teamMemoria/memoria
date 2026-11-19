@@ -28,12 +28,16 @@ Preflight accepts `GET`, `POST`, `PUT`, `Content-Type`, `X-Dev-User` and the
 optional `X-Organization` header. Credentialed browser requests are supported.
 Only list an additional origin if that frontend deployment should use the API.
 
-Rayaan must set these **frontend build variables** and redeploy the frontend:
+The merged frontend deployment (#162) uses these **Netlify build variables**:
 
 | Variable | Value |
 | --- | --- |
 | `VITE_API_BASE_URL` | The Railway API's public HTTPS base URL, without `/api` |
-| `VITE_PUBLIC_DEMO` | `true` |
+| `VITE_DEMO_LOGIN` | `true` (already configured on Netlify by Rayaan) |
+
+Set `VITE_API_BASE_URL` once the Railway HTTPS URL is available, then redeploy
+the frontend so Vite embeds that URL. The frontend build and demo-login switch
+are owned by #162; this ticket supplies the backend access configuration.
 
 The frontend fetches `/api/demo/profiles` without an identity, then sends the
 chosen profile ID as `X-Dev-User` on workspace and narration requests. JSON
