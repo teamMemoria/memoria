@@ -63,7 +63,7 @@ class FixtureIdentityProvider:
 @runtime_checkable
 class DemoProfileProvider(Protocol):
     async def list_profiles(self) -> list[DemoProfile]:
-        """Profiles the demo entry screen offers. Only served in development and test."""
+        """Profiles offered in development, test, or the explicit public demo."""
         ...
 
 

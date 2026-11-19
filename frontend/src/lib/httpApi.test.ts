@@ -72,6 +72,28 @@ describe('HTTP dependency boundary', () => {
     ).toEqual({})
   })
 
+  it('uses seeded profile selection in an explicitly configured production demo', async () => {
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_PUBLIC_DEMO', 'true')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example/')
+    const fetch = vi.fn(async () => new Response(JSON.stringify([])))
+    vi.stubGlobal('fetch', fetch)
+    const apis = createDependencies()
+    expect(apis.profilesApi).toBeTruthy()
+    await apis.profilesApi!.listProfiles()
+    await apis.conversationsApi!.listForAgent('demo-agent-01')
+    const calls = fetch.mock.calls as unknown as [string, RequestInit][]
+    expect(calls.map(([url]) => url)).toEqual([
+      'https://api.example/api/demo/profiles',
+      'https://api.example/api/agent/conversations',
+    ])
+    expect(calls.map(([, init]) => init.headers)).toEqual([
+      {}, { 'X-Dev-User': 'demo-agent-01' },
+    ])
+    await expect(apis.viewerApi!.getViewer()).resolves.toBeNull()
+    await expect(apis.conversationsApi!.listForAgent('')).rejects.toThrow('Choose a profile')
+  })
+
   it('encodes path identifiers and sends only the existing write contracts', async () => {
     const fetch = vi.fn(async () => new Response('{}'))
     vi.stubGlobal('fetch', fetch)
@@ -264,5 +286,14 @@ describe('private generated narration', () => {
     vi.stubGlobal('fetch', fetch)
     await createHttpApis().callApi.getNarration!('viewer', '1', turn, 'am_michael', new AbortController().signal)
     expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers).toEqual({})
+  })
+  it('sends the selected demo profile for production audio when enabled', async () => {
+    vi.stubGlobal('crypto', webcrypto)
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_PUBLIC_DEMO', 'true')
+    const fetch = vi.fn(async () => new Response('audio', { headers: { 'Content-Type': 'audio/mpeg' } }))
+    vi.stubGlobal('fetch', fetch)
+    await createHttpApis().callApi.getNarration!('demo-agent-01', '1', turn, 'am_michael', new AbortController().signal)
+    expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers).toEqual({ 'X-Dev-User': 'demo-agent-01' })
   })
 })

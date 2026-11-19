@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from backend.core.config import Settings
+from backend.data.demo_profiles import demo_profile_ids
 from backend.entities.identity import CurrentUser, Permission
 from backend.frameworks.http.dependencies import ProvidersDep
 
@@ -20,21 +21,23 @@ async def get_current_user(
     """Identify the requester.
 
     There is no login system yet. In development and test mode the X-Dev-User
-    header stands in for the user ID a login system would have verified. In any
-    other mode every request is rejected, so the header can never be used in
-    production.
+    header selects a development identity. An explicitly enabled public demo
+    accepts only IDs from the seeded demo profile list; all other production
+    requests are rejected.
 
     The header only names who is asking. Their organization and permissions
     always come from the identity provider (the stored membership in database
     mode), never from the request, so a client cannot pick its own role.
     X-Organization only chooses between organizations the user already belongs to.
     """
-    if not settings.dev_identity_enabled:
+    if not settings.demo_profile_selection_enabled:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Authentication is not configured"
         )
     if x_dev_user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing identity")
+    if not settings.dev_identity_enabled and x_dev_user not in demo_profile_ids():
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Unknown identity")
 
     user = await providers.identities.resolve(x_dev_user, x_organization)
     if user is None:

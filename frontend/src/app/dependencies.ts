@@ -9,6 +9,7 @@ import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
 import type { DemoProfilesApi, ViewerApi } from '../types/viewer'
 import { createDevProfilesApi, createDevViewerApi } from '../lib/viewer'
 import { createHttpApis } from '../lib/httpApi'
+import { demoProfilesEnabled } from '../lib/demoAccess'
 import type { ConversationsApi } from '../features/conversations/conversations'
 import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
 import type { TeamReviewApi } from '../features/review-queue/teamQueue'
@@ -26,7 +27,7 @@ export function createDependencies(): {
   if (import.meta.env.VITE_API_BASE_URL ||
       (import.meta.env.DEV && import.meta.env.MODE !== 'test')) {
     const apis = createHttpApis(import.meta.env.VITE_API_BASE_URL ?? '')
-    return { ...apis, profilesApi: import.meta.env.DEV ? apis.profilesApi : null }
+    return { ...apis, profilesApi: demoProfilesEnabled() ? apis.profilesApi : null }
   }
 
   if (import.meta.env.DEV && import.meta.env.MODE === 'test') {

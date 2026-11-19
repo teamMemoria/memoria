@@ -28,6 +28,7 @@ import type {
   TeamConversation,
   TeamReviewApi,
 } from '../features/review-queue/teamQueue'
+import { demoProfilesEnabled } from './demoAccess'
 
 export function createHttpApis(baseUrl = '') {
   const base = baseUrl.replace(/\/$/, '')
@@ -38,7 +39,7 @@ export function createHttpApis(baseUrl = '') {
     method = 'GET',
     missing = false,
   ): Promise<T> {
-    if (import.meta.env.DEV && !userId && path !== '/api/demo/profiles')
+    if (demoProfilesEnabled() && !userId && path !== '/api/demo/profiles')
       throw new Error('Choose a profile before opening its workspace.')
     const response = await fetch(`${base}${path}`, {
       method,
@@ -46,7 +47,7 @@ export function createHttpApis(baseUrl = '') {
       signal: AbortSignal.timeout(15000),
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(import.meta.env.DEV && userId ? { 'X-Dev-User': userId } : {}),
+        ...(demoProfilesEnabled() && userId ? { 'X-Dev-User': userId } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -71,7 +72,7 @@ export function createHttpApis(baseUrl = '') {
     voice: string,
     signal: AbortSignal,
   ): Promise<Blob> {
-    if (import.meta.env.DEV && !userId)
+    if (demoProfilesEnabled() && !userId)
       throw new Error('Choose a profile before playback.')
     const digest = await crypto.subtle.digest(
       'SHA-256',
@@ -86,7 +87,7 @@ export function createHttpApis(baseUrl = '') {
       {
         credentials: 'include',
         signal,
-        headers: import.meta.env.DEV ? { 'X-Dev-User': userId } : {},
+        headers: demoProfilesEnabled() ? { 'X-Dev-User': userId } : {},
       },
     )
     if (response.status === 409)
@@ -102,7 +103,7 @@ export function createHttpApis(baseUrl = '') {
   }
   const viewerApi: ViewerApi = {
     getViewer: async (id) => {
-      if (import.meta.env.DEV && !id) return null
+      if (demoProfilesEnabled() && !id) return null
       return request<Viewer | null>(id, '/api/viewer', undefined, 'GET', true)
     },
   }
