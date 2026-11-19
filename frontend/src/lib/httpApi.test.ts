@@ -72,6 +72,38 @@ describe('HTTP dependency boundary', () => {
     ).toEqual({})
   })
 
+  it('sends the chosen demo profile in a production build with demo login on', async () => {
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_DEMO_LOGIN', 'true')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test')
+    const fetch = vi.fn(async () => new Response(JSON.stringify([])))
+    vi.stubGlobal('fetch', fetch)
+    const deps = createDependencies()
+    await deps.profilesApi!.listProfiles()
+    await deps.conversationsApi!.listForAgent('demo-agent-01')
+    const calls = fetch.mock.calls as unknown as [string, RequestInit][]
+    expect(calls[0][0]).toBe('https://api.example.test/api/demo/profiles')
+    expect(calls[1][0]).toBe('https://api.example.test/api/agent/conversations')
+    expect(calls[1][1].headers).toEqual({ 'X-Dev-User': 'demo-agent-01' })
+  })
+
+  it.each([undefined, 'false', '1'])(
+    'keeps demo login off in production unless VITE_DEMO_LOGIN is exactly true (%s)',
+    async (value) => {
+      vi.stubEnv('DEV', false)
+      if (value !== undefined) vi.stubEnv('VITE_DEMO_LOGIN', value)
+      vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test')
+      const fetch = vi.fn(async () => new Response('{}'))
+      vi.stubGlobal('fetch', fetch)
+      const deps = createDependencies()
+      expect(deps.profilesApi).toBeNull()
+      await deps.viewerApi!.getViewer('demo-agent-01')
+      expect(
+        (fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers,
+      ).toEqual({})
+    },
+  )
+
   it('encodes path identifiers and sends only the existing write contracts', async () => {
     const fetch = vi.fn(async () => new Response('{}'))
     vi.stubGlobal('fetch', fetch)
