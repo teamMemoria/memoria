@@ -157,6 +157,10 @@ platform's `PORT`, defaulting to 8000. For multiple replicas, run migrations onc
 as a release/pre-deploy step before starting replicas, to avoid concurrent DDL.
 No production database is provisioned by this change.
 
+For the production database users (admin for migrations, `memoria_app` for the
+running backend), Railway variables, and manual backup and restore steps, see
+[docs/deployment.md](docs/deployment.md).
+
 ## Knowledge health defaults
 
 The application settings in `backend/src/backend/core/config.py` read these
