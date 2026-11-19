@@ -540,3 +540,32 @@ async def test_canonical_source_version_and_exact_span_are_required(session, dat
         "draftId": first["draft_id"],
         "reason": "passage-not-in-transcript",
     } in result.skipped
+
+
+@pytest.mark.parametrize("resolved", [False, True])
+async def test_import_preserves_resolved_or_disputed_conflict_history(
+    session, data, resolved
+):
+    from backend.models import Topic
+
+    await import_fixture(session, data)
+    conflict = await session.scalar(
+        select(KnowledgeConflict).where(
+            KnowledgeConflict.source_key == "conflict_checked_vs_entry"
+        )
+    )
+    conflict_id = conflict.id
+    if resolved:
+        conflict.lifecycle_status = "resolved"
+        conflict.resolved_at = NOW
+    else:
+        draft = await session.get(KnowledgeDraft, conflict.draft_id)
+        topic = await session.get(Topic, draft.topic_id)
+        topic.disputed = True
+    await session.commit()
+    output = pipeline_output(data)
+    output["conflicts"]["possible_conflicts"] = []
+    await import_fixture(session, data, output)
+    preserved = await session.get(KnowledgeConflict, conflict_id)
+    assert preserved is not None
+    assert preserved.lifecycle_status == ("resolved" if resolved else "open")

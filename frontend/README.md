@@ -27,6 +27,34 @@ npm run lint
 npm run build
 ```
 
+## Deploying
+
+The hosted demo is built by Netlify from `main`, using `netlify.toml` in the
+repo root: base directory `frontend`, `npm run build`, publish `dist`, Node 22.
+Every path serves `index.html`, so refreshing a page works. Each pull request
+gets its own preview link, and merging to `main` redeploys the site.
+
+Set these in the Netlify dashboard (Project configuration → Environment
+variables), then trigger a new deploy, because Vite builds them into the site:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_BASE_URL` | The hosted backend's HTTPS URL, with no trailing `/api` |
+| `VITE_DEMO_LOGIN` | `true`: show the demo profiles and send the chosen one as `X-Dev-User` |
+
+With `VITE_DEMO_LOGIN=true`, anyone with the link can pick a demo profile. That
+is the agreed mode for the school demo, not real sign-in. It is off in every
+other production build. The backend must accept `X-Dev-User` and allow the
+site's origin in CORS, including the `X-Dev-User` header and credentials; it
+still enforces every Agent, Manager and organization check.
+
+To try a production build locally against a running backend:
+
+```sh
+VITE_DEMO_LOGIN=true VITE_API_BASE_URL=http://localhost:8000 npm run build
+npm run preview
+```
+
 ## Folder structure
 
 ```text
@@ -40,7 +68,7 @@ frontend/
     ├── app/          # Startup, routes, and dependency selection
     │   └── layout/   # Sidebar, logo animation, and page layout
     ├── components/   # Shared controls and icons
-    ├── lib/          # Development user provider
+    ├── lib/          # HTTP client, demo login switch, development data
     ├── types/        # Shared data types
     └── styles/       # Colours, typography, and shared CSS
 ```

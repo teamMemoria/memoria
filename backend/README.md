@@ -1,5 +1,41 @@
 # Backend
 
+## Railway deployment (issue #157)
+
+Create a Railway service from `teamMemoria/memoria` with **Root Directory**
+`/backend`. Railway detects `backend/Dockerfile` in that root. It uses Python
+3.13 and installs the production dependencies from `uv.lock` with
+`uv sync --locked --no-dev`; no dashboard build or start command is needed.
+The image runs `./start.sh`, which applies Alembic migrations and starts
+`backend.main:app` on `0.0.0.0:${PORT:-8000}` without reload.
+
+Set the Railway service variable `DATABASE_URL` to the hosted PostgreSQL
+connection string using the `postgresql+psycopg://` driver. Derek's database
+must have the `vector` extension enabled before the first deploy. Do not put
+the connection string in Git or deployment notes. Set the Railway healthcheck
+path to `/health` and generate a public HTTPS domain. `/ready` checks database
+connectivity separately. Keep one backend replica while migrations run in the
+startup script; with multiple replicas, move migrations to a one-time deploy
+step first.
+
+Merge the reviewed deployment changes into `main`, then deploy that `main`
+commit. In Railway, check the build log for the Dockerfile and locked dependency
+install, then the startup log for successful
+Alembic migration and Uvicorn binding. Confirm `GET https://<backend-domain>/health`
+returns HTTP 200 and `{"status":"ok"}`. Restart or redeploy the service and
+repeat the check. Record the deployed Git commit and public backend URL in the
+issue once verified, and give Rayaan the URL for the frontend API setting.
+
+Deployment record (fill after the hosted checks):
+
+| Item | Value |
+| --- | --- |
+| Railway service | Pending |
+| Backend URL | Pending |
+| Deployed Git commit and branch | Pending |
+| Build and startup logs checked | Pending |
+| `/health` after deploy and restart | Pending |
+
 ## Validate and profile conversations
 
 From the `backend` directory, run the validator against the supplied curated
@@ -129,3 +165,15 @@ findings return `None` for the average, allowing a graph to show a gap instead
 of a failure. Queries require both the agent and organization IDs; no other
 agent's findings contribute. Existing topic-level trend/comparison queries
 remain available.
+
+## Database index verification
+
+Tenant-scoped foreign-key indexes, conversation date indexes, and knowledge
+status/topic indexes are declared in
+`src/backend/frameworks/database/models/indexes.py` and created by Alembic.
+Existing primary/unique indexes and HNSW cosine indexes are retained.
+
+The full suite verifies foreign-key index coverage in the migrated schema and
+runs unforced `EXPLAIN ANALYZE` plans on synthetic conversations/audits/knowledge.
+See [the captured query plans](docs/query-plans.md) for data sizes, timings,
+planner limitations, and the scratch-only reproduction command.

@@ -1,26 +1,17 @@
-# The backend for local development and demos. Build from the repo root, as
-# docker-compose.yml does, because the backend also imports the ml package.
 FROM python:3.13-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.10.0 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.10.0 /uv /uvx /bin/
 
-# Install from uv.lock exactly, and never re-resolve when start.sh runs `uv run`.
-ENV UV_FROZEN=1 \
-    UV_PYTHON_DOWNLOADS=never \
-    UV_LINK_MODE=copy \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+WORKDIR /app
+ENV UV_PYTHON_DOWNLOADS=0 \
+    UV_NO_DEV=1
 
-WORKDIR /app/backend
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+COPY alembic ./alembic
+COPY alembic.ini start.sh ./
 
-# Dependencies first, so editing the code does not reinstall them.
-COPY backend/pyproject.toml backend/uv.lock backend/.python-version backend/README.md ./
-RUN uv sync --no-install-project
+RUN uv sync --locked --no-dev
 
-COPY ml /app/ml
-COPY backend ./
-RUN uv sync
-
-EXPOSE 8000
-# Runs the migrations, then the API.
-CMD ["sh", "start.sh"]
+ENV UV_NO_SYNC=1
+CMD ["./start.sh"]

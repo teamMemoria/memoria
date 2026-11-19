@@ -314,6 +314,34 @@ there is no team model yet, so the organization is the review scope. Another org
 The queue is filtered in the API process after loading the organization's conversations. That is fine
 at the current data size; paging and filtering in SQL is the next step when it is not.
 
+## Agent progress over time
+
+| Method and path | Who | Response |
+|---|---|---|
+| `GET /api/agent/progress?from=&to=&period=` | An agent (`conversations:read-own`), for themself | `AgentProgress` |
+| `GET /api/manager/agents/{agentId}/progress?from=&to=&period=` | A Manager (`feedback:review`), for any agent in their organization | `AgentProgress` |
+
+- **Query.** `from` and `to` are inclusive dates (`2026-10-05`). `period` is `day`, `week` (the default) or
+  `month`. A missing or malformed date, `to` before `from`, an unknown period or a range covering more
+  than 366 periods is a `422`.
+- **Periods.** Calls are grouped by `synthetic_started_at` into UTC calendar periods: days, weeks starting on
+  Monday, or months. Calls without that time are left out. The first and last periods can be partial: their
+  `start` and `end` (both inclusive) are clipped to the range and they only count calls inside it.
+- **Response.** `{agentId, agentName, period, from, to, points}`. There is one point for every period in the
+  range, in order: `{start, end, callCount, hasResults, overall, criteria}`. `overall` and each of the four
+  `criteria` (`{id, title, counts}`, in the usual criterion order) count findings by result:
+  `{meetsCriteria, needsReview, cannotAssess}`. Topics are added together.
+- **Empty periods are not poor results.** A period with no calls still appears, with `callCount: 0` and
+  `hasResults: false`. `hasResults` is also false when the calls were not assessed yet or every finding
+  was cannot-assess. Only `meetsCriteria` and `needsReview` are scored.
+- **Scope.** The agent route takes no agent ID, so an agent can only see their own progress. Agents get
+  `403` on the Manager route, and Managers on the agent route. `agentId` is the `agentId` the review queue
+  shows; an unknown agent or another organization's agent is the same `404`. An agent membership with no
+  linked agent record gets empty periods.
+- Both routes need the database; with fixtures they answer `503`, as does a database failure.
+
+Counts come from `get_agent_performance_trends` in `backend/src/backend/db/performance_trends.py`.
+
 ## Knowledge drafts from the pipeline
 
 `backend/src/backend/services/knowledge_import.py` stores the knowledge pipeline's output

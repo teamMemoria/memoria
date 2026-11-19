@@ -1,3 +1,4 @@
+from backend.core.database import Base as _Base
 from backend.frameworks.database.models.analysis import (
     ACTIVE_RUN_STATUSES,
     AnalysisRun,
@@ -26,6 +27,9 @@ from backend.frameworks.database.models.evaluation import (
     EvaluationCriterion,
     EvaluationForm,
     EvaluationFormVersion,
+)
+from backend.frameworks.database.models.indexes import (
+    add_query_indexes as _add_query_indexes,
 )
 from backend.frameworks.database.models.knowledge import (
     EMBEDDING_DIM,
@@ -85,3 +89,6 @@ __all__ = [
     "finding_evidence",
     "knowledge_draft_conversations",
 ]
+
+
+_add_query_indexes(_Base.metadata)

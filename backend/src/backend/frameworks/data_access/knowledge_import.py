@@ -545,6 +545,12 @@ class KnowledgeImportService:
             delete(KnowledgeConflict).where(
                 KnowledgeConflict.organization_id == organization.id,
                 KnowledgeConflict.source_key.not_in(current),
+                KnowledgeConflict.lifecycle_status == "open",
+                KnowledgeConflict.draft_id.not_in(
+                    select(KnowledgeDraft.id)
+                    .join(KnowledgeDraft.topic)
+                    .where(Topic.disputed.is_(True))
+                ),
             )
         )
 

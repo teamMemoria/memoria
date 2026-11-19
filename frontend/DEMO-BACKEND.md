@@ -56,7 +56,9 @@ available for isolated automated tests, not for the running demo.
 This is a local school demo. The development identity header is sent only in
 Vite development mode, and accepted only by a backend explicitly configured for
 development/test. Production authentication remains outside this ticket; a
-production build does not enable the demo login.
+production build only enables the demo login when built with
+`VITE_DEMO_LOGIN=true`, as the hosted demo is (see "Deploying" in
+[`README.md`](README.md)).
 
 ## Verification
 
