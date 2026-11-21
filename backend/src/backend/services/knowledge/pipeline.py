@@ -246,9 +246,6 @@ def _counts(extraction, drafts, groups, conflicts, verification) -> dict[str, An
     }
 
 
-
-
-
 # **Goes through every field in the report**
 def _walk(value: Any, path: str = "$"):
     if isinstance(value, Mapping):
