@@ -1,5 +1,4 @@
-"""Check drafts against approved, independent reference passages
-"""
+"""Check drafts against approved, independent reference passages"""
 
 from __future__ import annotations
 
@@ -23,8 +22,7 @@ HUMAN_STEP = "An authorized person must review the evidence and record the verif
 
 @dataclass(frozen=True)
 class VerificationConfig:
-    """
-    """
+    """How much of a claim a reference has to cover to support it."""
 
     support_threshold: float = 0.6
     partial_threshold: float = 0.35
