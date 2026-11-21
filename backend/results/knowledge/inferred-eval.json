@@ -1,0 +1,607 @@
+{
+  "schema": "inferred-knowledge-evaluation/1",
+  "note": "Learned from ABCD train calls, from agent speech only. The guidelines and the recorded system actions were not used while learning; the guidelines are only the answer key.",
+  "settings": {
+    "agreement_share": 0.7,
+    "min_calls": 10,
+    "conflict_calls": 5,
+    "topic_similarity": 0.3
+  },
+  "guidelines_used_for_learning": false,
+  "answer_key": {
+    "categories": 24,
+    "values": 39,
+    "source": "abcd-guidelines@6b8700ce67c6"
+  },
+  "growth": [
+    {
+      "train_calls": 500,
+      "calls_with_values": 101,
+      "rules": 0,
+      "conflicts": 0,
+      "undecided": 116,
+      "checkable_rules": 0,
+      "correct_rules": 0,
+      "precision": null,
+      "answer_key_values": 39,
+      "found_values": 0,
+      "recall": 0.0,
+      "values_said_in_train": 32,
+      "recall_of_said": 0.0
+    },
+    {
+      "train_calls": 1000,
+      "calls_with_values": 216,
+      "rules": 0,
+      "conflicts": 0,
+      "undecided": 185,
+      "checkable_rules": 0,
+      "correct_rules": 0,
+      "precision": null,
+      "answer_key_values": 39,
+      "found_values": 0,
+      "recall": 0.0,
+      "values_said_in_train": 32,
+      "recall_of_said": 0.0
+    },
+    {
+      "train_calls": 2000,
+      "calls_with_values": 431,
+      "rules": 5,
+      "conflicts": 2,
+      "undecided": 276,
+      "checkable_rules": 2,
+      "correct_rules": 2,
+      "precision": 1.0,
+      "answer_key_values": 39,
+      "found_values": 2,
+      "recall": 0.0513,
+      "values_said_in_train": 32,
+      "recall_of_said": 0.0625
+    },
+    {
+      "train_calls": 4000,
+      "calls_with_values": 887,
+      "rules": 14,
+      "conflicts": 4,
+      "undecided": 427,
+      "checkable_rules": 7,
+      "correct_rules": 5,
+      "precision": 0.7143,
+      "answer_key_values": 39,
+      "found_values": 5,
+      "recall": 0.1282,
+      "values_said_in_train": 32,
+      "recall_of_said": 0.1562
+    },
+    {
+      "train_calls": 8000,
+      "calls_with_values": 1740,
+      "rules": 26,
+      "conflicts": 8,
+      "undecided": 575,
+      "checkable_rules": 10,
+      "correct_rules": 8,
+      "precision": 0.8,
+      "answer_key_values": 39,
+      "found_values": 8,
+      "recall": 0.2051,
+      "values_said_in_train": 32,
+      "recall_of_said": 0.25
+    },
+    {
+      "train_calls": 8034,
+      "calls_with_values": 1749,
+      "rules": 26,
+      "conflicts": 8,
+      "undecided": 579,
+      "checkable_rules": 10,
+      "correct_rules": 8,
+      "precision": 0.8,
+      "answer_key_values": 39,
+      "found_values": 8,
+      "recall": 0.2051,
+      "values_said_in_train": 32,
+      "recall_of_said": 0.25
+    }
+  ],
+  "final": {
+    "train_calls": 8034,
+    "calls_with_values": 1749,
+    "rules": 26,
+    "conflicts": 8,
+    "undecided": 579,
+    "checkable_rules": 10,
+    "correct_rules": 8,
+    "precision": 0.8,
+    "answer_key_values": 39,
+    "found_values": 8,
+    "recall": 0.2051,
+    "values_said_in_train": 32,
+    "recall_of_said": 0.25
+  },
+  "held_out": {
+    "test_calls": 1004,
+    "calls_with_values": 206,
+    "calls_checked_against_a_rule": 54,
+    "values_matching_a_rule": 56,
+    "values_differing_from_a_rule": 2,
+    "values_without_a_rule": 231,
+    "average_call_score": 0.9722
+  },
+  "rules": [
+    {
+      "category": "boots_how_3",
+      "levels": [],
+      "value": "15 minutes",
+      "share": 0.9412,
+      "calls": 17,
+      "example": "After 10 to 15 minutes (or depending on how soft the chewing gum was to start with) the gum should start to soften and become one with the peanut butter.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "boots_other_4",
+      "levels": [],
+      "value": "12 months",
+      "share": 1.0,
+      "calls": 19,
+      "example": "ALl of our shoes are warranted to be free of defects in material and workmanship for 12 months from date of purchase.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "cost",
+      "levels": [],
+      "value": "8 usd",
+      "share": 0.8824,
+      "calls": 51,
+      "example": "$8 has been refunded to your account, which is the best I can do because it has been delivered.",
+      "guideline": "matches",
+      "guideline_passage": "Standard shipping is $8.00, so enter '8' into the box"
+    },
+    {
+      "category": "jacket_how_1",
+      "levels": [],
+      "value": "5 minutes",
+      "share": 1.0,
+      "calls": 16,
+      "example": "Let it sit for about 5 minutes, then pour some boiled water to flush out the stain.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "jeans_how_2",
+      "levels": [],
+      "value": "7 days",
+      "share": 1.0,
+      "calls": 19,
+      "example": "For normal wear, once a week is enough.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "jeans_how_4",
+      "levels": [],
+      "value": "15 usd",
+      "share": 1.0,
+      "calls": 10,
+      "example": "However if you don't buy 3 or more, then the fee is  $15 with a free consultation",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "manage_pay_bill",
+      "levels": [],
+      "value": "99 usd",
+      "share": 0.9459,
+      "calls": 37,
+      "example": "Alright - the annual fee is $99 a year.",
+      "guideline": "matches",
+      "guideline_passage": "The standard subscription is $99 a year.  Find out how much of this the customer wants to pay."
+    },
+    {
+      "category": "membership_2",
+      "levels": [
+        "bronze"
+      ],
+      "value": "500 usd",
+      "share": 1.0,
+      "calls": 16,
+      "example": "After making $500 of purchases, a customer becomes a Bronze member.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "mistimed_billing_already_returned",
+      "levels": [],
+      "value": "7 days",
+      "share": 0.8333,
+      "calls": 12,
+      "example": "Generally refunds are posted within 7 days.",
+      "guideline": "matches",
+      "guideline_passage": "If the customer is right (more than 7 days), skip to the Update Order step below"
+    },
+    {
+      "category": "policy_1",
+      "levels": [],
+      "value": "30 days",
+      "share": 0.8667,
+      "calls": 15,
+      "example": "All other members are allowed returns for purchases made in the last 30 days.t",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "policy_1",
+      "levels": [
+        "guest"
+      ],
+      "value": "30 days",
+      "share": 0.9,
+      "calls": 10,
+      "example": "All other members (including guests) can return purchases from the past 30 days.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "policy_1",
+      "levels": [
+        "silver"
+      ],
+      "value": "6 months",
+      "share": 1.0,
+      "calls": 18,
+      "example": "As a silver member, you can make returns for any purchases you have made in the last 6 months.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "policy_1",
+      "levels": [
+        "bronze"
+      ],
+      "value": "90 days",
+      "share": 1.0,
+      "calls": 13,
+      "example": "As a bronze member you have up to 90 days to return a purchase.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "policy_4",
+      "levels": [],
+      "value": "2 usd",
+      "share": 1.0,
+      "calls": 34,
+      "example": "After that there is a late fee of $2 per day",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "policy_4",
+      "levels": [
+        "gold",
+        "silver"
+      ],
+      "value": "5 days",
+      "share": 1.0,
+      "calls": 15,
+      "example": "Gold and silver members are given a grace period of five days each month",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "pricing_1",
+      "levels": [],
+      "value": "4.99 usd",
+      "share": 0.9722,
+      "calls": 36,
+      "example": "Gift wrapping costs $4.99 per item",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "pricing_3",
+      "levels": [],
+      "value": "10 usd",
+      "share": 1.0,
+      "calls": 26,
+      "example": "Alaska & Hawaii are $10 more",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "pricing_4",
+      "levels": [],
+      "value": "5 business_days",
+      "share": 0.9444,
+      "calls": 18,
+      "example": "As long as the order is over $25 you qualify for free shipping of five business days.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    },
+    {
+      "category": "promo_code_invalid",
+      "levels": [],
+      "value": "7 days",
+      "share": 1.0,
+      "calls": 24,
+      "example": "Codes should be working up to seven days after issued.",
+      "guideline": "matches",
+      "guideline_passage": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work."
+    },
+    {
+      "category": "promo_code_out_of_date",
+      "levels": [],
+      "value": "7 days",
+      "share": 0.9423,
+      "calls": 52,
+      "example": "Codes only last 7 days!",
+      "guideline": "matches",
+      "guideline_passage": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work."
+    },
+    {
+      "category": "status_credit_missing",
+      "levels": [],
+      "value": "40 usd",
+      "share": 0.9545,
+      "calls": 22,
+      "example": "Alright the promo code I'm about to give you will add $40 to your account",
+      "guideline": "matches",
+      "guideline_passage": "Ask for how much credit to add to the customer’s account.  If the customer does not know, the standard amount is $40."
+    },
+    {
+      "category": "status_due_amount",
+      "levels": [],
+      "value": "3 days",
+      "share": 1.0,
+      "calls": 20,
+      "example": "Is due for 14 in three days, it is active now.",
+      "guideline": "not in the guidelines",
+      "guideline_passage": null
+    },
+    {
+      "category": "status_due_date",
+      "levels": [],
+      "value": "3 days",
+      "share": 0.9677,
+      "calls": 31,
+      "example": "Alright, your subscription is active, the due amount is $14 and it is due in three days.",
+      "guideline": "not in the guidelines",
+      "guideline_passage": null
+    },
+    {
+      "category": "status_quantity",
+      "levels": [],
+      "value": "1 items",
+      "share": 0.9412,
+      "calls": 34,
+      "example": "According to the system, you only are going to receive one item.",
+      "guideline": "matches",
+      "guideline_passage": "If the email was wrong (Oracle returns No), then assure the customer that they were only charged for one item and that the email was wrong. Skip the following steps and [End Conversation] after explaining."
+    },
+    {
+      "category": "status_service_added",
+      "levels": [],
+      "value": "40 usd",
+      "share": 1.0,
+      "calls": 13,
+      "example": "And I can offer you a refund of the $40 that you've been charged",
+      "guideline": "matches",
+      "guideline_passage": "The amount should be for $40"
+    },
+    {
+      "category": "timing_4",
+      "levels": [],
+      "value": "7 days",
+      "share": 1.0,
+      "calls": 45,
+      "example": "Generally they are good for 7 days.",
+      "guideline": "no answer key for this category",
+      "guideline_passage": null
+    }
+  ],
+  "conflicts": [
+    {
+      "category": "manage_pay_bill",
+      "levels": [],
+      "calls": 29,
+      "answers": [
+        {
+          "value": "14 usd",
+          "calls": 9
+        },
+        {
+          "value": "55 usd",
+          "calls": 9
+        },
+        {
+          "value": "49 usd",
+          "calls": 4
+        },
+        {
+          "value": "99 usd",
+          "calls": 3
+        },
+        {
+          "value": "20 usd",
+          "calls": 2
+        }
+      ],
+      "example": "I am showing that to keep your subscription active, you have a balance of $14 that is due tomorrow."
+    },
+    {
+      "category": "missing",
+      "levels": [],
+      "calls": 98,
+      "answers": [
+        {
+          "value": "7 days",
+          "calls": 59
+        },
+        {
+          "value": "2 days",
+          "calls": 10
+        },
+        {
+          "value": "5 days",
+          "calls": 4
+        },
+        {
+          "value": "9 days",
+          "calls": 4
+        },
+        {
+          "value": "6 days",
+          "calls": 1
+        }
+      ],
+      "example": "After 7 days please contact us again."
+    },
+    {
+      "category": "refund_update",
+      "levels": [],
+      "calls": 32,
+      "answers": [
+        {
+          "value": "164 usd",
+          "calls": 6
+        },
+        {
+          "value": "174 usd",
+          "calls": 5
+        },
+        {
+          "value": "199 usd",
+          "calls": 3
+        },
+        {
+          "value": "149 usd",
+          "calls": 2
+        },
+        {
+          "value": "159 usd",
+          "calls": 2
+        }
+      ],
+      "example": "For a total of $164"
+    },
+    {
+      "category": "return_color",
+      "levels": [],
+      "calls": 14,
+      "answers": [
+        {
+          "value": "30 days",
+          "calls": 8
+        },
+        {
+          "value": "90 days",
+          "calls": 6
+        }
+      ],
+      "example": "I can't offer you a return because the purchase was more than 30 days ago."
+    },
+    {
+      "category": "return_size",
+      "levels": [],
+      "calls": 22,
+      "answers": [
+        {
+          "value": "30 days",
+          "calls": 15
+        },
+        {
+          "value": "90 days",
+          "calls": 7
+        }
+      ],
+      "example": "All others must must return within thirty days."
+    },
+    {
+      "category": "status_due_amount",
+      "levels": [],
+      "calls": 87,
+      "answers": [
+        {
+          "value": "14 usd",
+          "calls": 26
+        },
+        {
+          "value": "49 usd",
+          "calls": 25
+        },
+        {
+          "value": "55 usd",
+          "calls": 19
+        },
+        {
+          "value": "20 usd",
+          "calls": 14
+        },
+        {
+          "value": "0 usd",
+          "calls": 3
+        }
+      ],
+      "example": "Alright, it looks like you owe $14 and that is due today."
+    },
+    {
+      "category": "status_due_date",
+      "levels": [],
+      "calls": 84,
+      "answers": [
+        {
+          "value": "14 usd",
+          "calls": 32
+        },
+        {
+          "value": "55 usd",
+          "calls": 23
+        },
+        {
+          "value": "49 usd",
+          "calls": 18
+        },
+        {
+          "value": "20 usd",
+          "calls": 6
+        },
+        {
+          "value": "0 usd",
+          "calls": 4
+        }
+      ],
+      "example": "$14 is due tomorrow for your subscription"
+    },
+    {
+      "category": "status_service_removed",
+      "levels": [],
+      "calls": 21,
+      "answers": [
+        {
+          "value": "14 usd",
+          "calls": 6
+        },
+        {
+          "value": "49 usd",
+          "calls": 5
+        },
+        {
+          "value": "55 usd",
+          "calls": 4
+        },
+        {
+          "value": "0 usd",
+          "calls": 2
+        },
+        {
+          "value": "20 usd",
+          "calls": 2
+        }
+      ],
+      "example": "I am showing your subscription is active and has a due date of tomorrow with $14 due"
+    }
+  ]
+}
