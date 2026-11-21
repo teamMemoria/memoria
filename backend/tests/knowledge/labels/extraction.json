@@ -1,0 +1,349 @@
+{
+  "label_set": "extraction",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "First-pass labels. Several were written after looking at the rule extractor's output, so they can share its blind spots. A second team member should review every case before these count as human-labelled; set human_reviewed to true in that commit.",
+  "fields": {
+    "expect": "draft or no_draft",
+    "question_must_include / answer_must_include": "phrases that must appear in at least one draft's question / answer (case-insensitive)",
+    "conditions_must_include": "phrases that must appear in at least one of the drafts' conditions",
+    "must_not_include": "personal or account details that must not appear anywhere in the output"
+  },
+  "cases": [
+    {
+      "conversation": "data/abcd/conversations/ABCD-0002.json",
+      "expect": "draft",
+      "question_must_include": [
+        "forgot my username"
+      ],
+      "answer_must_include": [
+        "new temporary username"
+      ],
+      "must_not_include": [
+        "Banter",
+        "78985",
+        "jbanter1",
+        "Brushwick"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0004.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "2 of the 3 following pieces of information"
+      ],
+      "conditions_must_include": [
+        "2 of the 3"
+      ],
+      "must_not_include": [
+        "dwilliams1",
+        "davidw92",
+        "654-2642",
+        "David Williams"
+      ],
+      "note": "The reusable part is the identity requirement, not the username handed over."
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0009.json",
+      "expect": "draft",
+      "question_must_include": [
+        "two-factor authentication"
+      ],
+      "answer_must_include": [
+        "send the reset email to the address on file"
+      ],
+      "must_not_include": [
+        "578544",
+        "Chloe",
+        "Zhang"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0020.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "We don't ship outside of the country"
+      ],
+      "must_not_include": [
+        "Rodriguez",
+        "Domingo"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0029.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "process your refund as a return after your receive the item"
+      ],
+      "conditions_must_include": [
+        "after your receive the item"
+      ],
+      "must_not_include": [
+        "X7IFTF8QUQ",
+        "7393719521",
+        "Joseph",
+        "Banter"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0033.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "unlimited returns as a Gold member"
+      ],
+      "conditions_must_include": [
+        "Gold"
+      ],
+      "must_not_include": [
+        "cm149696",
+        "8226176905",
+        "Primrose",
+        "Crystal",
+        "Minh",
+        "50821"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0041.json",
+      "expect": "draft",
+      "question_must_include": [
+        "promo code"
+      ],
+      "answer_must_include": [
+        "only issue a replacement promo code to one of our existing members"
+      ],
+      "conditions_must_include": [
+        "existing members",
+        "im a guest"
+      ],
+      "must_not_include": [
+        "Joseph",
+        "Banter"
+      ],
+      "note": "Conditional answer: guests do not get a replacement code."
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0042.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "back-order"
+      ],
+      "must_not_include": [
+        "David",
+        "Williams"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0044.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "A promo code has been created"
+      ],
+      "conditions_must_include": [
+        "Gold"
+      ],
+      "must_not_include": [
+        "PX1CE",
+        "Crystal",
+        "Minh"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0046.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "A promo code has been created"
+      ],
+      "conditions_must_include": [
+        "guest"
+      ],
+      "must_not_include": [
+        "O9JAM",
+        "Rodriguez",
+        "Domingo"
+      ],
+      "note": "A guest was given a new code, which the ABCD guideline does not allow. The draft must keep the guest condition visible."
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0048.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "prices may vary"
+      ],
+      "must_not_include": [
+        "ZHYTQ",
+        "6VYT5V2JK6",
+        "2643034282",
+        "Alessandro",
+        "Phoenix"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0049.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "2-3 business days"
+      ],
+      "conditions_must_include": [
+        "2-3 business days"
+      ],
+      "must_not_include": [
+        "rodriguezdomingo861",
+        "rodriguesdomingo861"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0050.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "A promo code has been created"
+      ],
+      "must_not_include": [
+        "MC9MS",
+        "Norman",
+        "Bouchard"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0072.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "Silver members get all the previous perks"
+      ],
+      "conditions_must_include": [
+        "Gold members get unlimited refunds"
+      ],
+      "must_not_include": [
+        "Joyce"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0084.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "error in our processing"
+      ],
+      "must_not_include": [
+        "KEMFGSWSOV",
+        "1918667461",
+        "Rodriguez"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0085.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "renew with a $14 dollar payment within 3 days"
+      ],
+      "conditions_must_include": [
+        "within 3 days"
+      ],
+      "must_not_include": [
+        "5GI2BKXPH7",
+        "6537620649",
+        "Joyce"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0090.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "refund our Silver members $10"
+      ],
+      "conditions_must_include": [
+        "Silver members $10"
+      ],
+      "must_not_include": [
+        "0B04TGRCUS",
+        "OBO4TGRCUS",
+        "4324126857",
+        "4324126957",
+        "Albert",
+        "Sanders"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0092.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "clear cookies"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/SYN-0001.json",
+      "expect": "no_draft",
+      "note": "Greeting only."
+    },
+    {
+      "conversation": "tests/knowledge/conversations/SYN-0002.json",
+      "expect": "no_draft",
+      "must_not_include": [
+        "4821937710",
+        "Priya",
+        "Natarajan",
+        "3/14/2021"
+      ],
+      "note": "Only this customer's order status."
+    },
+    {
+      "conversation": "tests/knowledge/conversations/SYN-0003.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "within 30 days of delivery"
+      ],
+      "conditions_must_include": [
+        "within 30 days"
+      ],
+      "must_not_include": [
+        "Marguerite",
+        "Margeurite",
+        "Okonkwo",
+        "okonkwobell",
+        "415.555.0199",
+        "555-0199",
+        "4111 1111",
+        "Willow Lane"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/SYN-0004.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "Gold members can return items at any time"
+      ],
+      "conditions_must_include": [
+        "within 90 days",
+        "unless the item was on final sale",
+        "within 30 days with a receipt"
+      ],
+      "note": "Every condition must survive."
+    },
+    {
+      "conversation": "tests/knowledge/conversations/SYN-0005.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "guests can always get a replacement code"
+      ],
+      "conditions_must_include": [
+        "guest"
+      ],
+      "must_not_include": [
+        "QX7TR",
+        "Tomas",
+        "Reyes"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/SYN-0006.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "Promo codes usually last 7 days"
+      ],
+      "conditions_must_include": [
+        "7 days",
+        "gold, silver or bronze"
+      ]
+    }
+  ]
+}

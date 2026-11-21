@@ -1,0 +1,15 @@
+{
+  "conversation_id": null,
+  "source_key": null,
+  "status": "error",
+  "drafts": [],
+  "no_draft_reason": null,
+  "rejected_drafts": [],
+  "errors": [
+    {
+      "code": "invalid_input",
+      "field": "turns[1].speaker",
+      "message": "must be agent, customer or system_action"
+    }
+  ]
+}
