@@ -465,3 +465,61 @@ def build_knowledge_base(
         undecided=tuple(undecided),
         settings=settings,
     )
+
+
+# -------------------------------------------------------------------- overrides
+
+
+def check_override(kb: KnowledgeBase, override: Override) -> None:
+    """A manager can only change a topic that exists, to a value with its unit."""
+    topic = kb.topic(override.topic_id)
+    if topic is None:
+        raise InvalidKnowledgeInput(
+            f"no topic {override.topic_id} in this knowledge base"
+        )
+    if override.value is not None and unit_of(override.value) != topic.unit:
+        raise InvalidKnowledgeInput(
+            f"this topic is in {topic.unit}, so the value must be in {topic.unit}"
+        )
+
+
+def apply_overrides(kb: KnowledgeBase, overrides: Sequence[Override]) -> KnowledgeBase:
+    """Apply managers' changes on top of what was learned.
+
+    An override with a value turns its topic into a manager rule, whether it
+    was a rule, a conflict or undecided. An override without a value removes
+    the topic's rule. The last override for a topic wins. Overrides for topics
+    that are not in this version are kept in ``unmatched_overrides``.
+    """
+    latest = {o.topic_id: o for o in overrides}
+    conflict_ids = {c.topic.topic_id for c in kb.conflicts}
+    rules, conflicts, undecided, removed = [], [], [], list(kb.removed)
+    for topic in kb.topics():
+        override = latest.pop(topic.topic_id, None)
+        current = kb.rule_for(topic.topic_id)
+        if override is None:
+            if current is not None:
+                rules.append(current)
+            elif topic.topic_id in conflict_ids:
+                conflicts.append(Conflict(topic))
+            else:
+                undecided.append(topic)
+        elif override.value is None:
+            removed.append(override)
+        else:
+            calls = next(
+                (a.calls for a in topic.answers if a.value == override.value), 0
+            )
+            rules.append(
+                Rule(
+                    topic, override.value, calls, source="manager", note=override.reason
+                )
+            )
+    return replace(
+        kb,
+        rules=tuple(rules),
+        conflicts=tuple(conflicts),
+        undecided=tuple(undecided),
+        removed=tuple(removed),
+        unmatched_overrides=tuple(latest.values()),
+    )
