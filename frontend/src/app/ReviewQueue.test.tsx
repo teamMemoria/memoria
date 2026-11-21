@@ -1,3 +1,4 @@
+import { selectStatus } from './TestSetup'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
@@ -15,7 +16,7 @@ describe('Manager review queue', () => {
     openApp({ path, viewerApi: asManager })
     await screen.findByRole('table')
     expect(screen.getByText('2 flagged for review')).toBeTruthy()
-    expect(status().value).toBe('review-requested')
+    expect(status().textContent).toContain('Review requested')
     expect(calls()).toEqual(['C1058', 'C1051'])
     const row = screen.getByRole('link', { name: /^Review C1051/ }).closest('tr')!
     expect(within(row).getByText('Priya Shah')).toBeTruthy()
@@ -28,16 +29,16 @@ describe('Manager review queue', () => {
   it('filters by status and search, and clears back to flagged feedback', async () => {
     const { router } = openApp({ path, viewerApi: asManager })
     await screen.findByRole('table')
-    fireEvent.change(status(), { target: { value: 'all' } })
+    await selectStatus('All statuses')
     expect(calls()).toHaveLength(6)
-    fireEvent.change(status(), { target: { value: 'review-complete' } })
+    await selectStatus('Review complete')
     expect(calls()).toEqual(['C1060'])
-    fireEvent.change(status(), { target: { value: 'processing' } })
+    await selectStatus('Processing')
     expect(calls()).toEqual(['C1063'])
-    fireEvent.change(status(), { target: { value: 'feedback-ready' } })
+    await selectStatus('Feedback ready')
     expect(calls()).toEqual(['C1047', 'C1042'])
     expect(router.state.location.search).toBe('?status=feedback-ready')
-    fireEvent.change(status(), { target: { value: 'all' } })
+    await selectStatus('All statuses')
     const search = screen.getByRole('searchbox', { name: 'Search team calls' })
     fireEvent.change(search, { target: { value: 'stock' } })
     expect(calls()).toEqual(['C1051'])

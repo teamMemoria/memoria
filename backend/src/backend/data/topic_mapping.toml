@@ -1,0 +1,36 @@
+# Maps dataset task labels to topics. Edit this file to change topics, then run
+# `uv run assign-topics`. Topics are per dataset: the same name in two
+# datasets is two separate topics.
+
+[HarperValleyBank.task_assigned]
+"check balance" = "Account balance"
+"get branch hours" = "Branch hours"
+"order checks" = "Order checks"
+"pay bill" = "Bill payment"
+"replace card" = "Card replacement"
+"reset password" = "Password reset"
+"schedule appointment" = "Appointments"
+"transfer money" = "Money transfers"
+
+# Every ABCD flow needs a topic here.
+[ABCD.flow]
+account_access = "Account access"
+manage_account = "Account management"
+order_issue = "Order changes"
+product_defect = "Returns and refunds"
+purchase_dispute = "Pricing and stock disputes"
+shipping_issue = "Shipping"
+single_item_query = "Product questions"
+storewide_query = "Store policies"
+subscription_inquiry = "Subscriptions"
+troubleshoot_site = "Website troubleshooting"
+
+# Optional "flow/subflow" overrides, for when a flow covers topics with
+# different answers.
+[ABCD.subflow]
+"product_defect/refund_initiate" = "Refunds"
+"product_defect/refund_status" = "Refunds"
+"product_defect/refund_update" = "Refunds"
+"product_defect/return_color" = "Returns"
+"product_defect/return_size" = "Returns"
+"product_defect/return_stain" = "Returns"

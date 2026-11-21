@@ -1,9 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useConversations } from './controller'
+import { MemoriaSelectField } from '../../components/ui/select'
+import type { CSSProperties } from 'react'
+import { Link } from 'react-router'
 import {
   Button,
   Panel,
-  SelectField,
   StatusLabel,
   TextField,
 } from '../../components/controls'
@@ -13,24 +14,11 @@ import {
   conversationStatusLabels,
   countConversationStatuses,
   filterConversations,
-  formatConversationDate,
-  getAgentConversations,
   reviewStatusLabels,
-  type Conversation,
   type ConversationsApi,
-  type ConversationStatusFilter,
 } from './conversations'
 import { Icon } from '../../components/Icon'
 import './conversations.css'
-
-type LoadState = {
-  api: ConversationsApi | null
-  agentId: string
-} & (
-  | { status: 'loading' }
-  | { status: 'ready'; records: Conversation[] }
-  | { status: 'error' }
-)
 
 const filters = Object.entries(conversationStatusLabels)
 const resultTones = {
@@ -38,6 +26,7 @@ const resultTones = {
   'meets-criteria': 'positive',
   'cannot-assess': 'neutral',
   processing: 'neutral',
+  unavailable: 'neutral',
 } as const
 
 export function AgentConversations({
@@ -47,60 +36,7 @@ export function AgentConversations({
   viewer: Viewer
   api: ConversationsApi | null
 }) {
-  const [loaded, setLoaded] = useState<LoadState>({
-    api,
-    agentId: viewer.id,
-    status: 'loading',
-  })
-  const [attempt, setAttempt] = useState(0)
-  const [previewStatus, setPreviewStatus] =
-    useState<ConversationStatusFilter | null>(null)
-  const [params, setParams] = useSearchParams()
-  const query = params.get('q') ?? ''
-  const status = (filters.find(
-    ([value]) => value === params.get('status'),
-  )?.[0] ?? 'all') as ConversationStatusFilter
-  const search = params.size ? `?${params}` : ''
-  const state = !api
-    ? { status: 'error' as const }
-    : loaded.api === api && loaded.agentId === viewer.id
-      ? loaded
-      : { status: 'loading' as const }
-
-  useEffect(() => {
-    let active = true
-    if (!api) return
-    void api.listForAgent(viewer.id).then(
-      (records) => {
-        if (active)
-          setLoaded({
-            api,
-            agentId: viewer.id,
-            status: 'ready',
-            records: getAgentConversations(records, viewer.id),
-          })
-      },
-      () => {
-        if (active) setLoaded({ api, agentId: viewer.id, status: 'error' })
-      },
-    )
-    return () => {
-      active = false
-    }
-  }, [api, viewer.id, attempt])
-
-  function changeFilter(key: string, value: string, replace = false) {
-    if (key === 'status') setPreviewStatus(null)
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous)
-        if (!value || (key === 'status' && value === 'all')) next.delete(key)
-        else next.set(key, value)
-        return next
-      },
-      { replace },
-    )
-  }
+  const { state, setLoaded, setAttempt, previewStatus, setPreviewStatus, query, status, search, changeFilter, setParams } = useConversations(viewer, api)
 
   const error = (
     <Panel title="Unable to load conversations">
@@ -217,19 +153,14 @@ export function AgentConversations({
           onChange={(event) => changeFilter('q', event.target.value, true)}
           disabled={state.status !== 'ready'}
         />
-        <SelectField
+        <MemoriaSelectField
           id="conversation-status"
           label="Review status"
           value={status}
-          onChange={(event) => changeFilter('status', event.target.value)}
+          onValueChange={(value) => changeFilter('status', value)}
           disabled={state.status !== 'ready'}
-        >
-          {filters.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </SelectField>
+          options={filters}
+        />
       </div>
       {state.status === 'loading' && (
         <p role="status">Loading your conversations…</p>
@@ -258,10 +189,10 @@ export function AgentConversations({
                   assessment, not a submitted Manager review request.
                 </caption>
                 <colgroup>
-                  {[116, 260, 210, 180, 278, 268, 56].map((width, index) => (
+                  {[116, 260, 210, 278, 268, 56].map((width, index) => (
                     <col
                       key={index}
-                      style={{ width: `${(width / 1368) * 100}%` }}
+                      style={{ width: `${(width / 1188) * 100}%` }}
                     />
                   ))}
                 </colgroup>
@@ -270,9 +201,6 @@ export function AgentConversations({
                     <th scope="col">Call</th>
                     <th scope="col">Topic</th>
                     <th scope="col">Agent</th>
-                    <th scope="col" aria-sort="descending">
-                      Date <span aria-hidden="true">↓</span>
-                    </th>
                     <th scope="col">Automated result</th>
                     <th scope="col">Review status</th>
                     <th scope="col">
@@ -289,16 +217,11 @@ export function AgentConversations({
                           to={`/agent/conversations/${encodeURIComponent(conversation.id)}${search}`}
                           aria-label={`Open conversation ${conversation.id}: ${conversation.topic}`}
                         >
-                          {conversation.id}
+                          {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
                         </Link>
                       </td>
                       <td>{conversation.topic}</td>
                       <td>{conversation.agentName}</td>
-                      <td className="conversation-date">
-                        <time dateTime={conversation.date}>
-                          {formatConversationDate(conversation.date)}
-                        </time>
-                      </td>
                       <td>
                         <StatusLabel
                           tone={resultTones[conversation.automatedResult]}

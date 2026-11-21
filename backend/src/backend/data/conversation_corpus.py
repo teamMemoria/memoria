@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -31,11 +31,18 @@ def _issue(file: Path, field: str, message: str) -> ValidationIssue:
     return ValidationIssue(file=file, field=field, message=message)
 
 
+def _is_non_empty_string(value: object) -> bool:
+    return isinstance(value, str) and value.strip() != ""
+
+
 def _validate_record(record: dict[str, Any], file: Path) -> list[ValidationIssue]:
     issues = [
         _issue(file, key, "required field is missing")
         for key in sorted(REQUIRED_KEYS - record.keys())
     ]
+
+    if "id" in record and not _is_non_empty_string(record["id"]):
+        issues.append(_issue(file, "id", "must be a non-empty string"))
 
     source = record.get("source")
     dataset: str | None = None
@@ -47,6 +54,10 @@ def _validate_record(record: dict[str, Any], file: Path) -> list[ValidationIssue
             issues.append(
                 _issue(file, "source.dataset", "must be HarperValleyBank or ABCD")
             )
+        if not _is_non_empty_string(source.get("original_id")):
+            issues.append(
+                _issue(file, "source.original_id", "must be a non-empty string")
+            )
     elif "source" in record:
         issues.append(_issue(file, "source", "must be an object"))
 
@@ -55,6 +66,8 @@ def _validate_record(record: dict[str, Any], file: Path) -> list[ValidationIssue
 
     turns = record.get("turns")
     if isinstance(turns, list):
+        if not turns:
+            issues.append(_issue(file, "turns", "must contain at least one turn"))
         previous_number: int | None = None
         for index, turn in enumerate(turns):
             if not isinstance(turn, dict):
@@ -83,6 +96,9 @@ def _validate_record(record: dict[str, Any], file: Path) -> list[ValidationIssue
                         "must be agent, customer, or system_action",
                     )
                 )
+
+            if not isinstance(turn.get("text"), str):
+                issues.append(_issue(file, f"turns[{index}].text", "must be a string"))
     elif "turns" in record:
         issues.append(_issue(file, "turns", "must be an array"))
 
@@ -114,6 +130,43 @@ def _validate_record(record: dict[str, Any], file: Path) -> list[ValidationIssue
     return issues
 
 
+def _duplicate_issues(
+    record: dict[str, Any],
+    file: Path,
+    seen_ids: dict[str, Path],
+    seen_sources: dict[tuple[str, str], Path],
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+
+    record_id = record.get("id")
+    if _is_non_empty_string(record_id):
+        if record_id in seen_ids:
+            issues.append(
+                _issue(file, "id", f"duplicates the id in {seen_ids[record_id].name}")
+            )
+        else:
+            seen_ids[record_id] = file
+
+    source = record.get("source")
+    if isinstance(source, dict):
+        dataset = source.get("dataset")
+        original_id = source.get("original_id")
+        if dataset in SUPPORTED_DATASETS and _is_non_empty_string(original_id):
+            key = (dataset, original_id)
+            if key in seen_sources:
+                issues.append(
+                    _issue(
+                        file,
+                        "source.original_id",
+                        f"duplicates the source record in {seen_sources[key].name}",
+                    )
+                )
+            else:
+                seen_sources[key] = file
+
+    return issues
+
+
 def validate_corpus(directory: Path) -> ValidationResult:
     if not directory.is_dir():
         return ValidationResult((), (_issue(directory, "$", "directory not found"),))
@@ -124,6 +177,10 @@ def validate_corpus(directory: Path) -> ValidationResult:
 
     records: list[dict[str, Any]] = []
     issues: list[ValidationIssue] = []
+    # First file seen for each curated id and each (dataset, original_id) pair,
+    # so a duplicate is reported against the later file, naming the earlier one.
+    seen_ids: dict[str, Path] = {}
+    seen_sources: dict[tuple[str, str], Path] = {}
     for path in paths:
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
@@ -143,6 +200,7 @@ def validate_corpus(directory: Path) -> ValidationResult:
             continue
 
         record_issues = _validate_record(value, path)
+        record_issues.extend(_duplicate_issues(value, path, seen_ids, seen_sources))
         issues.extend(record_issues)
         if not record_issues:
             records.append(value)
@@ -155,14 +213,17 @@ def validate_corpus(directory: Path) -> ValidationResult:
     return ValidationResult(tuple(records), ())
 
 
-def _ordered(counter: Counter[str]) -> dict[str, int]:
-    return dict(sorted(counter.items()))
+def _ordered(
+    counter: Counter[str], key: Callable[[str], Any] | None = None
+) -> dict[str, int]:
+    return {name: counter[name] for name in sorted(counter, key=key)}
 
 
 def _ordered_nested(
     counters: Mapping[str, Counter[str]],
+    key: Callable[[str], Any] | None = None,
 ) -> dict[str, dict[str, int]]:
-    return {dataset: _ordered(counters[dataset]) for dataset in sorted(counters)}
+    return {dataset: _ordered(counters[dataset], key) for dataset in sorted(counters)}
 
 
 def build_profile(records: Sequence[dict[str, Any]]) -> dict[str, object]:
@@ -192,20 +253,23 @@ def build_profile(records: Sequence[dict[str, Any]]) -> dict[str, object]:
             agents[dataset]["unavailable"] += 1
 
     return {
-        "files": len(records),
+        # Keys are built in a fixed order (alphabetical, except turn counts,
+        # which sort as numbers) so the output is deterministic without
+        # sort_keys, which would sort "10" before "8".
         "distributions": {
-            "datasets": _ordered(datasets),
-            "channels": _ordered_nested(channels),
-            "topics": _ordered_nested(topics),
             "agents": _ordered_nested(agents),
+            "channels": _ordered_nested(channels),
+            "datasets": _ordered(datasets),
             "speakers": _ordered_nested(speakers),
-            "turn_counts": _ordered_nested(turn_counts),
+            "topics": _ordered_nested(topics),
+            "turn_counts": _ordered_nested(turn_counts, key=int),
         },
+        "files": len(records),
     }
 
 
 def serialize_profile(profile: Mapping[str, object]) -> str:
-    return json.dumps(profile, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    return json.dumps(profile, indent=2, ensure_ascii=False) + "\n"
 
 
 def format_issue(issue: ValidationIssue) -> str:

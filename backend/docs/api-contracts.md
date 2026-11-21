@@ -1,0 +1,584 @@
+# Agent-facing API contracts
+
+Response formats for the agent screens. Every schema mirrors a frontend type field-for-field,
+so the frontend's development providers can be swapped for HTTP calls without changing the UI.
+
+| Backend schema (`backend.schemas`) | Frontend type |
+|---|---|
+| `Viewer` | `Viewer` in `frontend/src/types/viewer.ts` |
+| `Conversation` | `Conversation` in `frontend/src/features/conversations/conversations.ts` |
+| `CallReview` | `CallReview` in `frontend/src/types/callReview.ts` |
+| `KnowledgeEntry` | `KnowledgeEntry` in `frontend/src/types/knowledge.ts` |
+
+JSON uses camelCase (`agentId`, `evidenceTurnNumbers`); Python uses snake_case. Unknown fields are rejected.
+
+## Result values
+
+Automated audit results are exactly `meets-criteria`, `needs-review` and `cannot-assess`.
+The conversation list adds `processing` for calls that have no result yet.
+Human review status (`feedback-ready`, `review-requested`, `review-complete`) is a separate field and
+is always `null` while a call is processing.
+
+## Validation rules
+
+`CallReview` rejects a record when:
+
+- a criterion, finding or procedure step cites a turn number that is not in the transcript
+  (including any citation when the transcript is missing)
+- a criterion cites a finding or reference that is not included in the response
+- a `needs-review` criterion cites no evidence. Missing evidence must be `cannot-assess`, never an agent failure
+- a ready call does not have exactly one result for each of the four criteria
+- a processing call already has criteria, findings or a decision
+- transcript turn numbers are duplicated or out of order. Gaps are allowed and kept as-is
+
+## Identity and permissions
+
+Every route except `/health` reads the requester from `get_current_user`
+(`backend/src/backend/api/auth.py`), which returns a `CurrentUser` with a user ID,
+organization ID and set of permissions.
+
+There is no login system yet. When `MEMORIA_APP_ENV` is `development` or `test`, the requester
+is one of the fixed identities in `backend/src/backend/core/auth.py`, named in the `X-Dev-User`
+header:
+
+| `X-Dev-User` | Organization | Permissions |
+|---|---|---|
+| `agent-alex-morgan` | `org-northwind` | `conversations:read-own`, `knowledge:read` |
+| `agent-sam-rivera` | `org-northwind` | `conversations:read-own`, `knowledge:read` |
+| `manager-maya-chen` | `org-northwind` | `feedback:review`, `knowledge:read` |
+| `approver-devon-park` | `org-northwind` | `knowledge:approve`, `knowledge:read` |
+| `agent-riley-chen` | `org-harbor` | `conversations:read-own`, `knowledge:read` |
+
+`MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every request gets `401`.
+
+### How an identity enters the request context
+
+1. **Authentication** decides *who* is asking. A future login system will verify the user and hand
+   the backend their user ID. Until then, in development and test only, `X-Dev-User` stands in for
+   that verified ID. Nothing else in a request is treated as proof of identity.
+2. **Authorization** decides *what they may do*, and always comes from the server. `get_current_user`
+   passes the user ID to the identity provider (`Providers.identities`), which returns the
+   `CurrentUser`:
+   - At runtime it is built from the user's stored `OrganizationMembership`:
+     `organization_id` is the organization's `slug`, and permissions come from
+     `permissions_for_membership` in `backend/core/auth.py`. Tests can inject
+     fixture providers explicitly.
+
+   | Membership | Permissions |
+   |---|---|
+   | role `agent` | `conversations:read-own`, `knowledge:read` |
+   | `can_review_feedback` | adds `feedback:review` |
+   | `can_approve_knowledge` | adds `knowledge:approve` |
+
+   Today both capabilities belong to the `manager` role, so a stored Manager can do both. They map
+   to separate permissions, so splitting the role later needs no change here.
+3. **Ownership** of calls goes through `OrganizationMembership.agent_id`, the link from a person to
+   the agent record (`agents` row) in the source data. An agent sees only conversations whose
+   `agent_id` matches their link, in their own organization. An agent with no link sees no calls.
+
+Choosing a role in the frontend is a display choice, not authentication: the backend never reads a
+role, organization or permission from the request. A user who belongs to several organizations
+picks one with the `X-Organization` header (an organization slug); it only selects among memberships
+they already hold, and without it such a user gets `401`.
+
+To run on the database:
+
+```bash
+MEMORIA_APP_ENV=development .venv/bin/uvicorn backend.main:app --reload
+```
+To run locally:
+
+```bash
+MEMORIA_APP_ENV=development .venv/bin/uvicorn backend.main:app --reload
+curl -H "X-Dev-User: agent-alex-morgan" localhost:8000/api/viewer
+```
+
+`feedback:review` (Managers) and `knowledge:approve` (Knowledge Approvers) are deliberately separate.
+Routes protect themselves with `Depends(require_permission(Permission.X))`, and agent-owned records
+are checked with `can_read_agent_record(user, organization_id, agent_id)`.
+
+## Proposed routes
+
+All five are implemented: `/api/viewer` (#71), conversations (#72), call detail (#73) and knowledge (#74). The agent is always the authenticated requester (#71),
+never an ID taken from the URL or query string.
+
+| Method and path | Response | Frontend interface |
+|---|---|---|
+| `GET /api/viewer` | `Viewer` | `ViewerApi.getViewer` |
+| `GET /api/agent/conversations` | `Conversation[]` (newest first) | `ConversationsApi.listForAgent` |
+| `GET /api/agent/conversations/{conversationId}` | `CallReview` | `CallApi.getCallForAgent` |
+| `GET /api/agent/knowledge` | `KnowledgeEntry[]` | `ApprovedKnowledgeApi.listForAgent` |
+| `GET /api/agent/knowledge/{entryId}` | `KnowledgeEntry` | `ApprovedKnowledgeApi.getForAgent` |
+
+### Errors
+
+Error bodies use FastAPI's default shape: `{"detail": "..."}`.
+
+| Status | When |
+|---|---|
+| `401` | No identity on the request |
+| `403` | Identity lacks the permission for this route |
+| `404` | Record does not exist **or** is not visible to the requester (same response, so existence is not leaked) |
+| `503` | The provider raised `ProviderUnavailableError` |
+
+An empty list is a `200` with `[]`, not an error.
+
+### `GET /api/agent/conversations`
+
+Requires `conversations:read-own`. Returns only the requester's conversations in their own
+organization, newest first. `automatedResult` and `reviewStatus` are independent fields:
+a processing call has `automatedResult: "processing"` and `reviewStatus: null`.
+
+| Status | Body | When |
+|---|---|---|
+| `200` | `Conversation[]` | Success, including `[]` when the agent has no conversations |
+| `401` | `{"detail": "Missing identity"}` | No identity |
+| `403` | `{"detail": "Not permitted"}` | A Manager or Knowledge Approver without `conversations:read-own` |
+| `503` | `{"detail": "Data source unavailable"}` | The conversation provider is down |
+
+### `GET /api/agent/conversations/{conversationId}`
+
+Requires `conversations:read-own`. Returns the `CallReview` for one of the requester's own calls.
+
+- **Ready:** four criteria (one per category), findings with suggestions, transcript turns and references.
+- **Processing:** `status: "processing"` with empty `criteria` and `findings` and no `decision`.
+- **Missing transcript:** `transcript: null`; criteria are `cannot-assess` with no evidence.
+- **Partial transcript:** `transcript.complete: false` with an `unavailableReason`; criteria that
+  depend on the missing part are `cannot-assess`.
+- **Turn numbers** are the originals, gaps included, and every evidence number points at a turn in
+  this call's transcript.
+- **References** are the versions the call was assessed against. A reference that has since become
+  stale is still returned, with its `status` and `version` unchanged, so the agent sees what they were
+  measured against (fixture `C1047`). As with the knowledge routes, `availableToAgentIds` is
+  trimmed to `[requesterId]`.
+- **`decision`** is the Manager's decision, kept beside the automated `criteria`, never merged into them.
+
+| Status | Body | When |
+|---|---|---|
+| `200` | `CallReview` | Success, in any of the states above |
+| `401` | `{"detail": "Missing identity"}` | No identity |
+| `403` | `{"detail": "Not permitted"}` | A Manager or Knowledge Approver without `conversations:read-own` |
+| `404` | `{"detail": "Conversation not found"}` | Unknown call, call record unavailable, or another agent's or organization's call |
+| `503` | `{"detail": "Data source unavailable"}` | The call provider is down |
+
+### `GET /api/agent/knowledge` and `GET /api/agent/knowledge/{entryId}`
+
+Requires `knowledge:read`. Returns approved entries assigned to the requester in their own
+organization, with content, source, version, approval information and dates. Draft, rejected,
+disputed and stale entries are never returned. The detail route applies exactly the same rule
+as the list, so a direct request cannot open an entry the list hides.
+
+Unknown dates (`approvedAt`, `effectiveAt`, `lastConfirmedAt`) and an unknown `approvedBy`,
+`owner` or `source` stay `null`.
+
+`availableToAgentIds` is trimmed to `[requesterId]`, so an agent never learns who else an entry is
+assigned to. The frontend's `canReadKnowledge` check still passes.
+
+| Status | Body | When |
+|---|---|---|
+| `200` | `KnowledgeEntry[]` / `KnowledgeEntry` | Success, including `[]` when nothing is assigned (for example a Manager) |
+| `401` | `{"detail": "Missing identity"}` | No identity |
+| `404` | `{"detail": "Knowledge entry not found"}` | Missing, not approved, assigned to someone else, or in another organization |
+| `503` | `{"detail": "Data source unavailable"}` | The knowledge provider is down |
+
+### Examples
+
+`GET /api/agent/conversations`
+
+```json
+[
+  {
+    "id": "C1045",
+    "topic": "Order status",
+    "agentId": "agent-alex-morgan",
+    "agentName": "Alex Morgan",
+    "date": "2026-10-14",
+    "automatedResult": "processing",
+    "reviewStatus": null
+  },
+  {
+    "id": "C1042",
+    "topic": "Refund request",
+    "agentId": "agent-alex-morgan",
+    "agentName": "Alex Morgan",
+    "date": "2026-10-08",
+    "automatedResult": "needs-review",
+    "reviewStatus": "feedback-ready"
+  }
+]
+```
+
+`GET /api/agent/conversations/C1042` (trimmed)
+
+```json
+{
+  "id": "C1042",
+  "agentId": "agent-alex-morgan",
+  "status": "ready",
+  "criteria": [
+    {
+      "id": "procedure",
+      "title": "Procedure",
+      "result": "needs-review",
+      "explanation": "The refund was offered at turn 8. Purchase verification followed at turn 13. ...",
+      "evidenceTurnNumbers": [8, 13],
+      "findingId": "procedure-order",
+      "referenceId": "RP-01"
+    }
+  ],
+  "transcript": {
+    "complete": true,
+    "turns": [{ "number": 8, "speaker": "Agent", "text": "I can offer you a refund.", "time": "2:02" }],
+    "unavailableReason": null
+  },
+  "references": [{ "id": "RP-01", "version": "v1", "status": "approved" }],
+  "decision": null
+}
+```
+
+`GET /api/agent/conversations/C1044`: transcript unavailable
+
+```json
+{
+  "id": "C1044",
+  "status": "ready",
+  "criteria": [
+    { "id": "procedure", "result": "cannot-assess", "evidenceTurnNumbers": [], "findingId": null, "referenceId": null }
+  ],
+  "transcript": null
+}
+```
+
+The full records are in `backend/src/backend/providers/fixture_data.py`.
+
+## Agent context and review requests
+
+Both routes need `conversations:read-own` and apply the same ownership rule as the reads. A call
+that is not the requester's gets `404`. They need the database: with fixtures they answer `503`.
+
+| Method and path | Body | Response |
+|---|---|---|
+| `PUT /api/agent/conversations/{conversationId}/context` | `{"text": "..."}` | `200` `AgentContext` `{text, savedAt}` |
+| `POST /api/agent/conversations/{conversationId}/review-requests` | `{"findingId": "...", "reason": "..."}` | `201` `ReviewRequest` `{findingId, reason, requestedAt, status}`, or `200` with the existing one |
+
+- **Saving context never requests a review.** The note is stored in `agent_contexts`, one per call,
+  and saving again replaces it. It can be saved while a call is still processing. Text is trimmed and
+  must be 1–4000 characters; anything else is `422`.
+- **One review request per finding.** A request is a `FeedbackFlag` row; the automated finding is not
+  touched. Asking again for the same finding returns the existing request with `200` and changes
+  nothing, even with a different reason. The flag stores a copy of the agent's context as it was at
+  that moment, so the Manager sees what the agent had written when they asked.
+- **Only findings shown in the call view can be flagged**, that is the `findings[].id` values of a
+  ready call. Anything else is `404` `Finding not found`.
+- A failed save is a `503`, never a success.
+
+`CallReview` gains `agentContext` and `reviewRequest`, matching `frontend/src/types/callReview.ts`.
+`reviewRequest` is the call's open request if there is one, otherwise its most recent completed one;
+`status` is `complete` once a Manager has decided.
+
+## Manager feedback review
+
+Every route needs `feedback:review`. Managers see every conversation in their own organization:
+there is no team model yet, so the organization is the review scope. Another organization's call is
+`404`. The routes need the database; with fixtures they answer `503`. Shapes match `TeamReviewApi` in
+`frontend/src/features/review-queue/teamQueue.ts`.
+
+| Method and path | Response |
+|---|---|
+| `GET /api/manager/conversations?status=&q=` | `TeamConversation[]`: a `Conversation` plus `flag` (the review request and `findingTitle`) |
+| `GET /api/manager/conversations/{conversationId}` | `FindingReviewDetail` `{call, canDecide}`: findings, evidence turns, `agentContext`, `reviewRequest`, `decision` |
+| `POST /api/manager/conversations/{conversationId}/findings/{findingId}/decision` | `201` `ManagerDecision`, `200` if the identical decision is already stored, `409` if a different one is |
+
+- **Filters.** `status` is `all` (the default), `feedback-ready`, `review-requested`, `review-complete` or
+  `processing`, as in the frontend status menu. `q` searches the call ID, topic, agent name, request reason
+  and finding title, case-insensitively. Results are newest request first, then newest call.
+- **Decision body.** `{"outcome": "confirmed" | "corrected" | "dismissed" | "cannot-assess", "reason", "feedback", "reviewedResult"?}`.
+  `reason` and `feedback` are required and must not be blank (`422` otherwise).
+  `reviewedResult` is what the finding's result should have been (`"meets-criteria"`, `"needs-review"` or
+  `"cannot-assess"`). It is required when `outcome` is `corrected` and not allowed otherwise (`422`).
+  Resubmitting with a different `reviewedResult` is a different decision (`409`).
+- **Separate storage.** A decision is a `ManagerReview` on the agent's `FeedbackFlag`. It records the
+  reviewer's membership (`reviewer_membership_id`, which gives their name), the corrected result
+  (`reviewed_result`, for corrected decisions only) and the time. The automated finding is
+  never changed. The agent sees the decision in `CallReview.decision`, and the request's `status` becomes
+  `complete`.
+- **The agent's context is the one they asked with.** When the call has a review request, the detail's
+  `agentContext` is the note as it was when the review was requested, with `savedAt` set to the
+  request time. Later edits by the agent don't change what the Manager reviews.
+- **Only requested reviews can be decided.** A finding with no review request is `404`
+  `Review request not found`.
+- **Duplicates and conflicts are explicit.** A request is decided once. If two Managers submit at the
+  same moment, the first decision stands and the second gets `200` or `409` by the rule above.
+- A failed save is a `503`, never a success.
+
+The queue is filtered in the API process after loading the organization's conversations. That is fine
+at the current data size; paging and filtering in SQL is the next step when it is not.
+
+## Agent progress over time
+
+| Method and path | Who | Response |
+|---|---|---|
+| `GET /api/agent/progress?from=&to=&period=` | An agent (`conversations:read-own`), for themself | `AgentProgress` |
+| `GET /api/manager/agents/{agentId}/progress?from=&to=&period=` | A Manager (`feedback:review`), for any agent in their organization | `AgentProgress` |
+
+- **Query.** `from` and `to` are inclusive dates (`2026-10-05`). `period` is `day`, `week` (the default) or
+  `month`. A missing or malformed date, `to` before `from`, an unknown period or a range covering more
+  than 366 periods is a `422`.
+- **Periods.** Calls are grouped by `synthetic_started_at` into UTC calendar periods: days, weeks starting on
+  Monday, or months. Calls without that time are left out. The first and last periods can be partial: their
+  `start` and `end` (both inclusive) are clipped to the range and they only count calls inside it.
+- **Response.** `{agentId, agentName, period, from, to, points}`. There is one point for every period in the
+  range, in order: `{start, end, callCount, hasResults, overall, criteria}`. `overall` and each of the four
+  `criteria` (`{id, title, counts}`, in the usual criterion order) count findings by result:
+  `{meetsCriteria, needsReview, cannotAssess}`. Topics are added together.
+- **Empty periods are not poor results.** A period with no calls still appears, with `callCount: 0` and
+  `hasResults: false`. `hasResults` is also false when the calls were not assessed yet or every finding
+  was cannot-assess. Only `meetsCriteria` and `needsReview` are scored.
+- **Scope.** The agent route takes no agent ID, so an agent can only see their own progress. Agents get
+  `403` on the Manager route, and Managers on the agent route. `agentId` is the `agentId` the review queue
+  shows; an unknown agent or another organization's agent is the same `404`. An agent membership with no
+  linked agent record gets empty periods.
+- Both routes need the database; with fixtures they answer `503`, as does a database failure.
+
+Counts come from `get_agent_performance_trends` in `backend/src/backend/db/performance_trends.py`.
+
+## Knowledge drafts from the pipeline
+
+`backend/src/backend/services/knowledge_import.py` stores the knowledge pipeline's output
+(`knowledge-pipeline/1`) for an authorized reviewer, and the routes below read it back. Every route
+needs `knowledge:approve` and is scoped to the requester's organization. Reads need the database;
+with fixtures they answer `503`.
+
+| Method and path | Response |
+|---|---|
+| `POST /api/manager/knowledge/imports` | Runs the configured pipeline and stores its output: `{created, updated, unchanged, skipped, conflictsStored}` |
+| `GET /api/manager/knowledge/drafts?status=&q=&possibleConflicts=` | `KnowledgeDraft[]`, newest first |
+| `GET /api/manager/knowledge/drafts/counts` | `{total, draft, approved, rejected, withPossibleConflicts}` |
+| `GET /api/manager/knowledge/drafts/{draftId}` | `KnowledgeReviewDetail` `{entry, canDecide}` |
+
+`KnowledgeDraft` matches `frontend/src/types/knowledge.ts`. It adds the pipeline evidence:
+`question`, `distinctConversationCount`, `duplicateOfId`, `possibleConflicts`, `existingMatches`,
+`mlVerification`, and the role, source key and source version of each passage.
+
+What an import guarantees, each covered by `tests/test_knowledge_import.py`:
+
+- **Nothing is approved.**
+  - The output is refused whole (`422`) unless:
+    - the status is `ok` or `completed_with_failures`;
+    - `company_id` is the requester's organization;
+    - `release_checks.release_allowed` is `true`;
+    - every draft is an untrusted `draft`.
+  - New drafts are stored `pending`.
+  - `knowledge_entries` and `knowledge_reviews` are never written, so no entry is approved, renewed
+    (`last_confirmed_at`) or replaced, and drafts never reach the agent knowledge routes.
+- **Reviewed drafts are left alone.** A draft a reviewer has approved or rejected keeps its content
+  when the pipeline sends it again.
+- **Evidence is checked and kept.**
+  - Each passage must quote a stored turn (same turn number and speaker) of a stored conversation.
+    The conversation is found by `source_key`, which is `<source_dataset>:<original_id>`.
+  - Each passage is stored with its role, span, source key and source version.
+  - Drafts that fail these checks are skipped and listed in `skipped` with the reason.
+- **Reprocessing is idempotent.**
+  - Drafts are keyed by the pipeline's `draft_id` and conflicts by `conflict_id`.
+  - Importing the same output again reports every draft as `unchanged` and adds no rows.
+  - `distinctConversationCount` is counted from the stored conversations behind the draft's group,
+    so it cannot be inflated by repeats. It also leaves out conversations that are not stored.
+- **Possible conflicts are not disputes.**
+  - They are stored in `knowledge_conflicts` with the pipeline's status (`possible_conflict` or
+    `unresolved`).
+  - They never change an approved entry's status. Only a reviewer marks an entry `disputed`.
+- **Each import is the pipeline's complete current view.**
+  - Group membership, duplicate links and matches to approved entries are reset for every pending
+    pipeline draft, including drafts the new output no longer mentions, then set from the output.
+  - Conflicts the output no longer reports are removed.
+  - Drafts themselves are never removed, so earlier evidence stays available to reviewers.
+- **Bad values never become a 503 or a 500.**
+  - A malformed draft (wrong types, over-long source keys or versions) is skipped and reported.
+  - A wrongly typed section of the output refuses the whole import with `422`.
+  - A pipeline that crashes is a `503` naming the error type.
+- **One import at a time per organization.**
+  - Imports take a transaction-level advisory lock, so concurrent runs cannot insert the same draft
+    twice.
+  - Each pending draft row is locked while it is updated, so a reviewer's decision cannot slip in
+    between the "still pending" check and the write.
+
+No pipeline is configured by default, so the import route answers `503` until one is passed to
+`create_app(knowledge_import=KnowledgeImportService(sessions, adapter))`. Approving and rejecting
+drafts are not part of this change.
+
+## Post-call analysis
+
+`backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result
+as the conversation's audit. Each attempt is an `analysis_runs` row, so processing status and
+technical failures are recorded apart from any audit.
+
+| Method and path | Permission | Response |
+|---|---|---|
+| `GET /api/manager/conversations/{conversationId}/analysis` | `feedback:review` | `AnalysisStatus`: the latest status (`not-started`, `queued`, `running`, `succeeded`, `failed`) and every run, newest first |
+| `POST /api/manager/conversations/{conversationId}/analysis` | `feedback:review` | `202` with a new queued run, or `200` with the run already queued or running |
+
+Body for `POST`: optional `{"retry": true}`.
+
+| Status | When |
+|---|---|
+| `404` | The conversation does not exist or is in another organization |
+| `409` `Conversation already analysed` | It has an audit. Audits are never replaced, so earlier results cannot be lost |
+| `409` `The last run failed; retry explicitly` | The latest run failed and `retry` was not `true` |
+
+Concurrent starts for one conversation queue a single run: every request gets that run back.
+
+### The adapter
+
+The run calls an `AnalysisAdapter` with an `AnalysisRequest`, following the input and output of
+`run_feedback_report` in `ml/report.py`:
+
+- `conversation`: `{id, transcript_version, events}`. Each event has the original turn number as
+  `turn_id`, `kind` (`message` or `action`), `speaker` and `text`. `transcript_version` is a SHA-256
+  of the events, so a report can be matched to exactly this evidence.
+- `references`: the organization's approved entries for the conversation's topic (all approved
+  entries if it has none), each with `id`, `section_id`, `version`, `title` and `text`.
+- `criteria`: the active evaluation form version's criteria, with `evaluation_form_version` stored
+  on the audit.
+
+The report is accepted only if `parse_report` finds `processing_status: "complete"`, the same
+`conversation_id` and `transcript_version`, all four categories completed, and every citation
+pointing at a supplied turn (with a matching quote) or a supplied reference version. A
+`needs-review` finding must cite at least one turn. Anything else fails the run with an error code
+(`report-<code>`, `invalid-citation`, `missing-evidence`, `evidence-mismatch`, `invalid-report`,
+`analysis-error`, `analysis-unavailable`, `no-evaluation-form`, `no-transcript`) and saves nothing.
+A failure is never stored as `cannot-assess`; the agent keeps seeing `processing`.
+
+The audit model has one finding per category. When a report has several findings in one category,
+their explanations, suggestions and evidence turns are combined, and the first cited reference is
+linked.
+
+No adapter is configured by default, so runs fail with `analysis-unavailable` until one is passed to
+`create_app(analysis=AnalysisService(sessions, adapter))`. `run_feedback_report` currently accepts
+only prepared ABCD evidence, so connecting it needs an adapter that prepares stored conversations
+the same way.
+
+Runs execute as background tasks in the API process. Any error during a run, including a report
+with values of the wrong type or a failed save, ends it as `failed` with an error code
+(`invalid-report`, `save-failed`, `internal-error`). If the process itself stops mid-run, the run
+stays `queued` or `running`. Once it is older than 15 minutes, a `POST` with `{"retry": true}`
+marks it failed with `timed-out` and starts a new attempt. A run is never replaced without that
+retry flag.
+
+## Demo entry screen
+
+`GET /api/demo/profiles` returns the `DemoProfile[]` the entry screen offers
+(`DemoProfilesApi.listProfiles`): `id`, `displayName`, `role` and
+`conversationCount` (imported conversations for an Agent, `null` for a Manager).
+It needs no identity, because choosing a profile is how the demo signs in, so it
+only exists where `X-Dev-User` is accepted (`MEMORIA_APP_ENV` development or
+test) and is a `404` everywhere else.
+
+The frontend then sends the chosen `id` as `X-Dev-User`. Access still comes from
+the stored membership: an Agent profile sees only the conversations linked to its
+agent record, whatever its display name.
+
+The profiles are the users created by `seed-demo-profiles` (IDs starting with
+`demo-`). Tests may inject fixture viewers.
+
+## Providers
+
+Routes read data through the interfaces in `backend/src/backend/providers/base.py`
+(`ViewerProvider`, `ConversationProvider`, `CallReviewProvider`, `KnowledgeProvider`).
+Every method takes an `organization_id` and returns `None` for records that are missing
+or not visible to that agent. Runtime uses PostgreSQL providers in
+`backend/src/backend/providers/database.py`; tests can pass their own
+`Providers` to `create_app()`. `tests/test_database_providers.py` runs the same
+checks against database and fixture providers, so they cannot drift apart.
+
+### Database mapping
+
+| Stored | API |
+|---|---|
+| `Conversation.id` | `id` (as a string) |
+| `FindingResult` `pass` / `needs_work` / `cannot_assess` | `meets-criteria` / `needs-review` / `cannot-assess` |
+| `FindingCategory` `procedure` / `answer_support` / `completeness` / `communication` | `procedure` / `answer-support` / `completeness` / `communication-style` |
+| `ManagerReviewOutcome` `cannot_assess` | `cannot-assess` (others unchanged) |
+| `Turn.line_number` | `TranscriptTurn.number` and every evidence number, gaps kept |
+| `Finding.knowledge_entry` | a `references` entry; each approval creates a new entry row, so `version` is `review-<approving review id>` |
+| No audit yet | `status: "processing"`, `automatedResult: "processing"` |
+| Flags with no Manager review / all reviewed / none | `review-requested` / `review-complete` / `feedback-ready` |
+
+Rules the mapping applies, each covered by a test:
+
+- System-action turns are not part of the frontend transcript, so they are left out of
+  `transcript` and of evidence numbers.
+- A category with no stored finding is `cannot-assess` with the explanation
+  "No result was stored for this criterion."
+- A stored `needs_work` finding whose evidence is not in the transcript is shown as `cannot-assess`,
+  never as a failure without evidence.
+- A conversation without a topic shows `Unassigned`.
+- Approved guidance is assigned to every agent in the organization; Managers are assigned none.
+- Fields the database does not store stay empty: `duration`, `TranscriptTurn.time`,
+  `KnowledgeEntry.effectiveAt`, `owner`, `source` and `steps`. A conversation with no source date has
+  `date: null` and is listed after the dated ones.
+
+## Gaps in the current frontend types
+
+Documented here rather than filled with invented data. Each needs agreement with the frontend team.
+
+1. **No organization or permissions on `Viewer`.** `role` is only `agent | manager`; there is no
+   Knowledge Approver. #71 keeps organization and permissions in the server-side user context;
+   the frontend may need a `permissions` field later.
+2. **No organization ID on any response.** Organization scoping happens on the server only.
+3. **`KnowledgeEntry.availableToAgentIds` exposes every assigned agent's ID.** Resolved on the server:
+   the knowledge routes and `CallReview.references` trim it to `[requesterId]`. The field could be
+   dropped from the frontend type entirely once the frontend stops relying on it.
+4. **No technical-failure state.** `CallReview.status` is only `ready | processing` and
+   `AutomatedResult` has no `failed`. A failed analysis run therefore still shows as `processing`
+   to the agent; the failure and its error code are visible to Managers in the analysis status
+   route. A `failed` value would let the frontend show it.
+5. **Preformatted strings.** `duration` and `TranscriptTurn.time` are display strings like `4:32`
+   with no defined format for calls over an hour.
+6. **Dates and durations can be unknown.** Source datasets do not always record a call date or length, so
+   `Conversation.date`, `CallReview.date` and `CallReview.duration` are nullable rather than guessed.
+   The frontend types still say `string`; `getAgentConversations` sorts with `localeCompare`, which
+   needs a null check before it reads database records.
+7. **Date formats are implicit.** `Conversation.date` and knowledge dates are `YYYY-MM-DD`;
+   `decision.decidedAt` is an ISO 8601 timestamp. No timezone is stated for date-only values.
+8. **One decision per call.** `CallReview.decision` holds a single Manager decision, with no history
+   and no link to which finding was reviewed.
+9. **A listed conversation can have no call record.** The list has no way to mark that the detail
+   is unavailable; the detail route returns `404` (fixture `C1046`).
+
+
+## Persistent knowledge decisions
+
+`POST /api/manager/knowledge/drafts/{draftId}/approve` accepts
+`{"version":"<current draft version>","verifiedReferenceUrl":"<stored authoritative URL>"}`.
+`POST /api/manager/knowledge/drafts/{draftId}/reject` accepts
+`{"version":"<current draft version>","reason":"<nonempty reason>"}`.
+Both require `knowledge:approve`, operate only on pending drafts in the current
+organization, and return the updated draft. Wrong permissions return 403;
+other-organization/missing drafts 404; stale versions or repeated decisions 409.
+Approval additionally requires the matching independent verification reference
+and no blocking conflict/duplicate. Supporting Agent quotations do not verify a
+policy. Decisions record the reviewer and timestamp (plus URL/rejection reason).
+Approved entries are visible only to their assigned Agents; rejected/pending
+entries never enter Agent knowledge. Automated assessments remain separate.
+
+Scored call responses add `assessmentVersion`, `overallScoring`, `requestLinks`
+and each criterion's `scoring` ledger (points, coverage, limitations, exact
+citations). An unavailable/failed assessment is not poor Agent performance.
+
+## Scorer-independent assessment composition
+
+The optional scoring fields above are a presentation/storage contract, not a
+rule-engine dependency. `AnalysisService.adapter` supplies generation and
+`AnalysisService.report_parser` supplies approved-policy validation. Without an
+explicit scored-policy parser, scored output is rejected. The legacy report
+contract and default unconfigured service remain intact.
+
+A scored parser returns `ParsedReport.assessment_report` using `assessment-v1`,
+with the request's conversation/transcript/evaluation-form versions and date.
+`assessment_storage.validate_payload` checks exact supplied citations, positive
+and negative evidence, finite points, coverage, completed denominators, active
+form weights and null human approvals before anything is saved. It does not
+choose obligations or replace the policy parser's eligibility/interpretation
+checks. Partial category failures retain independently valid results in the run;
+Manager decisions remain separate. No frontend component imports an engine.
+See `frontend/ASSESSMENT-INTEGRATION.md` for composition and PR boundaries.

@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, fireEvent, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
@@ -68,4 +68,12 @@ export function openApp({
   ], { initialEntries: [path] })
   const view = render(<RouterProvider router={router} />)
   return { router, ...view }
+}
+
+// Radix scrolls the highlighted option; jsdom has no scrolling implementation.
+HTMLElement.prototype.scrollIntoView ??= () => {}
+
+export async function selectStatus(label: string) {
+  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Review status' }), { key: 'ArrowDown' })
+  fireEvent.click(await screen.findByRole('option', { name: label }))
 }

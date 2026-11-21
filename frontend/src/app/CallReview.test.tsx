@@ -1,3 +1,4 @@
+import { selectStatus } from './TestSetup'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { AgentContext, CallReview, ReviewRequest } from '../types/callReview'
@@ -49,7 +50,7 @@ describe('Agent call review', () => {
     await screen.findByRole('table')
     expect(router.state.location.search).toBe(search)
     expect(screen.getByRole<HTMLInputElement>('searchbox', { name: 'Search calls' }).value).toBe('Refund')
-    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Review status' }).value).toBe('feedback-ready')
+    expect(screen.getByRole('combobox', { name: 'Review status' }).textContent).toContain('Feedback ready')
   })
 
   it('searches owned calls, previews and commits status filters, clears no results and restores history', async () => {
@@ -70,11 +71,11 @@ describe('Agent call review', () => {
     expect(router.state.location.search).toBe('')
     fireEvent.click(ready)
     fireEvent.mouseLeave(bar)
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'processing' } })
+    await selectStatus('Processing')
     await act(() => router.navigate(-1))
-    expect(screen.getByRole<HTMLSelectElement>('combobox').value).toBe('feedback-ready')
+    expect(screen.getByRole('combobox').textContent).toContain('Feedback ready')
     await act(() => router.navigate(1))
-    expect(screen.getByRole<HTMLSelectElement>('combobox').value).toBe('processing')
+    expect(screen.getByRole('combobox').textContent).toContain('Processing')
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'no such call' } })
     expect(screen.getByRole('heading', { name: 'No matching conversations' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
@@ -99,6 +100,23 @@ describe('Agent call review', () => {
     fireEvent.click(await screen.findByRole('link', { name: 'Open conversation C1042: Refund request' }))
     await screen.findByRole('heading', { name: 'Feedback is processing' })
     expect(screen.queryByRole('region', { name: 'Automatic feedback' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
+  })
+
+  it('keeps the transcript available when no assessment is stored', async () => {
+    const call = await callFixture({ status: 'unavailable', criteria: [], findings: [] })
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    await screen.findByRole('heading', { name: 'Assessment unavailable' })
+    fireEvent.click(screen.getByRole('link', { name: 'Transcript' }))
+    await screen.findByRole('heading', { name: 'Complete conversation' })
+  })
+
+  it('shows available partial scores without calling the assessment ready', async () => {
+    const call = await callFixture({ status: 'partial', findings: [], reviewRequest: null, decision: null })
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    await screen.findByRole('heading', { name: 'Assessment incomplete' })
+    expect(screen.getByText(/feedback is not ready/)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Automatic feedback' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
   })
 

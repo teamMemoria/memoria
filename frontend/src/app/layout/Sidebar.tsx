@@ -1,10 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router'
 import type { Viewer } from '../../types/viewer'
+import { ProfileMenu } from './ProfileMenu'
 import { Icon } from '../../components/Icon'
 import { createSidebarMotion } from './sidebarMotion.js'
 
-export function Sidebar({ viewer }: { viewer: Viewer }) {
+export function Sidebar({ viewer, onSwitchProfile }: { viewer: Viewer; onSwitchProfile?: () => void }) {
+  const profileMenuOpen = useRef(false)
   const [expanded, setExpanded] = useState(false)
   const sidebar = useRef<HTMLElement>(null)
   const brand = useRef<HTMLAnchorElement>(null)
@@ -31,7 +33,7 @@ export function Sidebar({ viewer }: { viewer: Viewer }) {
 
   function scheduleClose() {
     clearTimeout(timer.current)
-    if (!pointerInside.current && !keyboardInside.current) {
+    if (!profileMenuOpen.current && !pointerInside.current && !keyboardInside.current) {
       timer.current = setTimeout(() => setExpanded(false), 100)
     }
   }
@@ -56,7 +58,10 @@ export function Sidebar({ viewer }: { viewer: Viewer }) {
 
   useEffect(() => {
     function dismiss(event: KeyboardEvent | PointerEvent) {
+      if (profileMenuOpen.current) return
       const escape = event instanceof KeyboardEvent && event.key === 'Escape'
+      // A portalled menu owns Escape and restores focus to its trigger.
+      if (escape && event.target instanceof Element && event.target.closest('[role="menu"]')) return
       const outside =
         event.type === 'pointerdown' &&
         event.target instanceof Node &&
@@ -159,6 +164,20 @@ export function Sidebar({ viewer }: { viewer: Viewer }) {
         ))}
       </nav>
       <div className="sidebar-footer">
+        {onSwitchProfile ? (
+          <ProfileMenu viewer={viewer} onSwitchProfile={onSwitchProfile} side="right"
+            onOpenChange={(isOpen) => {
+              profileMenuOpen.current = isOpen
+              if (isOpen) open()
+              else scheduleClose()
+            }}>
+            <button className="sidebar-item profile-trigger" type="button"
+              aria-label={`Open profile menu for ${viewer.displayName}`}>
+              <Icon name="account" size={25} />
+              <span className="sidebar-label" aria-hidden="true">{viewer.displayName}</span>
+            </button>
+          </ProfileMenu>
+        ) : (
         <span
           className="sidebar-item"
           role="img"
@@ -170,18 +189,7 @@ export function Sidebar({ viewer }: { viewer: Viewer }) {
             {viewer.displayName}
           </span>
         </span>
-        <button
-          className="sidebar-item"
-          type="button"
-          disabled
-          aria-label="Settings (not available yet)"
-          title="Settings are not available yet"
-        >
-          <Icon name="settings" size={25} />
-          <span className="sidebar-label" aria-hidden="true">
-            Settings
-          </span>
-        </button>
+        )}
       </div>
     </aside>
   )

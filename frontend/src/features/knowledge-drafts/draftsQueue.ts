@@ -1,7 +1,7 @@
 import type { KnowledgeDraft, KnowledgeEntry } from '../../types/knowledge'
 
 export const queueTabs = {
-  pending: 'Pending',
+  pending: 'Pending review',
   approved: 'Approved',
   flagged: 'Flagged',
   rejected: 'Rejected',
@@ -18,7 +18,7 @@ const tabForStatus = {
 } as const satisfies Record<KnowledgeEntry['status'], QueueTab>
 
 export function queueTabFor(entry: KnowledgeDraft): QueueTab {
-  return tabForStatus[entry.status]
+  return entry.status === 'draft' && entry.possibleConflicts?.length ? 'flagged' : tabForStatus[entry.status]
 }
 
 export function isQueueTab(value: string | null): value is QueueTab {

@@ -147,6 +147,10 @@ export function createDevTeamReviewApi(callApi?: DevCallApi): TeamReviewApi {
       if (!decision.reason.trim() || !decision.feedback.trim()) {
         throw new Error('A reason and feedback are required.')
       }
+      // Mirrors the backend: a corrected result is required for corrected, and only then.
+      if ((decision.outcome === 'corrected') !== (decision.reviewedResult !== undefined)) {
+        throw new Error('A corrected decision needs the corrected result.')
+      }
       const saved = {
         outcome: decision.outcome,
         reason: decision.reason.trim(),

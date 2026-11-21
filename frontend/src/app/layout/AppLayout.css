@@ -250,3 +250,55 @@ a.sidebar-item[aria-current='page'] {
     transition: none;
   }
 }
+
+.profile-trigger { border: 0; cursor: pointer; font: inherit; }
+.avatar.profile-trigger { font-size: 16px; font-weight: 600; }
+.profile-trigger:focus-visible { outline: 2px solid var(--color-link); outline-offset: 3px; }
+.sidebar .profile-trigger:focus-visible { outline: 2px solid white; outline-offset: -5px; }
+.sidebar .profile-trigger:hover, .sidebar .profile-trigger[data-state='open'] {
+  color: white; background: var(--color-nav-hover);
+}
+.profile-menu {
+  z-index: 60;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-canvas);
+  color: var(--color-heading);
+  box-shadow: 0 12px 36px rgb(27 48 88 / 15%);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  --profile-enter-x: 0px;
+  --profile-enter-y: -8px;
+}
+.profile-menu[data-side='top'] { --profile-enter-y: 8px; }
+.profile-menu[data-side='right'] { --profile-enter-x: -8px; --profile-enter-y: 0px; }
+.profile-menu[data-side='left'] { --profile-enter-x: 8px; --profile-enter-y: 0px; }
+.profile-menu[data-state='open'] {
+  animation: profile-menu-in 280ms cubic-bezier(0.45, 0, 0.65, 1) both;
+}
+.profile-menu[data-state='closed'] {
+  animation: profile-menu-out 160ms ease-in both;
+  pointer-events: none;
+}
+@keyframes profile-menu-in {
+  from { opacity: 0; transform: translate(var(--profile-enter-x), var(--profile-enter-y)) scale(0.98); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+@keyframes profile-menu-out {
+  from { opacity: 1; transform: translate(0, 0) scale(1); }
+  to { opacity: 0; transform: translate(var(--profile-enter-x), var(--profile-enter-y)) scale(0.98); }
+}
+.profile-menu-label { display: grid; gap: 3px; padding: 10px 12px; overflow-wrap: anywhere; }
+.profile-menu-label > span { font-size: 14px; color: var(--color-muted); }
+.profile-menu-separator { height: 1px; background: var(--color-border); margin: 4px; }
+.profile-menu-item {
+  padding: 12px; border-radius: 8px; cursor: pointer; outline: none;
+  transition: background-color 120ms, box-shadow 120ms;
+}
+.profile-menu-item[data-highlighted] { background: #edf2fb; box-shadow: inset 0 0 0 1px var(--color-link); }
+@media (prefers-reduced-motion: reduce) {
+  .profile-menu[data-state] { animation: none; }
+  .profile-menu-item { transition: none; }
+}

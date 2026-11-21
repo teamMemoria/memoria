@@ -4,11 +4,23 @@ import type {
   KnowledgeReviewApi,
 } from '../types/knowledge'
 import { useEffect, useState } from 'react'
-import type { Viewer, ViewerApi } from '../types/viewer'
+import { useNavigate } from 'react-router'
+import type {
+  DemoProfile,
+  DemoProfilesApi,
+  Viewer,
+  ViewerApi,
+} from '../types/viewer'
 import { Button, Panel } from '../components/controls'
 import { AppRoutes } from './routes'
 import type { ConversationsApi } from '../features/conversations/conversations'
 import type { TeamReviewApi } from '../features/review-queue/teamQueue'
+import { EntryScreen } from '../features/entry/EntryScreen'
+import {
+  clearSelectedProfile,
+  loadSelectedProfile,
+  saveSelectedProfile,
+} from '../lib/selectedProfile'
 
 type ViewerState =
   | { status: 'loading' }
@@ -18,6 +30,7 @@ type ViewerState =
 
 export default function App({
   viewerApi,
+  profilesApi = null,
   conversationsApi = null,
   callApi = null,
   knowledgeApi = null,
@@ -25,6 +38,7 @@ export default function App({
   knowledgeReviewApi = null,
 }: {
   viewerApi: ViewerApi | null
+  profilesApi?: DemoProfilesApi | null
   conversationsApi?: ConversationsApi | null
   callApi?: CallApi | null
   knowledgeApi?: ApprovedKnowledgeApi | null
@@ -35,18 +49,35 @@ export default function App({
     viewerApi ? { status: 'loading' } : { status: 'unavailable' },
   )
   const [attempt, setAttempt] = useState(0)
+  // With a profiles API, the workspace opens as the profile chosen on the
+  // entry screen; without one, as whoever the viewer API returns.
+  const usesProfiles = viewerApi !== null && profilesApi !== null
+  const [profileId, setProfileId] = useState(() =>
+    usesProfiles ? loadSelectedProfile() : null,
+  )
+  const [notice, setNotice] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     let active = true
 
     if (!viewerApi) return
+    if (usesProfiles && profileId === null) return
 
-    void viewerApi.getViewer().then(
+    void viewerApi.getViewer(profileId ?? undefined).then(
       (viewer) => {
-        if (active)
-          setState(
-            viewer ? { status: 'ready', viewer } : { status: 'unavailable' },
-          )
+        if (!active) return
+        // A stored profile that no longer exists, or resolves to someone
+        // else, never opens a workspace.
+        if (usesProfiles && viewer?.id !== profileId) {
+          clearSelectedProfile()
+          setProfileId(null)
+          setNotice('That profile is no longer available. Choose another.')
+          return
+        }
+        setState(
+          viewer ? { status: 'ready', viewer } : { status: 'unavailable' },
+        )
       },
       () => {
         if (active) setState({ status: 'error' })
@@ -56,12 +87,37 @@ export default function App({
     return () => {
       active = false
     }
-  }, [viewerApi, attempt])
+  }, [viewerApi, usesProfiles, profileId, attempt])
+
+  function selectProfile(profile: DemoProfile) {
+    saveSelectedProfile(profile.id)
+    setNotice(null)
+    setState({ status: 'loading' })
+    setProfileId(profile.id)
+    void navigate(`/${profile.role}/conversations`)
+  }
+
+  function switchProfile() {
+    clearSelectedProfile()
+    setState({ status: 'loading' })
+    setProfileId(null)
+    void navigate('/')
+  }
+
+  if (usesProfiles && profilesApi && profileId === null)
+    return (
+      <EntryScreen
+        api={profilesApi}
+        notice={notice}
+        onSelect={selectProfile}
+      />
+    )
 
   if (state.status === 'ready')
     return (
       <AppRoutes
         viewer={state.viewer}
+        onSwitchProfile={usesProfiles ? switchProfile : undefined}
         conversationsApi={conversationsApi}
         callApi={callApi}
         knowledgeApi={knowledgeApi}

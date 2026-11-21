@@ -17,7 +17,7 @@ describe('workspace access and navigation', () => {
     expect(screen.getByRole('link', { name: 'Skip to content' }).getAttribute('href')).toBe('#' + main.id)
     act(() => main.focus())
     expect(document.activeElement).toBe(main)
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Settings (not available yet)' }).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: /Settings/ })).toBeNull()
   })
 
   it.each([null, { getViewer: async () => null }])('does not expose a workspace without an identity', async (viewerApi) => {

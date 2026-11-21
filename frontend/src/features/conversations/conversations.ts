@@ -5,6 +5,7 @@ export const automatedResultLabels = {
   'meets-criteria': 'Meets criteria',
   'cannot-assess': 'Cannot assess',
   processing: 'Processing',
+  unavailable: 'Assessment unavailable',
 } as const
 
 export const reviewStatusLabels = {
@@ -17,6 +18,7 @@ export const conversationStatusLabels = {
   all: 'All statuses',
   ...reviewStatusLabels,
   processing: automatedResultLabels.processing,
+  unavailable: automatedResultLabels.unavailable,
 }
 
 export type AutomatedResult = keyof typeof automatedResultLabels
@@ -30,11 +32,12 @@ export const reviewRequestStatuses = {
 export type ConversationStatusFilter = keyof typeof conversationStatusLabels
 
 export type Conversation = {
+  sourceId?: string | null
   id: string
   topic: string
   agentId: string
   agentName: string
-  date: string
+  date: string | null
   automatedResult: AutomatedResult
   reviewStatus: ReviewStatus | null
 }
@@ -48,7 +51,8 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 })
 
-export function formatConversationDate(date: string) {
+export function formatConversationDate(date: string | null) {
+  if (!date) return 'Date not recorded'
   return dateFormatter.format(new Date(`${date}T00:00:00Z`))
 }
 
@@ -58,7 +62,7 @@ export function getAgentConversations(
 ) {
   return conversations
     .filter((conversation) => conversation.agentId === agentId)
-    .sort((first, second) => second.date.localeCompare(first.date))
+    .sort((first, second) => (second.date ?? '').localeCompare(first.date ?? ''))
 }
 
 export function filterConversations(
@@ -70,11 +74,12 @@ export function filterConversations(
   return conversations.filter((conversation) => {
     const statusMatches =
       status === 'all' ||
-      (status === 'processing'
-        ? conversation.automatedResult === 'processing'
+      ((status === 'processing' || status === 'unavailable')
+        ? conversation.automatedResult === status
         : conversation.reviewStatus === status)
     const searchableText = [
       conversation.id,
+      conversation.sourceId,
       conversation.topic,
       conversation.agentName,
       conversation.date,

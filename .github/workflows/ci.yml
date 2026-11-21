@@ -1,0 +1,80 @@
+name: Checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: architecture_app
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://app:app@localhost:5432/architecture_app
+      TEST_DATABASE_URL: postgresql+psycopg://app:app@localhost:5432/architecture_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.10.0'
+      - run: uv python install 3.13
+      - run: uv sync --frozen
+        working-directory: backend
+      - name: Enable pgvector on the migration database
+        working-directory: backend
+        run: |
+          uv run python - <<'PY'
+          import psycopg
+          from sqlalchemy import make_url
+          from backend.core.config import get_settings
+          url = make_url(get_settings().database_url).set(drivername="postgresql")
+          with psycopg.connect(url.render_as_string(hide_password=False), autocommit=True) as conn:
+              conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+          PY
+      - name: Require exactly one Alembic head
+        run: uv run python -m backend.frameworks.database.migrations
+        working-directory: backend
+      - name: Upgrade, downgrade one revision, and upgrade again
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+          uv run alembic check
+        working-directory: backend
+      - run: uv run ruff check
+        working-directory: backend
+      - run: uv run ruff check ../ml
+        working-directory: backend
+      - run: uv run ruff format --check src tests ../ml
+        working-directory: backend
+      - run: uv run pytest
+        working-directory: backend
+      - run: backend/.venv/bin/python -m pytest ml -q
+      - run: backend/.venv/bin/python -m compileall -q backend/src ml
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend

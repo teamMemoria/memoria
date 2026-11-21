@@ -1,3 +1,4 @@
+import { AssessmentRoute } from './AssessmentRoute'
 import type { CallApi } from '../types/callReview'
 import { CallOverview } from '../features/call-overview/CallOverview'
 import { Procedure } from '../features/procedure/Procedure'
@@ -31,6 +32,7 @@ function RouteMessage({ title, home }: { title: string; home: string }) {
 
 export function AppRoutes({
   viewer,
+  onSwitchProfile,
   conversationsApi,
   callApi = null,
   knowledgeApi = null,
@@ -38,6 +40,7 @@ export function AppRoutes({
   knowledgeReviewApi = null,
 }: {
   viewer: Viewer
+  onSwitchProfile?: () => void
   conversationsApi: ConversationsApi | null
   callApi?: CallApi | null
   knowledgeApi?: ApprovedKnowledgeApi | null
@@ -48,7 +51,7 @@ export function AppRoutes({
 
   return (
     <Routes>
-      <Route element={<AppLayout viewer={viewer} />}>
+      <Route element={<AppLayout viewer={viewer} onSwitchProfile={onSwitchProfile} />}>
         <Route index element={<Navigate to={home} replace />} />
         <Route
           path="agent"
@@ -78,6 +81,16 @@ export function AppRoutes({
             <Route
               path=":conversationId/transcript"
               element={<Procedure viewer={viewer} api={callApi} />}
+            />
+            <Route
+              path=":conversationId/assessments/:category"
+              element={
+                <AssessmentRoute
+                  viewer={viewer}
+                  api={callApi}
+                  managerApi={teamReviewApi}
+                />
+              }
             />
             <Route
               path=":conversationId/findings/:findingId"
@@ -113,6 +126,26 @@ export function AppRoutes({
             <Route
               index
               element={<ReviewQueue viewer={viewer} api={teamReviewApi} />}
+            />
+            <Route
+              path=":conversationId"
+              element={
+                <CallOverview
+                  viewer={viewer}
+                  api={null}
+                  managerApi={teamReviewApi}
+                />
+              }
+            />
+            <Route
+              path=":conversationId/assessments/:category"
+              element={
+                <AssessmentRoute
+                  viewer={viewer}
+                  api={callApi}
+                  managerApi={teamReviewApi}
+                />
+              }
             />
             <Route
               path=":conversationId/findings/:findingId"
