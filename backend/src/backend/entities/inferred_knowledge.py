@@ -523,3 +523,75 @@ def apply_overrides(kb: KnowledgeBase, overrides: Sequence[Override]) -> Knowled
         removed=tuple(removed),
         unmatched_overrides=tuple(latest.values()),
     )
+
+
+# ------------------------------------------------------------------------ scoring
+
+
+def topic_of(claim: FactClaim, kb: KnowledgeBase) -> Topic | None:
+    """The topic a claim is about: the most similar one in its scope.
+
+    The subject decides. Whether the value was already seen for a topic only
+    breaks ties, so "refund in 30 days" isn't pinned to a promo topic just
+    because someone once said 30 days there.
+    """
+    vector = Counter(claim.subject)
+    category, levels, unit = claim.scope
+    best: tuple | None = None
+    for topic in kb.topics():
+        if (topic.category, topic.levels, topic.unit) != (category, levels, unit):
+            continue
+        score = similarity(dict(topic.terms), vector)
+        if score < kb.settings.topic_similarity:
+            continue
+        seen = any(a.value == claim.value for a in topic.answers)
+        key = (score, seen, topic.total_calls, topic.topic_id)
+        if best is None or key > best[0]:
+            best = (key, topic)
+    return best[1] if best else None
+
+
+def score_call(
+    company_id: str, call_id: str, claims: Sequence[FactClaim], kb: KnowledgeBase
+) -> CallScore:
+    """Check every value an agent gave in one call against the rules.
+
+    Each value counts once per topic, however often it was repeated. If the
+    call gave several values for one rule's topic (a list of prices, say), they
+    are marked ``several_values`` and not scored, the same way they don't vote
+    when learning.
+    """
+    if kb.company_id != company_id:
+        raise InvalidKnowledgeInput("a call can only be scored against its own company")
+    _check_claims(company_id, claims)
+    if any(c.call_id != call_id for c in claims):
+        raise InvalidKnowledgeInput("every claim must come from the call being scored")
+
+    by_topic: dict[str | None, dict[str, FactClaim]] = defaultdict(dict)
+    for claim in sorted(
+        claims, key=lambda c: (c.value, c.quote, tuple(sorted(c.subject)))
+    ):
+        topic = topic_of(claim, kb)
+        topic_id = topic.topic_id if topic else None
+        key = claim.value if topic else f"{claim.value}|{claim.quote}"
+        by_topic[topic_id].setdefault(key, claim)
+
+    checked = []
+    for topic_id, claims_by_value in sorted(
+        by_topic.items(), key=lambda kv: kv[0] or ""
+    ):
+        rule = kb.rule_for(topic_id) if topic_id else None
+        several = len(claims_by_value) > 1
+        for claim in claims_by_value.values():
+            if rule is None:
+                checked.append(CheckedClaim(claim, "no_rule", None, topic_id))
+            elif several:
+                checked.append(
+                    CheckedClaim(claim, "several_values", rule.value, topic_id)
+                )
+            else:
+                verdict = (
+                    "matches_rule" if claim.value == rule.value else "differs_from_rule"
+                )
+                checked.append(CheckedClaim(claim, verdict, rule.value, topic_id))
+    return CallScore(company_id, call_id, kb.version, tuple(checked))
