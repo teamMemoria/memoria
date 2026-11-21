@@ -17,6 +17,7 @@ from .errors import PipelineError
 from .evaluation import evaluate, render_markdown
 from .extraction import ModelExtractor, RuleExtractor, extract_drafts
 from .grouping import group_drafts
+from .inferred_cli import add_commands as add_inferred_commands
 from .llm import OpenAICompatibleClient
 from .pipeline import run_pipeline
 from .verification import check_drafts, load_reference_snapshot
@@ -225,6 +226,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--note", action="append", help="add a note to the report (repeatable)"
     )
     evaluation.set_defaults(func=cmd_evaluate)
+
+    add_inferred_commands(sub)
     return parser
 
 
