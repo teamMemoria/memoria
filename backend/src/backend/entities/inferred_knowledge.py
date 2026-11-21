@@ -248,3 +248,220 @@ def _check_claims(company_id: str, claims: Sequence[FactClaim]) -> None:
             raise InvalidKnowledgeInput(
                 "claims from another company cannot be mixed into this knowledge base"
             )
+
+
+# ---------------------------------------------------------------------- topics
+
+
+@dataclass
+class _Signature:
+    """Claims with the same scope, value and subject words, and their calls."""
+
+    value: str
+    subject: frozenset[str]
+    calls: set[str] = field(default_factory=set)
+    examples: set[str] = field(default_factory=set)
+
+    def sort_key(self) -> tuple:
+        return (-len(self.calls), self.value, tuple(sorted(self.subject)))
+
+
+def _signatures(claims: Sequence[FactClaim]) -> dict[tuple, list[_Signature]]:
+    by_key: dict[tuple, _Signature] = {}
+    for claim in claims:
+        key = (claim.scope, claim.value, claim.subject)
+        item = by_key.setdefault(key, _Signature(claim.value, claim.subject))
+        item.calls.add(claim.call_id)
+        item.examples.add(claim.quote)
+    by_scope: dict[tuple, list[_Signature]] = defaultdict(list)
+    for (scope, _, _), item in by_key.items():
+        by_scope[scope].append(item)
+    return by_scope
+
+
+def _cluster(items: list[_Signature], threshold: float) -> list[list[_Signature]]:
+    """Join signatures about the same thing.
+
+    Biggest first, each joins the most similar cluster at or above the
+    threshold. The visiting order is fixed by the data, so input order never
+    changes the result. The same value can end up in several topics.
+    """
+    clusters: list[tuple[Counter, list[_Signature]]] = []
+    for item in sorted(items, key=_Signature.sort_key):
+        vector = Counter(dict.fromkeys(item.subject, len(item.calls)))
+        best = None
+        for index, (terms, _) in enumerate(clusters):
+            score = similarity(terms, vector)
+            if score >= threshold and (best is None or score > best[0]):
+                best = (score, index)
+        if best is None:
+            clusters.append((vector, [item]))
+        else:
+            terms, members = clusters[best[1]]
+            terms.update(vector)
+            members.append(item)
+    # Second pass: a short sentence can miss a big cluster it belongs to, so
+    # merge whole clusters whose words are similar enough, most similar first.
+    while True:
+        best = None
+        for i in range(len(clusters)):
+            for j in range(i + 1, len(clusters)):
+                score = similarity(clusters[i][0], clusters[j][0])
+                if score >= threshold and (best is None or score > best[0]):
+                    best = (score, i, j)
+        if best is None:
+            break
+        _, i, j = best
+        clusters[i][0].update(clusters[j][0])
+        clusters[i][1].extend(clusters[j][1])
+        del clusters[j]
+    return [members for _, members in clusters]
+
+
+def _new_topic_id(scope: tuple, terms: Sequence[tuple[str, int]]) -> str:
+    category, levels, unit = scope
+    top = ",".join(sorted(term for term, _ in terms[:5]))
+    raw = f"{category}|{','.join(levels)}|{unit}|{top}"
+    return f"{category}:" + hashlib.sha256(raw.encode()).hexdigest()[:12]
+
+
+def _topic(scope: tuple, members: list[_Signature], topic_id: str = "") -> Topic:
+    terms = Counter()
+    values_by_call: dict[str, set[str]] = defaultdict(set)
+    examples: dict[str, set[str]] = defaultdict(set)
+    for item in members:
+        terms.update(dict.fromkeys(item.subject, len(item.calls)))
+        examples[item.value] |= item.examples
+        for call in item.calls:
+            values_by_call[call].add(item.value)
+    votes = Counter(next(iter(v)) for v in values_by_call.values() if len(v) == 1)
+    answers = tuple(
+        Answer(value, count, min(examples[value]))
+        for value, count in sorted(votes.items(), key=lambda kv: (-kv[1], kv[0]))
+    )
+    ordered_terms = tuple(sorted(terms.items(), key=lambda t: (-t[1], t[0])))
+    category, levels, unit = scope
+    return Topic(
+        topic_id=topic_id or _new_topic_id(scope, ordered_terms),
+        category=category,
+        levels=levels,
+        unit=unit,
+        terms=ordered_terms,
+        answers=answers,
+        total_calls=len(values_by_call),
+        unclear_calls=sum(1 for v in values_by_call.values() if len(v) > 1),
+    )
+
+
+def _keep_ids(
+    topics: list[Topic], previous: KnowledgeBase | None, threshold: float
+) -> list[Topic]:
+    """Give each topic the id it had in the previous version, if it is the same topic.
+
+    Ids must survive relearning, or managers' changes would be lost the moment
+    the majority answer flips. A new topic takes the id of the most similar
+    earlier topic in the same scope, one to one.
+    """
+    old = list(previous.topics()) if previous else []
+    pairs = []
+    for i, topic in enumerate(topics):
+        for j, before in enumerate(old):
+            if (topic.category, topic.levels, topic.unit) != (
+                before.category,
+                before.levels,
+                before.unit,
+            ):
+                continue
+            score = similarity(dict(topic.terms), dict(before.terms))
+            if score >= threshold:
+                pairs.append((-score, topic.topic_id, before.topic_id, i, j))
+    renamed: dict[int, str] = {}
+    used_old: set[int] = set()
+    for _, _, _, i, j in sorted(pairs):
+        if i not in renamed and j not in used_old:
+            renamed[i] = old[j].topic_id
+            used_old.add(j)
+    taken = set(renamed.values())
+    result = []
+    for i, topic in enumerate(topics):
+        topic_id = renamed.get(i, topic.topic_id)
+        if i not in renamed:
+            base, n = topic_id, 2
+            while topic_id in taken:
+                topic_id, n = f"{base}-{n}", n + 1
+        taken.add(topic_id)
+        result.append(replace(topic, topic_id=topic_id))
+    return result
+
+
+def find_topics(
+    claims: Sequence[FactClaim],
+    settings: InferenceSettings,
+    previous: KnowledgeBase | None = None,
+) -> list[Topic]:
+    topics = []
+    for scope, items in sorted(_signatures(claims).items()):
+        for members in _cluster(items, settings.topic_similarity):
+            topics.append(_topic(scope, members))
+    return _keep_ids(topics, previous, settings.topic_similarity)
+
+
+# ---------------------------------------------------------------------- policy
+
+
+def decide(topic: Topic, settings: InferenceSettings) -> Rule | Conflict | None:
+    """The Layer 2 policy for one topic.
+
+    * Fewer than ``min_calls`` calls: nothing is decided yet.
+    * One value given in at least ``agreement_share`` of the calls: a rule.
+    * Otherwise, two or more values each given in ``conflict_calls`` calls or
+      more: a common conflict, for a manager to review.
+    * Otherwise nothing is decided yet.
+    """
+    if topic.total_calls < settings.min_calls or not topic.answers:
+        return None
+    answers = sorted(topic.answers, key=lambda a: (-a.calls, a.value))
+    top = answers[0]
+    if top.calls / topic.total_calls >= settings.agreement_share:
+        return Rule(topic, top.value, top.calls)
+    if sum(1 for a in answers if a.calls >= settings.conflict_calls) >= 2:
+        return Conflict(topic)
+    return None
+
+
+def build_knowledge_base(
+    company_id: str,
+    claims: Sequence[FactClaim],
+    settings: InferenceSettings | None = None,
+    previous: KnowledgeBase | None = None,
+) -> KnowledgeBase:
+    """Learn rules and conflicts for one company from all of its claims.
+
+    Pass the previous version so topics keep their ids; the version number
+    then goes up by one.
+    """
+    settings = settings or InferenceSettings()
+    claims = list(claims)
+    _check_claims(company_id, claims)
+    if previous is not None and previous.company_id != company_id:
+        raise InvalidKnowledgeInput(
+            "the previous knowledge base belongs to another company"
+        )
+    rules, conflicts, undecided = [], [], []
+    for topic in find_topics(claims, settings, previous):
+        outcome = decide(topic, settings)
+        if isinstance(outcome, Rule):
+            rules.append(outcome)
+        elif isinstance(outcome, Conflict):
+            conflicts.append(outcome)
+        else:
+            undecided.append(topic)
+    return KnowledgeBase(
+        company_id=company_id,
+        version=previous.version + 1 if previous else 1,
+        calls_with_values=len({c.call_id for c in claims}),
+        rules=tuple(rules),
+        conflicts=tuple(conflicts),
+        undecided=tuple(undecided),
+        settings=settings,
+    )
