@@ -14,7 +14,8 @@ Code lives in `src/backend/services/knowledge/`.
 | Group drafts and find duplicates | #17 | `group_drafts` | done |
 | Find possible knowledge conflicts | #18 | `find_conflicts` | done |
 | Check drafts against approved sources | #19 | `check_drafts` | done |
-| Test the knowledge pipeline | #20 | `run_pipeline`, `release_checks`, `evaluate` | this PR |
+| Test the knowledge pipeline | #20 | `run_pipeline`, `release_checks`, `evaluate` | done |
+| Inferred knowledge (Layer 2) | | `infer`, `score`, `override`, `evaluate-inferred` | this PR |
 
 ## Running it
 
@@ -615,3 +616,164 @@ A second independent review found more, fixed with regression tests in
   now a `model_output_invalid` failure. Malformed input (bad JSON, a lone
   surrogate, a malformed reference or conflicts file) is a typed error, not a
   crash.
+
+## Inferred knowledge (Layer 2)
+
+Calls get scored against two layers. Layer 1 is a fixed set of generic checks
+that works for any company from day one. Layer 2 is learned from each
+company's own audited calls, so it needs no documents from the company and
+gets better the more calls come in. This section is Layer 2.
+
+It only learns facts that carry a value: time limits, prices, amounts,
+percentages and counts ("promo codes last 7 days", "gift wrapping is $4.99").
+That is the information an agent can get wrong in a way we can check.
+
+### How it works
+
+1. **Claims.** Each call goes through the #16 extractor as before (personal
+   details removed, agent answer sentences picked). Every value the agent
+   states becomes one claim: its call, its category (the ABCD subflow), the
+   value ("7 days", "4.99 usd"), any membership levels named next to it, and
+   the words saying what the value is about. Only agent speech is used.
+   Recorded system actions are left out on purpose, because in ABCD they are
+   the guideline steps and learning from them would be reading the answer key.
+2. **Topics.** Claims about the same thing are one topic: same category, same
+   membership levels, same unit, and similar subject words. "Codes are valid
+   for 7 days" and "promotional codes last one week" end up in the same topic.
+   "20% off" never joins a topic about days, and "7 days" can be the answer to
+   two different topics in one category. A call that gives several values for
+   one topic (a list of prices, say) counts towards the topic but votes for
+   none of them, since we can't tell which value goes with what.
+3. **The 70% rule.** Once a topic has at least 10 calls, a value given in 70%
+   or more of them becomes a rule straight away. Nobody has to approve it.
+4. **Conflicts.** If no value reaches 70% but two or more values are each
+   given in 5 or more calls, the topic goes to a manager as a conflict. If a
+   rule did form, the minority answers are just scored as wrong and don't go
+   to anyone. Anything else stays undecided until more calls come in.
+5. **Manager changes.** A manager can set a topic's value (which also settles
+   a conflict) or remove a rule. The value has to be in the topic's unit, and
+   the topic has to exist. Changes are kept separately and applied after every
+   relearn, and topics keep their ids from one version to the next (matched by
+   their words), so a change still applies after agents start following it and
+   the majority flips. The latest change for a topic wins. A change whose topic
+   has disappeared is kept and listed under `unmatched_overrides`.
+6. **Scoring a call.** Each value the agent gave is matched to the topic it is
+   about (by its words; the value only breaks ties) and marked
+   `matches_rule`, `differs_from_rule` or `no_rule`. Several values for one
+   rule's topic are marked `several_values` and not scored. A repeated value
+   counts once. The call's score is matches divided by matches plus
+   differences, or no score if the call didn't touch any rule.
+
+The thresholds are the ones already in `Settings`: `KNOWLEDGE_DRAFT_THRESHOLD`
+(10) is the minimum calls for a topic, and the conflict threshold (half of it,
+so 5) is how many calls each answer needs to count as a common conflict. The
+70% share and the topic similarity (0.3) are in `InferenceSettings`.
+
+The knowledge base is rebuilt from all claims every time rather than updated
+in place, so counts can't drift and running it twice gives the same result.
+A run where no call gave a value fails instead of replacing the saved
+knowledge base. Knowledge bases never mix across companies.
+
+### Where the code is
+
+It follows the same layers as the rest of the backend:
+
+| Layer | File | What it does |
+|---|---|---|
+| Entities | `entities/inferred_knowledge.py` | Claims, topics, rules, conflicts, the 70% policy, overrides, scoring. Plain Python, no I/O |
+| Use cases | `use_cases/inferred_knowledge.py` | `InferKnowledgeBase`, `RecordOverride` and `ScoreCall`, which only see a `ClaimSource` and a `KnowledgeBaseStore` |
+| Adapter | `services/knowledge/fact_claims.py` | Turns #16 drafts into claims. The only code that reads text |
+| Adapter | `services/knowledge/knowledge_base_files.py` | JSON store and (de)serialisation. A database store can replace it later |
+| Edge | `services/knowledge/inferred_cli.py` | Commands, and wiring the use cases to the file adapters |
+| Edge | `services/knowledge/inferred_evaluation.py` | The hidden-guidelines test |
+
+### Running it
+
+The test needs the full ABCD file (about 10,000 calls). Our repo only has 100
+of them, which is too few for any topic to reach 10 calls. Download
+`data/abcd_v1.1.json.gz` from https://github.com/asappresearch/abcd (MIT)
+and keep it outside the repo.
+
+```bash
+cd backend
+uv run python -m backend.services.knowledge infer /path/to/abcd_v1.1.json.gz --company acme --store /tmp/kb
+uv run python -m backend.services.knowledge score some-call.json --company acme --store /tmp/kb
+uv run python -m backend.services.knowledge override --company acme --store /tmp/kb --topic <topic_id> --value "7 days" --by <name> --reason "..."
+uv run python -m backend.services.knowledge evaluate-inferred --abcd /path/to/abcd_v1.1.json.gz
+```
+
+`infer` reads the `train` split of the ABCD file by default (`--split` to
+change it), or conversation files and folders like the other commands. The
+knowledge base goes to `<store>/<company>.json` and manager changes to
+`<store>/<company>.overrides.json`. Writes are atomic, but there is no locking,
+so two people recording changes at the same moment could lose one. `infer`
+and `score` exit with 1 and list the conversations they couldn't read.
+
+### Hidden-guidelines test
+
+`evaluate-inferred` learns from the ABCD `train` calls with the guidelines
+hidden. Afterwards it compares the rules with the guideline passages that
+state a value, which are the answer key. Results are in
+`results/knowledge/inferred-eval.{json,md}`.
+
+On the full ABCD set (8,034 train calls, 1,004 test calls):
+
+| Train calls | Rules | Conflicts | Precision | Recall | Recall of values agents said |
+|---|---|---|---|---|---|
+| 500 | 0 | 0 | n/a | 0% | 0% |
+| 1,000 | 0 | 0 | n/a | 0% | 0% |
+| 2,000 | 5 | 2 | 100% | 5% | 6% |
+| 4,000 | 14 | 4 | 71% | 13% | 16% |
+| 8,034 | 26 | 8 | 80% | 21% | 25% |
+
+- 26 rules at the end. 10 of them are in categories the guidelines give values
+  for, and 8 of those 10 match (the 2 misses are "due in 3 days", which is
+  about one customer's account). The other 16 are FAQ answers like "gift
+  wrapping is $4.99" and "silver members can return within 6 months", which
+  read right but have nothing to check against.
+- 8 conflicts for a manager. Most are customer-specific amounts (amount due,
+  refund totals) and return windows where the agent didn't say the level.
+- Held out: 54 of the 1,004 test calls gave a value that a rule covers. 56 of
+  those values matched the rule and 2 didn't, so the average call score is 97%.
+
+How to read these numbers:
+
+- Precision only covers categories the guidelines give values for. The FAQ
+  guidelines (pricing, policy, membership, product questions) only say how to
+  look an answer up, not the answer, so rules learned there have no answer
+  key. They are listed in the report so a person can read them.
+- Recall can't reach 100%. Some guideline values are never said out loud (for
+  example "ask for 3 out of 7 items"). The second recall figure only counts
+  values agents said at least once.
+- Matching is on category and value, which is a simple check. The report lists
+  each rule with the passage it matched.
+- If a rule names membership levels, the matching passage has to name them
+  too. A rule with no levels can match any passage with its value.
+- The test always uses the default thresholds (10 and 5), so the results don't
+  depend on anyone's local `.env`.
+- The topic similarity (0.3) was picked by looking at output from the train
+  calls. Neither the test calls nor the guidelines were used to pick it.
+
+### Limitations
+
+- **Common isn't the same as correct.** If most agents give the same wrong
+  answer, it becomes a rule. A manager can change it, but nobody is asked to.
+- **No conditions beyond membership levels.** Answers that depend on something
+  else (the refund method, whether there's a receipt, the customer's account)
+  can look like a conflict. The return-window topics show this: the agent
+  doesn't always say the customer's level, so 30 and 90 days look split.
+- **Customer-specific values look like facts.** An amount due or a refund total
+  is about one customer, not a policy. In ABCD the same few amounts repeat, so
+  some of them become rules or conflicts.
+- **Lists don't count.** A sentence like "Bronze is $500, Silver $1000 and
+  Gold $2000" gives several values for one topic, so it doesn't vote. Pairing
+  each value with the level next to it would fix this.
+- **Only values.** Facts without a number ("guests can't get a new code") and
+  procedure steps aren't learned. Neither is step order or communication style.
+- **Units are compared as written.** "6 months" and "180 days" are different
+  topics.
+- **ABCD is friendlier than real calls.** Its agents were crowd workers
+  following one guideline document, so they agree more than real agents would.
+  ABCD also has no agent ids, so the 70% is a share of calls, not of agents.
+- **No database or API yet.** Everything runs on JSON files through the
+  command line, like the rest of the pipeline.
