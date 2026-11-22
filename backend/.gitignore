@@ -9,6 +9,5 @@ wheels/
 # Virtual environments
 .venv
 
-# Full ABCD dataset files (download them, never commit them)
-abcd_v1.1.json*
-guidelines.json
+# ABCD dataset files, downloaded by the Layer 2 test
+.abcd/

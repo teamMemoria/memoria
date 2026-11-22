@@ -202,12 +202,14 @@ For now it only learns facts with a value, like "promo codes last 7 days" or
 Code: `entities/inferred_knowledge.py`, `use_cases/inferred_knowledge.py`,
 `data/value_claims.py`.
 
-To test it with the guidelines hidden, download `abcd_v1.1.json.gz` and
-`guidelines.json` from https://github.com/asappresearch/abcd (`data/`), then:
+To test it with the guidelines hidden:
 
 ```bash
-uv run python -m backend.data.layer2_evaluation abcd_v1.1.json.gz guidelines.json
+uv run python -m backend.data.layer2_evaluation
 ```
+
+The first run downloads the ABCD dataset from its GitHub (about 37 MB) into
+`backend/.abcd/`, which git ignores.
 
 It learns from the 8,034 train calls, then checks each rule against the
 guideline text for the same flow. Results go to `results/layer2-eval.md`.
