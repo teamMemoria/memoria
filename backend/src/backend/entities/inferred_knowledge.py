@@ -125,3 +125,33 @@ def learn(claims: list[Claim], s: Settings = DEFAULT) -> list[Topic]:
             if merged:
                 break
     return topics
+
+
+def topic_of(claim: Claim, topics: list[Topic], s: Settings = DEFAULT) -> Topic | None:
+    """The most similar topic in the claim's scope, if it's similar enough."""
+    words = Counter(claim.subject)
+    candidates = [t for t in topics if t.scope == claim.scope]
+    best = max(candidates, key=lambda t: similarity(t.words, words), default=None)
+    return best if best and similarity(best.words, words) >= s.similarity else None
+
+
+def score_call(claims: list[Claim], topics: list[Topic], s: Settings = DEFAULT) -> dict:
+    """Count how many values in one call match or differ from a rule.
+
+    A repeated value counts once. Several values for one rule are not scored.
+    """
+    said: dict[int, set[str]] = defaultdict(set)
+    rules: dict[int, Topic] = {}
+    for c in claims:
+        topic = topic_of(c, topics, s)
+        if topic and topic.decide(s) == "rule":
+            said[id(topic)].add(c.value)
+            rules[id(topic)] = topic
+    matches = sum(v == {rules[k].rule} for k, v in said.items())
+    differs = sum(len(v) == 1 and v != {rules[k].rule} for k, v in said.items())
+    covered = matches + differs
+    return {
+        "matches": matches,
+        "differs": differs,
+        "score": matches / covered if covered else None,
+    }
