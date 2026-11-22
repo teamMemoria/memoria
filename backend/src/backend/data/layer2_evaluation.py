@@ -6,16 +6,16 @@ guideline in the same flow gives the same value (and names its membership
 levels, if it has any). Also shows the rules growing as calls are added, and
 scores the held-out test calls.
 
-    uv run python -m backend.data.layer2_evaluation abcd_v1.1.json.gz guidelines.json
+    uv run python -m backend.data.layer2_evaluation
 
-Both files are in https://github.com/asappresearch/abcd (data/). Don't commit
-them.
+The ABCD files are downloaded from its GitHub the first time and kept in
+backend/.abcd/, which git ignores.
 """
 
-import argparse
 import gzip
 import json
 import re
+import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
@@ -23,7 +23,21 @@ from backend.data.value_claims import LEVELS, claims, values
 from backend.entities.inferred_knowledge import Claim, Settings, Topic, score_call
 from backend.use_cases.inferred_knowledge import LearnRules
 
-OUT = Path(__file__).resolve().parents[3] / "results" / "layer2-eval.md"
+BACKEND = Path(__file__).resolve().parents[3]
+OUT = BACKEND / "results" / "layer2-eval.md"
+CACHE = BACKEND / ".abcd"
+# A fixed version of https://github.com/asappresearch/abcd (MIT licence).
+ABCD = "https://raw.githubusercontent.com/asappresearch/abcd/6b8700ce67c6b37b062dd7a60abc76d7ef832a97/data/"
+
+
+def fetch(name: str) -> Path:
+    """An ABCD data file, downloaded the first time it's needed."""
+    path = CACHE / name
+    if not path.exists():
+        CACHE.mkdir(exist_ok=True)
+        urllib.request.urlretrieve(ABCD + name, path.with_suffix(".part"))
+        path.with_suffix(".part").rename(path)
+    return path
 
 
 class Calls:
@@ -129,13 +143,9 @@ def evaluate(dump: dict, guidelines: dict, sizes=(500, 1000, 2000, 4000)) -> str
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("abcd", type=Path, help="abcd_v1.1.json.gz")
-    parser.add_argument("guidelines", type=Path, help="guidelines.json")
-    args = parser.parse_args()
-    with gzip.open(args.abcd, "rt") as f:
+    with gzip.open(fetch("abcd_v1.1.json.gz"), "rt") as f:
         dump = json.load(f)
-    report = evaluate(dump, json.loads(args.guidelines.read_text()))
+    report = evaluate(dump, json.loads(fetch("guidelines.json").read_text()))
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(report)
     print(report)

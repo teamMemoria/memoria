@@ -2,6 +2,7 @@
 
 import random
 
+import backend.data.layer2_evaluation as evaluation
 from backend.data.layer2_evaluation import answer_key, evaluate
 from backend.data.value_claims import claims, values
 from backend.entities.inferred_knowledge import Claim, Settings, learn, score_call
@@ -147,3 +148,17 @@ def test_hidden_guidelines_evaluation():
     assert (
         "| 10 | 1 | 0 | 1 | 1 |" in report and "0 rules matched, 1 differed" in report
     )
+
+
+def test_abcd_files_are_downloaded_once(tmp_path, monkeypatch):
+    downloads = []
+
+    def download(url, path):
+        downloads.append(url)
+        path.write_text("{}")
+
+    monkeypatch.setattr(evaluation, "CACHE", tmp_path)
+    monkeypatch.setattr(evaluation.urllib.request, "urlretrieve", download)
+    assert evaluation.fetch("guidelines.json").read_text() == "{}"
+    evaluation.fetch("guidelines.json")
+    assert downloads == [evaluation.ABCD + "guidelines.json"]
