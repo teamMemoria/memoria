@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Full ABCD dataset files (download them, never commit them)
+abcd_v1.1.json*
+guidelines.json
