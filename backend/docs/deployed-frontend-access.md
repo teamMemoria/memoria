@@ -32,10 +32,10 @@ The merged frontend deployment (#162) uses these **Netlify build variables**:
 
 | Variable | Value |
 | --- | --- |
-| `VITE_API_BASE_URL` | The Railway API's public HTTPS base URL, without `/api` |
+| `VITE_API_BASE_URL` | `https://intelligent-charisma-production-c9fa1e31.up.railway.app` (without `/api`) |
 | `VITE_DEMO_LOGIN` | `true` (already configured on Netlify by Rayaan) |
 
-Set `VITE_API_BASE_URL` once the Railway HTTPS URL is available, then redeploy
+Set `VITE_API_BASE_URL` to the Railway HTTPS URL above, then redeploy
 the frontend so Vite embeds that URL. The frontend build and demo-login switch
 are owned by #162; this ticket supplies the backend access configuration.
 
@@ -47,7 +47,7 @@ the configured origin. Vite embeds these values at build time.
 
 ## Hosted verification
 
-1. Record the Railway API URL below and configure the frontend build with it.
+1. Configure the frontend build with the Railway API URL below.
 2. Check a preflight from that origin to `/api/agent/conversations` with
    `Access-Control-Request-Method: GET` and
    `Access-Control-Request-Headers: x-dev-user`. Check a JSON `POST` preflight
@@ -61,6 +61,6 @@ the configured origin. Vite embeds these values at build time.
 | Item | Value |
 | --- | --- |
 | Frontend origin | `https://memoria-ftl.netlify.app` (confirmed by Rayaan, November 18) |
-| Railway API URL | Pending #157 |
+| Railway API URL | `https://intelligent-charisma-production-c9fa1e31.up.railway.app` (`/health` and `/ready` returned HTTP 200 on November 21) |
 | Seeded profiles and conversation handoff | Pending Derek / #158 |
 | Hosted browser and preflight checks | Pending deployment |
