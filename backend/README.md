@@ -180,3 +180,39 @@ The full suite verifies foreign-key index coverage in the migrated schema and
 runs unforced `EXPLAIN ANALYZE` plans on synthetic conversations/audits/knowledge.
 See [the captured query plans](docs/query-plans.md) for data sizes, timings,
 planner limitations, and the scratch-only reproduction command.
+
+## Layer 2: rules learned from calls
+
+Calls are scored against two layers. Layer 1 is our fixed set of generic
+checks. Layer 2 learns each company's facts from its own calls, so it needs no
+documents from the company and gets better as more calls come in.
+
+For now it only learns facts with a value, like "promo codes last 7 days" or
+"gift wrapping is $4.99":
+
+- Every value an agent says is a claim. ABCD's recorded actions are skipped
+  because they mirror the guidelines. Customer details are masked.
+- Claims in the same category with the same membership levels and unit, and
+  similar words, are one topic.
+- Once a topic has 10+ calls, a value given in 70%+ of them is a rule. If
+  nothing gets to 70% but two values each have 5+ calls, it's a conflict for
+  a manager. A call that lists several values for one topic doesn't vote.
+- Scoring a call checks its values against the rules.
+
+Code: `entities/inferred_knowledge.py`, `use_cases/inferred_knowledge.py`,
+`data/value_claims.py`.
+
+To test it with the guidelines hidden, download `abcd_v1.1.json.gz` and
+`guidelines.json` from https://github.com/asappresearch/abcd (`data/`), then:
+
+```bash
+uv run python -m backend.data.layer2_evaluation abcd_v1.1.json.gz guidelines.json
+```
+
+It learns from the 8,034 train calls, then checks each rule against the
+guideline text for the same flow. Results go to `results/layer2-eval.md`.
+
+Limitations: a wrong answer most agents give becomes a rule; answers that
+depend on something other than the membership level can show up as
+conflicts; customer-specific amounts can look like policy; and only values are
+learned. Rules aren't stored in the database or shown in the app yet.
