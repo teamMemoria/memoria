@@ -69,7 +69,7 @@ class Block(importlib.abc.MetaPathFinder):
             raise RuntimeError(fullname)
 sys.meta_path.insert(0, Block())
 for name in ['entities.assessments', 'entities.scoring', 'entities.knowledge',
-             'entities.knowledge_import', 'use_cases.assessments', 'use_cases.assessment_runs', 'use_cases.record_review_decision', 'use_cases.knowledge']:
+             'entities.knowledge_import', 'entities.inferred_knowledge', 'use_cases.assessments', 'use_cases.assessment_runs', 'use_cases.record_review_decision', 'use_cases.knowledge', 'use_cases.inferred_knowledge']:
     importlib.import_module('backend.' + name)
 from backend.use_cases.record_review_decision import ReviewDecisionInput, validate_review_decision
 try:

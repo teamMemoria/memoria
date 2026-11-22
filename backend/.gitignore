@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# ABCD dataset files, downloaded by the Layer 2 test
+.abcd/
