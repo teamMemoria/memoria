@@ -3,8 +3,7 @@
 Learns rules from the ABCD train calls without the guidelines, then checks
 them against the guideline text afterwards: a rule counts as right if a
 guideline in the same flow gives the same value (and names its membership
-levels, if it has any). Also shows the rules growing as calls are added, and
-scores the held-out test calls.
+levels, if it has any). Also shows the rules growing as calls are added.
 
     uv run python -m backend.data.layer2_evaluation
 
@@ -20,7 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from backend.data.value_claims import LEVELS, claims, values
-from backend.entities.inferred_knowledge import Claim, Settings, Topic, score_call
+from backend.entities.inferred_knowledge import Claim, Settings, Topic
 from backend.use_cases.inferred_knowledge import LearnRules
 
 BACKEND = Path(__file__).resolve().parents[3]
@@ -102,17 +101,7 @@ def evaluate(dump: dict, guidelines: dict, sizes=(500, 1000, 2000, 4000)) -> str
             f"| {n} | {len(rules)} | {len(conflicts)} | {len(checkable)} | {right} |"
         )
 
-    scores = [score_call(claims(r), topics) for r in dump["test"]]
-    matches, differs = (
-        sum(s["matches"] for s in scores),
-        sum(s["differs"] for s in scores),
-    )
     lines += [
-        "",
-        (
-            f"Held out: {len(dump['test'])} test calls, {matches} rules matched, "
-            f"{differs} differed."
-        ),
         "",
         "## Rules",
         "",

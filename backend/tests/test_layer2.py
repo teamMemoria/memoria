@@ -1,11 +1,11 @@
-"""Layer 2: the 70% rule, conflicts, scoring and reading values from calls."""
+"""Layer 2: the 70% rule, conflicts and reading values from calls."""
 
 import random
 
 import backend.data.layer2_evaluation as evaluation
 from backend.data.layer2_evaluation import answer_key, evaluate
 from backend.data.value_claims import claims, values
-from backend.entities.inferred_knowledge import Claim, Settings, learn, score_call
+from backend.entities.inferred_knowledge import Claim, Settings, learn
 
 SCOPE = ("promo_code_invalid", (), "days")
 PROMO = frozenset({"promo", "cod", "valid"})
@@ -80,16 +80,6 @@ def test_order_of_claims_does_not_matter():
     assert outcomes(shuffled) == outcomes(claims_)
 
 
-def test_scoring_a_call():
-    topics = learn(calls(["7 days"] * 10) + calls(["5 days"] * 10, 100, REFUND))
-    said = [Claim("x", SCOPE, "7 days", PROMO), Claim("x", SCOPE, "9 days", REFUND)]
-    assert score_call(said, topics) == {"matches": 1, "differs": 1, "score": 0.5}
-    several = [Claim("x", SCOPE, "7 days", PROMO), Claim("x", SCOPE, "30 days", PROMO)]
-    assert score_call(several, topics)["score"] is None
-    unrelated = [Claim("x", SCOPE, "30 days", frozenset({"shoe", "warranty"}))]
-    assert score_call(unrelated, topics)["score"] is None
-
-
 def test_reading_values():
     assert values("Promo codes last one week.") == ["7 days"]
     assert values("Gift wrapping is $4.99, or $5.00 for two.") == ["4.99 usd", "5 usd"]
@@ -129,10 +119,7 @@ def test_only_masked_agent_speech_is_read():
 
 
 def test_hidden_guidelines_evaluation():
-    dump = {
-        "train": [abcd_call(n, "Promo codes only last 7 days.") for n in range(10)],
-        "test": [abcd_call(99, "Promo codes only last 30 days.")],
-    }
+    dump = {"train": [abcd_call(n, "Promo codes only last 7 days.") for n in range(10)]}
     guidelines = {
         "Purchase Dispute": {
             "subflows": {
@@ -145,9 +132,7 @@ def test_hidden_guidelines_evaluation():
     }
     assert answer_key(guidelines) == {"purchase_dispute": [("7 days", set())]}
     report = evaluate(dump, guidelines, sizes=())
-    assert (
-        "| 10 | 1 | 0 | 1 | 1 |" in report and "0 rules matched, 1 differed" in report
-    )
+    assert "| 10 | 1 | 0 | 1 | 1 |" in report
 
 
 def test_abcd_files_are_downloaded_once(tmp_path, monkeypatch):
