@@ -1,0 +1,37 @@
+{
+  "id": "SYN-H07",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H07",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "customer_record": {},
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hi, how can I help?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "nevermind, it's working now, sorry!"
+    },
+    {
+      "n": 3,
+      "speaker": "agent",
+      "text": "No problem, have a great day!"
+    }
+  ],
+  "source_fields": {
+    "flow": "troubleshoot_site",
+    "subflow": "slow_speed",
+    "actions_taken": []
+  },
+  "split": "heldout",
+  "note": "Held-out. Nothing reusable."
+}

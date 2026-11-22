@@ -1,0 +1,81 @@
+{
+  "label_set": "grouping",
+  "split": "heldout",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "Held-out: labels were written from the conversations and the ABCD guidelines before the pipeline was run on these cases. Do not tune thresholds or rules on them; report results only. A second team member should review before these count as human-labelled.",
+  "contamination_note": "The rule extractor's wording rules were developed while reading extractor output over all 100 curated ABCD records, including these test-split ones, so ABCD held-out scores are optimistic. The SYN-H conversations were written after all rules were fixed.",
+  "cases": [
+    {
+      "name": "held-out refund timing",
+      "conversations": [
+        "SYN-H03",
+        "SYN-H04",
+        "SYN-H05"
+      ],
+      "same_group": [
+        [
+          "SYN-H03",
+          "SYN-H04"
+        ]
+      ],
+      "different_group": [
+        [
+          "SYN-H03",
+          "SYN-H05"
+        ]
+      ],
+      "not_duplicates": [
+        [
+          "SYN-H03",
+          "SYN-H04"
+        ]
+      ]
+    },
+    {
+      "name": "held-out extensions by level",
+      "conversations": [
+        "SYN-H06",
+        "SYN-H08",
+        "SYN-H09"
+      ],
+      "different_group": [
+        [
+          "SYN-H06",
+          "SYN-H08"
+        ],
+        [
+          "SYN-H08",
+          "SYN-H09"
+        ]
+      ]
+    },
+    {
+      "name": "held-out ABCD search troubleshooting",
+      "conversations": [
+        "ABCD-0094",
+        "ABCD-0096"
+      ],
+      "same_group": [
+        [
+          "ABCD-0094",
+          "ABCD-0096"
+        ]
+      ]
+    },
+    {
+      "name": "held-out ABCD password reset",
+      "conversations": [
+        "ABCD-0003",
+        "ABCD-0006"
+      ],
+      "same_group": [
+        [
+          "ABCD-0003",
+          "ABCD-0006"
+        ]
+      ]
+    }
+  ]
+}

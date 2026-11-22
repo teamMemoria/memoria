@@ -1,0 +1,55 @@
+{
+  "id": "SYN-H06",
+  "source": {
+    "dataset": "SYNTHETIC",
+    "original_id": "SYN-H06",
+    "licence": "MIT (this repository)",
+    "url": "",
+    "citation": "Made-up conversation written for tests. Not real call data."
+  },
+  "customer_record": {},
+  "modifications": [],
+  "channel": "chat",
+  "turns": [
+    {
+      "n": 1,
+      "speaker": "agent",
+      "text": "Hello, how can I help you?"
+    },
+    {
+      "n": 2,
+      "speaker": "customer",
+      "text": "I can't pay my subscription this month, can I get an extension? I'm a bronze member."
+    },
+    {
+      "n": 3,
+      "speaker": "system_action",
+      "text": "Membership level of bronze has been noted."
+    },
+    {
+      "n": 4,
+      "speaker": "agent",
+      "text": "Yes, bronze members can get an extension on their subscription."
+    },
+    {
+      "n": 5,
+      "speaker": "system_action",
+      "text": "Account has been updated with extend subscription."
+    },
+    {
+      "n": 6,
+      "speaker": "customer",
+      "text": "Thank you so much!"
+    }
+  ],
+  "source_fields": {
+    "flow": "subscription_inquiry",
+    "subflow": "manage_extension",
+    "actions_taken": [
+      "membership",
+      "update-account"
+    ]
+  },
+  "split": "heldout",
+  "note": "Held-out. Contradicts the guideline: bronze members cannot get an extension."
+}

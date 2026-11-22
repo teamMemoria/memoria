@@ -1,0 +1,31 @@
+{
+  "company_id": "acme",
+  "conversation_files": [
+    "tests/knowledge/conversations/SYN-G01.json",
+    "tests/knowledge/conversations/SYN-G02.json",
+    "tests/knowledge/conversations/SYN-G03.json",
+    "tests/knowledge/conversations/SYN-G04.json",
+    "tests/knowledge/conversations/SYN-G05.json",
+    "tests/knowledge/conversations/SYN-G06.json",
+    "tests/knowledge/conversations/SYN-G08.json",
+    "tests/knowledge/conversations/SYN-G09.json"
+  ],
+  "existing_entries": [
+    {
+      "entry_id": "kb-promo-validity",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "status": "approved",
+      "version": "2",
+      "question": "How long is a promo code valid?",
+      "answer": "Promo codes are valid for 7 days after they are issued.",
+      "conditions": [
+        "valid for 7 days"
+      ]
+    }
+  ],
+  "note": "Drafts come from extracting the listed made-up conversations. Shows a duplicate, a paraphrase, a similar-but-different question, conditional answers that must not merge, and an existing-entry match."
+}

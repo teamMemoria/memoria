@@ -1,0 +1,1041 @@
+{
+  "company_id": "acme",
+  "as_of": "2026-10-22",
+  "conversation_files": [
+    "tests/knowledge/conversations/SYN-0006.json",
+    "data/abcd/conversations/ABCD-0046.json",
+    "tests/knowledge/conversations/SYN-0004.json"
+  ],
+  "references": [
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a1",
+      "text": "Get Full Name or Account ID for [Pull up Account]",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Pull up Account",
+        "type": "interaction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2",
+      "text": "Typically promotions only last 7 days so check if the code was issued a long time ago.   That might be the reason it doesn’t work.",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "N/A",
+        "type": "communication"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.1",
+      "text": "If the promo code is more than 7 days, then the correct subflow is 'out of date', otherwise, the correct subflow is 'invalid'",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a2",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "N/A",
+        "type": "communication"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a2.2",
+      "text": "Both flows follow the same instructions below.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a2",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "N/A",
+        "type": "communication"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3",
+      "text": "To decide whether or not this is a valid error:",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Ask the Oracle",
+        "type": "kb query"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.1",
+      "text": "Tell the customer you will check your system about this problem.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a3",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Ask the Oracle",
+        "type": "kb query"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.2",
+      "text": "Then [Ask the Oracle] if the customer made an error, which will return Yes or No",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a3",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Ask the Oracle",
+        "type": "kb query"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.3",
+      "text": "Make sure to explain the result in natural language.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a3",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Ask the Oracle",
+        "type": "kb query"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a3.4",
+      "text": "If the customer is right (Oracle says Yes), skip to the Promo Code step below",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a3",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Ask the Oracle",
+        "type": "kb query"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4",
+      "text": "If the customer is wrong (Oracle says No), then:",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Membership Privileges",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.1",
+      "text": "Ask the customer for their membership level.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a4",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Membership Privileges",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.2",
+      "text": "Enter the member level (even if just a Guest) into [Membership Privileges] and submit.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a4",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Membership Privileges",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.3",
+      "text": "Gold, Silver and Bronze all qualify. > The idea here is that even if their promo code is not valid for whatever reason, we will generate a new one for them because they are a valued member.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a4",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Membership Privileges",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a4.4",
+      "text": "Guest > If they are just a regular user, then apologize that you cannot help them because there is nothing you can do",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a4",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Membership Privileges",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5",
+      "text": "Generate the promo code and share that with them",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Promo Code",
+        "type": "interaction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.1",
+      "text": "No need to enter anything into the form.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a5",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Promo Code",
+        "type": "interaction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.2",
+      "text": "Click on [Promo Code]",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a5",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Promo Code",
+        "type": "interaction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#a5.3",
+      "text": "If the customer asks, you can say it is for 20% off their next purchase.",
+      "parent": "abcd:purchase_dispute/promo_code_invalid#a5",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": "Promo Code",
+        "type": "interaction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#i1",
+      "text": "The customer is complaining about a promo code that is considered invalid.  Keep this reason in mind later for filling out the survey.",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": null,
+        "type": "instruction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:purchase_dispute/promo_code_invalid#i2",
+      "text": "Explain what you did in natural language.",
+      "parent": null,
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "guideline": {
+        "flow": "Purchase Dispute",
+        "subflow": "Promo Code Invalid",
+        "button": null,
+        "type": "instruction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a1",
+      "text": "When you realize that the customer is asking something that can be found in the FAQ, click the [Search FAQ] button",
+      "parent": null,
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Search FAQ",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a1.1",
+      "text": "This will swap out for a different view that has FAQ content",
+      "parent": "abcd:storewide_query/policy_faq#a1",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Search FAQ",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a1.2",
+      "text": "If you made an error, just click [Hide FAQ] to switch back",
+      "parent": "abcd:storewide_query/policy_faq#a1",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Search FAQ",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a2",
+      "text": "Decide which kind of question the customer is asking about:",
+      "parent": null,
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Policy",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a2.1",
+      "text": "Possible options are Pricing, Timing, Membership and Policies",
+      "parent": "abcd:storewide_query/policy_faq#a2",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Policy",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a2.2",
+      "text": "Click the policy toggle switch",
+      "parent": "abcd:storewide_query/policy_faq#a2",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Policy",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a2.3",
+      "text": "This will record an action, so try to get this decision correct.",
+      "parent": "abcd:storewide_query/policy_faq#a2",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Policy",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a2.4",
+      "text": "The flow diagram allows you to see all the questions at once.",
+      "parent": "abcd:storewide_query/policy_faq#a2",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Policy",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a3",
+      "text": "Read through the list of 4 options",
+      "parent": null,
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Select Answer",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a3.1",
+      "text": "Click [Select Answer] for the correct answer to the customer’s question",
+      "parent": "abcd:storewide_query/policy_faq#a3",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Select Answer",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a3.2",
+      "text": "Remember the category for the survey later",
+      "parent": "abcd:storewide_query/policy_faq#a3",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "Select Answer",
+        "type": "faq/policy"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a4",
+      "text": "The automated system response does not include all the information, so make sure to explain the details in natural language.",
+      "parent": null,
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "N/A",
+        "type": "communication"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#a4.1",
+      "text": "You should not copy/paste",
+      "parent": "abcd:storewide_query/policy_faq#a4",
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": "N/A",
+        "type": "communication"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#i1",
+      "text": "The main effort is in figuring out which question the customer is asking:",
+      "parent": null,
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": null,
+        "type": "instruction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    },
+    {
+      "reference_id": "abcd:storewide_query/policy_faq#i2",
+      "text": "Canceling subscriptions, Late on a subscription payment, Refund policy, Return policy",
+      "parent": null,
+      "scope": {
+        "flow": "storewide_query",
+        "subflow_prefix": "policy_"
+      },
+      "guideline": {
+        "flow": "Storewide Query",
+        "subflow": "Policy FAQ",
+        "button": null,
+        "type": "instruction"
+      },
+      "version": "abcd-guidelines@6b8700ce67c6",
+      "approval": {
+        "status": "approved",
+        "approved_by": "example-reviewer",
+        "approved_at": "2026-10-01"
+      },
+      "eligibility": {
+        "status": "eligible",
+        "valid_until": null,
+        "reason": null
+      },
+      "company_id": "acme",
+      "kind": "authoritative_reference",
+      "snapshot_id": "abcd-guidelines@6b8700ce67c6"
+    }
+  ],
+  "existing_entries": [
+    {
+      "entry_id": "kb-promo-validity",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "status": "approved",
+      "version": "2",
+      "question": "How long is a promo code valid?",
+      "answer": "Promo codes are valid for 7 days after they are issued."
+    }
+  ],
+  "note": "Backend handoff example. The backend sends this payload (conversations inline; here they are listed by file to keep ABCD records in data/abcd). EXAMPLE ONLY: the promo-code and policy-FAQ guideline passages are marked approved by a made-up reviewer. Output: one supported draft, one contradicted draft, one unverifiable draft; approval stays with an authorized person."
+}

@@ -1,0 +1,612 @@
+{
+  "schema": "knowledge-evaluation/1",
+  "split": "dev",
+  "extractor": {
+    "name": "rule-extractor",
+    "version": "1"
+  },
+  "human_judgements": {
+    "extraction": {
+      "cases": 24,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    },
+    "grouping": {
+      "cases": 5,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    },
+    "conflicts": {
+      "cases": 16,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    },
+    "verification": {
+      "cases": 11,
+      "labelled_by": "ritvikagg",
+      "human_reviewed": false
+    }
+  },
+  "extraction": {
+    "cases": 24,
+    "draft_decision_accuracy": 1.0,
+    "answer_phrase_recall": 1.0,
+    "condition_phrase_recall": 1.0,
+    "faithfulness_exact_citation_rate": 1.0,
+    "privacy_errors": 0,
+    "technical_failures": 0,
+    "details": [
+      {
+        "conversation": "data/abcd/conversations/ABCD-0002.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0004.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0009.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0020.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0040.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0033.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0041.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0042.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0044.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0046.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0048.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0049.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0050.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0072.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0084.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0085.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0090.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "data/abcd/conversations/ABCD-0092.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/SYN-0001.json",
+        "expected": "no_draft",
+        "got": "no_draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/SYN-0002.json",
+        "expected": "no_draft",
+        "got": "no_draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/SYN-0003.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/SYN-0004.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/SYN-0005.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      },
+      {
+        "conversation": "tests/knowledge/conversations/SYN-0006.json",
+        "expected": "draft",
+        "got": "draft",
+        "missed_answer_phrases": [],
+        "missed_condition_phrases": [],
+        "privacy_errors": [],
+        "citation_problems": [],
+        "passed": true
+      }
+    ]
+  },
+  "grouping": {
+    "cases": 5,
+    "same_group_recall": 1.0,
+    "different_group_accuracy": 1.0,
+    "duplicate_recall": 1.0,
+    "paraphrase_not_duplicate_accuracy": 1.0,
+    "labelled_pairs": 17,
+    "details": [
+      {
+        "name": "paraphrases, duplicates and similar-but-different questions",
+        "passed": true,
+        "problems": []
+      },
+      {
+        "name": "conditional answers",
+        "passed": true,
+        "problems": []
+      },
+      {
+        "name": "different scope",
+        "passed": true,
+        "problems": []
+      },
+      {
+        "name": "ABCD out-of-stock back orders",
+        "passed": true,
+        "problems": []
+      },
+      {
+        "name": "ABCD promo codes under different conditions",
+        "passed": true,
+        "problems": []
+      }
+    ]
+  },
+  "conflicts": {
+    "cases": 16,
+    "accuracy": 1.0,
+    "missed_conflicts": 0,
+    "false_alarms": 0,
+    "details": [
+      {
+        "a": "SYN-G01",
+        "b": "SYN-G09",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "SYN-G01",
+        "b": "SYN-G03",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "SYN-G01",
+        "b": "SYN-G04",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "SYN-G01",
+        "b": "SYN-C05",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "SYN-G01",
+        "b": "SYN-C04",
+        "expected": "unresolved",
+        "got": "unresolved",
+        "passed": true
+      },
+      {
+        "a": "SYN-G05",
+        "b": "SYN-G06",
+        "expected": "explained",
+        "got": "explained",
+        "passed": true
+      },
+      {
+        "a": "SYN-G06",
+        "b": "SYN-G08",
+        "expected": "explained",
+        "got": "explained",
+        "passed": true
+      },
+      {
+        "a": "SYN-0005",
+        "b": "SYN-G06",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "SYN-0005",
+        "b": "SYN-0006",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "ABCD-0041",
+        "b": "ABCD-0046",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "ABCD-0041",
+        "b": "ABCD-0044",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "SYN-0004",
+        "b": "SYN-C01",
+        "expected": "conflict",
+        "got": "conflict",
+        "passed": true
+      },
+      {
+        "a": "SYN-0004",
+        "b": "SYN-C02",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "SYN-0004",
+        "b": "SYN-C03",
+        "expected": "explained",
+        "got": "explained",
+        "passed": true
+      },
+      {
+        "a": "ABCD-0055",
+        "b": "ABCD-0060",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      },
+      {
+        "a": "ABCD-0079",
+        "b": "ABCD-0080",
+        "expected": "none",
+        "got": "none",
+        "passed": true
+      }
+    ]
+  },
+  "verification": {
+    "cases": 11,
+    "status_accuracy": 1.0,
+    "unsupported_verified": 0,
+    "confusion": [
+      {
+        "expected": "contradicted",
+        "got": "contradicted",
+        "count": 3
+      },
+      {
+        "expected": "partially_supported",
+        "got": "partially_supported",
+        "count": 3
+      },
+      {
+        "expected": "supported",
+        "got": "supported",
+        "count": 2
+      },
+      {
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "count": 3
+      }
+    ],
+    "details": [
+      {
+        "conversation": "SYN-0006",
+        "expected": "supported",
+        "got": "supported",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0044",
+        "expected": "supported",
+        "got": "supported",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-0005",
+        "expected": "contradicted",
+        "got": "contradicted",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0046",
+        "expected": "contradicted",
+        "got": "contradicted",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0004",
+        "expected": "contradicted",
+        "got": "contradicted",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0033",
+        "expected": "partially_supported",
+        "got": "partially_supported",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0031",
+        "expected": "partially_supported",
+        "got": "partially_supported",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0041",
+        "expected": "partially_supported",
+        "got": "partially_supported",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-0004",
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "passed": true
+      },
+      {
+        "conversation": "SYN-0003",
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "passed": true
+      },
+      {
+        "conversation": "ABCD-0072",
+        "expected": "unverifiable",
+        "got": "unverifiable",
+        "passed": true
+      }
+    ]
+  },
+  "pipeline_run": {
+    "conversations": 58,
+    "counts": {
+      "conversations": 58,
+      "technical_failures": 0,
+      "no_draft": 2,
+      "drafts": 44,
+      "groups": 32,
+      "possible_conflicts": 11,
+      "unresolved_conflicts": 6,
+      "verification": {
+        "contradicted": 6,
+        "partially_supported": 19,
+        "supported": 8,
+        "unverifiable": 11
+      }
+    },
+    "technical_failures": [],
+    "missing_verification": 11,
+    "timings_ms": {
+      "extraction_ms": 152.88,
+      "grouping_ms": 36.65,
+      "conflicts_ms": 28.67,
+      "verification_ms": 526.66,
+      "total_ms": 745.02
+    },
+    "ms_per_conversation": 12.85,
+    "model_usage": {
+      "model": null,
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0
+    }
+  },
+  "release_checks": {
+    "release_allowed": true,
+    "checks": [
+      {
+        "check": "no_fabricated_citations",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_unsupported_verified_claims",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "no_personal_data_leaks",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "ml_approves_nothing",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "matches_a_fresh_run",
+        "passed": true,
+        "blocks_release": true,
+        "problems": []
+      },
+      {
+        "check": "repeat_processing",
+        "passed": true,
+        "problems": [],
+        "blocks_release": true
+      }
+    ]
+  },
+  "evaluation_seconds": 22.72,
+  "notes": [
+    "Verification is measured against an in-memory copy of the ABCD guideline snapshot marked approved for evaluation only; the committed snapshot is unreviewed and verifies nothing.",
+    "Labels are first-pass and have not had a second person's review (human_reviewed: false).",
+    "Technical failures (invalid input, model errors) are counted separately from drafts that are merely unverifiable for lack of a reference."
+  ]
+}

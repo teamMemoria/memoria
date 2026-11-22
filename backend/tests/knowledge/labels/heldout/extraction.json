@@ -1,0 +1,184 @@
+{
+  "label_set": "extraction",
+  "split": "heldout",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "Held-out: labels were written from the conversations and the ABCD guidelines before the pipeline was run on these cases. Do not tune thresholds or rules on them; report results only. A second team member should review before these count as human-labelled.",
+  "contamination_note": "The rule extractor's wording rules were developed while reading extractor output over all 100 curated ABCD records, including these test-split ones, so ABCD held-out scores are optimistic. The SYN-H conversations were written after all rules were fixed.",
+  "cases": [
+    {
+      "conversation": "data/abcd/conversations/ABCD-0003.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "either your PIN or the answer to your security question"
+      ],
+      "must_not_include": [
+        "joycewu5",
+        "2qn8hu24nf5",
+        "Livingston",
+        "Joyce",
+        "Wu"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0006.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "generate a new one"
+      ],
+      "must_not_include": [
+        "albertsanders958",
+        "761920",
+        "6qwgznj4c07",
+        "Albert",
+        "Sanders"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0013.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "three of your zip code"
+      ],
+      "must_not_include": [
+        "405-3539",
+        "514585",
+        "davidw93",
+        "80055",
+        "David",
+        "Williams"
+      ],
+      "note": "The reusable part is the identity check (three of zip, PIN, username, password, email)."
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0054.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "shipping fee has been refunded"
+      ],
+      "must_not_include": [
+        "jb676597",
+        "4114517459",
+        "Joseph",
+        "Banter"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0061.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "washed around once a week"
+      ],
+      "conditions_must_include": [
+        "two or three times a week"
+      ],
+      "must_not_include": [
+        "Joyce"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0062.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "back-order"
+      ],
+      "must_not_include": [
+        "Norman",
+        "Bouchard"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0067.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "polyester, nylon and tricot"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0088.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "access all this info online"
+      ],
+      "must_not_include": [
+        "E0ZYJXLBGX",
+        "4205439943",
+        "rdomingo1",
+        "Rodriguez",
+        "Domingo"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0094.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "More Details",
+        "logging out of your account"
+      ]
+    },
+    {
+      "conversation": "data/abcd/conversations/ABCD-0096.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "Prada Handbag"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/heldout/SYN-H01.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "marked as delivered by mistake",
+        "ship you a new order"
+      ],
+      "conditions_must_include": [
+        "less than a week",
+        "after 7 days"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/heldout/SYN-H02.json",
+      "expect": "no_draft",
+      "must_not_include": [
+        "Siobhan",
+        "O'Neill",
+        "SIOBHAN.ONEILL",
+        "555-0147",
+        "O'Brien",
+        "43016",
+        "Apt 4B"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/heldout/SYN-H03.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "within 5 business days"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/heldout/SYN-H06.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "bronze members can get an extension"
+      ],
+      "conditions_must_include": [
+        "bronze"
+      ]
+    },
+    {
+      "conversation": "tests/knowledge/conversations/heldout/SYN-H07.json",
+      "expect": "no_draft"
+    },
+    {
+      "conversation": "tests/knowledge/conversations/heldout/SYN-H09.json",
+      "expect": "draft",
+      "answer_must_include": [
+        "bronze members cannot get an extension"
+      ],
+      "conditions_must_include": [
+        "bronze"
+      ]
+    }
+  ]
+}

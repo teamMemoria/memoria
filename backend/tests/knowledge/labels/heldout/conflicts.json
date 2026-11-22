@@ -1,0 +1,44 @@
+{
+  "label_set": "conflicts",
+  "split": "heldout",
+  "version": 1,
+  "labelled_by": "ritvikagg",
+  "human_reviewed": false,
+  "review_note": "Held-out: labels were written from the conversations and the ABCD guidelines before the pipeline was run on these cases. Do not tune thresholds or rules on them; report results only. A second team member should review before these count as human-labelled.",
+  "contamination_note": "The rule extractor's wording rules were developed while reading extractor output over all 100 curated ABCD records, including these test-split ones, so ABCD held-out scores are optimistic. The SYN-H conversations were written after all rules were fixed.",
+  "cases": [
+    {
+      "a": "SYN-H03",
+      "b": "SYN-H05",
+      "expect": "conflict",
+      "kind": "value"
+    },
+    {
+      "a": "SYN-H03",
+      "b": "SYN-H04",
+      "expect": "none"
+    },
+    {
+      "a": "SYN-H06",
+      "b": "SYN-H09",
+      "expect": "conflict",
+      "kind": "eligibility"
+    },
+    {
+      "a": "SYN-H06",
+      "b": "SYN-H08",
+      "expect": "none",
+      "note": "Both say a level can get an extension; they are about different levels."
+    },
+    {
+      "a": "ABCD-0094",
+      "b": "ABCD-0096",
+      "expect": "none"
+    },
+    {
+      "a": "ABCD-0003",
+      "b": "ABCD-0006",
+      "expect": "none"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "company_id": "acme",
+  "conversation_files": [
+    "data/abcd/conversations/ABCD-0041.json",
+    "data/abcd/conversations/ABCD-0046.json",
+    "tests/knowledge/conversations/SYN-G01.json",
+    "tests/knowledge/conversations/SYN-G05.json",
+    "tests/knowledge/conversations/SYN-G06.json",
+    "tests/knowledge/conversations/SYN-C04.json"
+  ],
+  "existing_entries": [
+    {
+      "entry_id": "kb-promo-validity",
+      "company_id": "acme",
+      "scope": {
+        "flow": "purchase_dispute",
+        "subflow": "promo_code_invalid"
+      },
+      "status": "approved",
+      "version": "2",
+      "question": "How long is a promo code valid?",
+      "answer": "Promo codes are valid for 30 days after they are issued."
+    }
+  ],
+  "note": "Groups are computed first and attached. Shows an eligibility conflict between two real ABCD chats, a value conflict with an existing approved entry, a hedged (unresolved) figure, and a members-vs-guests difference explained by conditions."
+}
