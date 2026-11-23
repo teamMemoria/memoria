@@ -1,4 +1,4 @@
-"""Learn a company's Layer 2 rules from its calls."""
+"""Infer Layer 2 knowledge candidates from company calls."""
 
 from typing import Protocol
 
@@ -9,7 +9,7 @@ class ClaimSource(Protocol):
     def claims(self) -> list[Claim]: ...
 
 
-class LearnRules:
+class InferCandidates:
     def __init__(self, source: ClaimSource, settings: Settings = DEFAULT):
         self.source = source
         self.settings = settings

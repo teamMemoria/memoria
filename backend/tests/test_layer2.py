@@ -1,11 +1,11 @@
-"""Layer 2: the 70% rule, conflicts, scoring and reading values from calls."""
+"""Layer 2: candidate thresholds, conflicts and reading values from calls."""
 
 import random
 
 import backend.data.layer2_evaluation as evaluation
 from backend.data.layer2_evaluation import answer_key, evaluate
 from backend.data.value_claims import claims, values
-from backend.entities.inferred_knowledge import Claim, Settings, learn, score_call
+from backend.entities.inferred_knowledge import Claim, Settings, learn
 
 SCOPE = ("promo_code_invalid", (), "days")
 PROMO = frozenset({"promo", "cod", "valid"})
@@ -18,12 +18,15 @@ def calls(said, start=0, subject=PROMO, scope=SCOPE):
 
 def outcomes(claims_):
     return sorted(
-        (t.decide(Settings()), t.rule if t.votes() else None) for t in learn(claims_)
+        (t.decide(Settings()), t.votes()[0][0] if t.votes() else None)
+        for t in learn(claims_)
     )
 
 
-def test_70_percent_agreement_makes_a_rule():
-    assert outcomes(calls(["7 days"] * 7 + ["30 days"] * 3)) == [("rule", "7 days")]
+def test_70_percent_agreement_makes_a_candidate():
+    assert outcomes(calls(["7 days"] * 7 + ["30 days"] * 3)) == [
+        ("candidate", "7 days")
+    ]
 
 
 def test_a_common_split_is_a_conflict_but_a_rare_one_is_not():
@@ -35,8 +38,10 @@ def test_a_common_split_is_a_conflict_but_a_rare_one_is_not():
     ]
 
 
-def test_minority_answers_dont_make_a_conflict_once_there_is_a_rule():
-    assert outcomes(calls(["7 days"] * 15 + ["30 days"] * 5)) == [("rule", "7 days")]
+def test_minority_answers_dont_make_a_conflict_once_there_is_a_candidate():
+    assert outcomes(calls(["7 days"] * 15 + ["30 days"] * 5)) == [
+        ("candidate", "7 days")
+    ]
 
 
 def test_nothing_is_decided_under_10_calls():
@@ -57,9 +62,9 @@ def test_same_value_can_answer_different_questions_and_scopes_stay_apart():
     refunds = calls(["7 days"] * 10, 100, REFUND) + calls(["5 days"] * 10, 200, REFUND)
     gold = calls(["30 days"] * 10, 300, scope=("promo_code_invalid", ("gold",), "days"))
     assert outcomes(calls(["7 days"] * 10) + refunds + gold) == [
+        ("candidate", "30 days"),
+        ("candidate", "7 days"),
         ("conflict", "5 days"),
-        ("rule", "30 days"),
-        ("rule", "7 days"),
     ]
 
 
@@ -78,16 +83,6 @@ def test_order_of_claims_does_not_matter():
     )
     shuffled = random.Random(1).sample(claims_, len(claims_))
     assert outcomes(shuffled) == outcomes(claims_)
-
-
-def test_scoring_a_call():
-    topics = learn(calls(["7 days"] * 10) + calls(["5 days"] * 10, 100, REFUND))
-    said = [Claim("x", SCOPE, "7 days", PROMO), Claim("x", SCOPE, "9 days", REFUND)]
-    assert score_call(said, topics) == {"matches": 1, "differs": 1, "score": 0.5}
-    several = [Claim("x", SCOPE, "7 days", PROMO), Claim("x", SCOPE, "30 days", PROMO)]
-    assert score_call(several, topics)["score"] is None
-    unrelated = [Claim("x", SCOPE, "30 days", frozenset({"shoe", "warranty"}))]
-    assert score_call(unrelated, topics)["score"] is None
 
 
 def test_reading_values():
@@ -131,7 +126,6 @@ def test_only_masked_agent_speech_is_read():
 def test_hidden_guidelines_evaluation():
     dump = {
         "train": [abcd_call(n, "Promo codes only last 7 days.") for n in range(10)],
-        "test": [abcd_call(99, "Promo codes only last 30 days.")],
     }
     guidelines = {
         "Purchase Dispute": {
@@ -145,9 +139,8 @@ def test_hidden_guidelines_evaluation():
     }
     assert answer_key(guidelines) == {"purchase_dispute": [("7 days", set())]}
     report = evaluate(dump, guidelines, sizes=())
-    assert (
-        "| 10 | 1 | 0 | 1 | 1 |" in report and "0 rules matched, 1 differed" in report
-    )
+    assert "| 10 | 1 | 0 | 1 | 1 |" in report
+    assert "## Unapproved candidates" in report
 
 
 def test_abcd_files_are_downloaded_once(tmp_path, monkeypatch):
