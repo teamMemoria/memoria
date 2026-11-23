@@ -13,7 +13,7 @@ DraftQueueStatus = Literal["all", "draft", "approved", "rejected"]
 class ConversationPassage(ApiModel):
     conversation_id: str
     turn_number: int
-    speaker: Literal["Agent", "Customer"]
+    speaker: Literal["Agent", "Customer", "System action"]
     text: str
     # Where the quote came from, so a reviewer can check it against the source.
     role: Literal["question", "answer", "condition"]
@@ -31,6 +31,13 @@ class KnowledgeDecision(ApiModel):
 class VerificationReference(ApiModel):
     title: str
     url: str
+
+
+class AttachVerificationInput(VerificationReference):
+    version: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1, max_length=200)
+    url: str = Field(min_length=1, max_length=2000)
+    quote: str = Field(min_length=1, max_length=500)
 
 
 class PossibleConflict(ApiModel):
@@ -55,6 +62,8 @@ class KnowledgeDraft(KnowledgeEntry):
     updated_at: str
     passages: list[ConversationPassage]
     verification_reference: VerificationReference | None
+    can_attach_verification: bool = False
+    authored_policy_version: str | None = None
     decision: KnowledgeDecision | None
     question: str | None
     # Distinct stored conversations behind this draft's group, counted once each.
@@ -93,3 +102,4 @@ class KnowledgeDecisionInput(ApiModel):
     version: str = Field(min_length=1, max_length=100)
     verified_reference_url: str | None = Field(default=None, max_length=2000)
     reason: str | None = Field(default=None, max_length=4000)
+    authored_policy_version: str | None = Field(default=None, max_length=100)

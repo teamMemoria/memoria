@@ -19,6 +19,7 @@ from backend.schemas import (
     Viewer,
 )
 from backend.schemas.knowledge_review import (
+    AttachVerificationInput,
     DraftQueueStatus,
     KnowledgeDecisionInput,
     KnowledgeDraft,
@@ -170,6 +171,14 @@ class KnowledgeReviewProvider(Protocol):
     async def get_for_approver(
         self, organization_id: str, user_id: str, draft_id: str
     ) -> KnowledgeReviewDetail | None: ...
+
+    async def attach_verification(
+        self,
+        organization_id: str,
+        user_id: str,
+        draft_id: str,
+        reference: AttachVerificationInput,
+    ) -> KnowledgeDraft: ...
 
     async def decide(
         self,

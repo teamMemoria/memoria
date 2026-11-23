@@ -1,0 +1,86 @@
+{
+  "version": "memoria-layer1-gap-policies-v1",
+  "origin": "Memoria-authored",
+  "status": "pending-review",
+  "applies_to": "Future Memoria conversations and explicitly synthetic demos after approval",
+  "historical_abcd_scoring": false,
+  "publisher_context": {
+    "guidelines": "https://github.com/asappresearch/abcd/blob/6b8700ce67c6b37b062dd7a60abc76d7ef832a97/data/guidelines.json",
+    "action_map": "https://github.com/asappresearch/abcd/blob/6b8700ce67c6b37b062dd7a60abc76d7ef832a97/data/kb.json",
+    "faq_screenshot": "https://github.com/asappresearch/abcd/blob/6b8700ce67c6b37b062dd7a60abc76d7ef832a97/data/images/faq_screenshot.png",
+    "finding": "The public guidelines describe opening the FAQ, selecting a topic and explaining an answer. The action map lists action identifiers. The screenshot shows question choices. The recorded selected-answer IDs do not contain the answer text."
+  },
+  "policies": [
+    {
+      "id": "layer1-memoria-product-source-v1",
+      "title": "Product specifications, care and warranty",
+      "question": "How should an agent answer a product question when the FAQ lacks the detail?",
+      "answer": "Identify the product and variant. Use the matching product listing, manufacturer specification, care label or warranty terms. State which detail could not be confirmed and where the customer can verify it, or offer a specific follow-up through an available channel.",
+      "required_evidence": ["Exact product and variant", "Matching versioned specification, care label or warranty terms"],
+      "examples": ["219", "287", "635", "1488", "1734", "1846", "2464", "4042", "4132", "4216", "5304", "5926", "9876", "10583"],
+      "review_passages": [{"abcd_id": "219", "question_turn": 5, "response_turn": 6}]
+    },
+    {
+      "id": "layer1-memoria-inventory-source-v1",
+      "title": "Stock and restock answers",
+      "question": "How should an agent answer whether a specific size is in stock or coming back?",
+      "answer": "Check the requested product, size and colour in the inventory system. Give the current availability and distinguish an estimate from a confirmed restock date. If there is no confirmed date, say so and offer an available stock alert or alternative.",
+      "required_evidence": ["Variant-level availability", "Dated inventory or supplier record for any restock date"],
+      "examples": ["832", "5679", "6524"],
+      "review_passages": [{"abcd_id": "832", "question_turn": 4, "response_turn": 13}]
+    },
+    {
+      "id": "layer1-memoria-commercial-terms-v1",
+      "title": "Prices, promotions, delivery and paid options",
+      "question": "What must an agent check before quoting a price, promotion, delivery estimate or service fee?",
+      "answer": "Use the published terms or checkout quote that applies to the exact item, service, destination and time. Give the relevant eligibility conditions and say whether the amount or date is an estimate. If an official amount or date is unavailable, describe how to obtain a confirmed quote.",
+      "required_evidence": ["Published terms or a dated quote", "Eligible item, service and destination when applicable"],
+      "examples": ["336", "864", "4097", "5496", "6242", "7457", "7906", "8038", "8685"],
+      "review_passages": [{"abcd_id": "864", "question_turn": 8, "response_turn": 20}]
+    },
+    {
+      "id": "layer1-memoria-account-policy-v1",
+      "title": "Membership and account eligibility",
+      "question": "How should an agent explain membership qualification, account changes or payment restrictions?",
+      "answer": "Explain the current rule for the correct tier or account type. Use the relevant membership or account record before confirming a customer-specific entitlement. If verification is unavailable, explain the rule conditionally and state the next step.",
+      "required_evidence": ["Current policy and relevant tier", "Matching account state for any customer-specific entitlement"],
+      "examples": ["1512", "5792", "6553", "9359", "9970", "10054"],
+      "review_passages": [{"abcd_id": "5792", "question_turn": 3, "response_turn": 8}]
+    },
+    {
+      "id": "layer1-memoria-pending-actions-v1",
+      "title": "Pending verification, waivers and refunds",
+      "question": "How should an agent describe a requested action when a prerequisite is still pending?",
+      "answer": "Check each required prerequisite against the matching order or account. Describe a pending check as pending. Report a completed action only after the action record confirms the target and outcome. When a result is unavailable, explain what is still being checked and what happens next.",
+      "required_evidence": ["Matching order or account", "Explicit result for each required check", "Matching completion record for the action"],
+      "examples": ["1891", "9055"],
+      "review_passages": [{"abcd_id": "9055", "question_turn": 2, "response_turn": 36, "condition_turn": 23}]
+    }
+  ],
+  "synthetic_examples": [
+    {
+      "id": "DEMO-BOOT-001",
+      "scope": "synthetic-demo-only",
+      "kind": "faq-answer",
+      "question": "What materials are used in the boot?",
+      "answer": "The demo boot has a woven polyester upper and a rubber outsole."
+    },
+    {
+      "id": "DEMO-JACKET-001",
+      "scope": "synthetic-demo-only",
+      "kind": "faq-answer",
+      "question": "Is the jacket suitable for windy conditions?",
+      "answer": "The demo jacket is wind-resistant. A windproof rating is unavailable."
+    },
+    {
+      "id": "DEMO-ORDER-001",
+      "scope": "synthetic-demo-only",
+      "kind": "case-record",
+      "events": [
+        {"action": "validate_purchase", "result": "confirmed"},
+        {"action": "record_shipping_status", "result": "order_received"},
+        {"action": "waive_shipping_fee", "result": "completed"}
+      ]
+    }
+  ]
+}

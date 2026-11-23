@@ -4,6 +4,12 @@ import hashlib
 import json
 
 from backend.data.demo_profiles import profile_display_name
+from backend.entities.policies import (
+    EXTENSION_KEY,
+    FAQ_KEY,
+    GOLD_EXTENSION_KEY,
+    verification_source,
+)
 from backend.entities.results import DraftStatus, ReviewAction, Speaker
 from backend.interface_adapters.presenters.assessments import (
     SPEAKER_NAMES,
@@ -73,6 +79,7 @@ def draft_schema(
     distinct_conversations: int,
     conflicts: list[KnowledgeConflict],
     matches: list[KnowledgeDraftEntryMatch],
+    authored_policy_version: str | None = None,
 ) -> KnowledgeDraftSchema:
     passages = [
         ConversationPassage(
@@ -85,9 +92,8 @@ def draft_schema(
             source_version=passage.source_version,
         )
         for passage in sorted(draft.passages, key=lambda p: p.position)
-        # Recorded system actions are kept in the database but are not part
-        # of the frontend's passage type.
-        if passage.speaker != Speaker.SYSTEM_ACTION.value
+        if draft.source_key in {FAQ_KEY, EXTENSION_KEY, GOLD_EXTENSION_KEY}
+        or passage.speaker != Speaker.SYSTEM_ACTION.value
     ]
     return KnowledgeDraftSchema(
         id=str(draft.id),
@@ -115,7 +121,16 @@ def draft_schema(
         ),
         updated_at=iso_timestamp(draft.updated_at or draft.created_at),
         passages=passages,
-        verification_reference=draft.verification_reference,
+        verification_reference=(
+            {key: draft.verification_reference[key] for key in ("title", "url")}
+            if draft.verification_reference
+            else None
+        ),
+        can_attach_verification=(
+            draft.status is DraftStatus.PENDING
+            and verification_source(draft.source_key, draft.answer_text) is not None
+        ),
+        authored_policy_version=authored_policy_version,
         decision=_decision(draft),
         question=draft.question,
         distinct_conversation_count=distinct_conversations,

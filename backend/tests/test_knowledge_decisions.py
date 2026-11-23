@@ -2,11 +2,12 @@
 
 import httpx
 import pytest
-
 from backend.core.config import Settings
+from backend.entities.guidelines import GUIDELINE_URL, GUIDELINES, PROMO_AGE
 from backend.main import create_app
 from backend.models import DraftStatus, KnowledgeDraft
 from backend.providers.database import create_database_providers
+
 from tests.database_seed import ALEX, MAYA, NORTHWIND, RILEY, seed, sessions_for
 from tests.test_knowledge_import import draft_by_key, import_fixture
 
@@ -117,3 +118,89 @@ async def test_approval_persists_and_is_visible_to_agent_only_after_verification
     assert (
         await client.post(path + "/approve", headers={"X-Dev-User": MAYA}, json=body)
     ).status_code == 409
+
+
+async def test_authoritative_source_can_be_attached_and_approved(setup, session):
+    data, _, _, client = setup
+    guideline = GUIDELINES[PROMO_AGE]
+    draft = KnowledgeDraft(
+        organization_id=data.northwind.id,
+        topic_id=data.approved_entry.topic_id,
+        source_key=PROMO_AGE,
+        answer_text=guideline.answer,
+    )
+    session.add(draft)
+    await session.commit()
+    path = f"/api/manager/knowledge/drafts/{draft.id}"
+    headers = {"X-Dev-User": MAYA}
+    detail = (await client.get(path, headers=headers)).json()["entry"]
+    assert detail["canAttachVerification"] is True
+    body = {
+        "title": "ABCD publisher guideline",
+        "url": GUIDELINE_URL,
+        "quote": guideline.quote,
+        "version": detail["version"],
+    }
+    for invalid in (
+        {"url": "https://example.test/unrelated"},
+        {"quote": "This is not the publisher's quotation."},
+    ):
+        response = await client.put(
+            path + "/verification", headers=headers, json={**body, **invalid}
+        )
+        assert response.status_code == 409
+    await session.refresh(draft)
+    assert draft.verification_reference is None
+
+    response = await client.put(path + "/verification", headers=headers, json=body)
+    assert response.status_code == 200, response.text
+    attached = response.json()
+    assert attached["status"] == "draft"
+    assert attached["version"] != detail["version"]
+    assert attached["verificationReference"]["url"] == GUIDELINE_URL
+    response = await client.post(
+        path + "/approve",
+        headers=headers,
+        json={"version": attached["version"], "verifiedReferenceUrl": GUIDELINE_URL},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["canAttachVerification"] is False
+
+
+@pytest.mark.parametrize(
+    "source_key",
+    ["layer2-promo-days-7", "layer2-question-unverified", PROMO_AGE],
+)
+async def test_draft_without_matching_authority_cannot_attach_source(
+    setup, session, source_key
+):
+    data, _, _, client = setup
+    draft = KnowledgeDraft(
+        organization_id=data.northwind.id,
+        topic_id=data.approved_entry.topic_id,
+        source_key=source_key,
+        answer_text="Standard promo codes expire after 7 days.",
+    )
+    session.add(draft)
+    await session.commit()
+    path = f"/api/manager/knowledge/drafts/{draft.id}"
+    headers = {"X-Dev-User": MAYA}
+    detail = (await client.get(path, headers=headers)).json()["entry"]
+    assert detail["canAttachVerification"] is False
+    response = await client.put(
+        path + "/verification",
+        headers=headers,
+        json={
+            "title": "Unverified policy",
+            "url": GUIDELINE_URL
+            if source_key == PROMO_AGE
+            else "https://example.test/unrelated",
+            "quote": GUIDELINES[PROMO_AGE].quote
+            if source_key == PROMO_AGE
+            else draft.answer_text,
+            "version": detail["version"],
+        },
+    )
+    assert response.status_code == 409
+    await session.refresh(draft)
+    assert draft.verification_reference is None

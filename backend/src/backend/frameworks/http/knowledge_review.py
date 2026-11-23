@@ -19,6 +19,7 @@ from backend.providers import (
     RecordNotFoundError,
 )
 from backend.schemas.knowledge_review import (
+    AttachVerificationInput,
     DraftQueueStatus,
     KnowledgeDecisionInput,
     KnowledgeDraft,
@@ -117,6 +118,23 @@ async def import_pipeline_output(
         # The requester's organization has no stored records yet.
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(error)) from None
     return KnowledgeImportResult(**asdict(result))
+
+
+@router.put("/drafts/{draft_id}/verification", response_model=KnowledgeDraft)
+async def attach_verification(
+    draft_id: str,
+    body: AttachVerificationInput,
+    user: ApproverDep,
+    providers: ProvidersDep,
+):
+    try:
+        return await review_provider(providers).attach_verification(
+            user.organization_id, user.user_id, draft_id, body
+        )
+    except RecordNotFoundError:
+        raise HTTPException(404, "Knowledge draft not found") from None
+    except KnowledgeDecisionRejected as error:
+        raise HTTPException(409, str(error)) from None
 
 
 @router.post("/drafts/{draft_id}/approve", response_model=KnowledgeDraft)
