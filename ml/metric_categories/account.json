@@ -1,0 +1,32 @@
+{
+  "id": "account",
+  "title": "Account access and account details",
+  "supported_workflows": [
+    "recover-username",
+    "reset-password",
+    "lost-phone-access",
+    "change-account-address"
+  ],
+  "weights": {
+    "procedure": 45,
+    "completeness": 25,
+    "communication-style": 15,
+    "answer-support": 15
+  },
+  "required_reference_topics": [
+    "Approved recovery and account-change branches with interpretation limits.",
+    "Independent account-state/action records and supported recovery instructions."
+  ],
+  "check_conditions": {
+    "procedure.information": "Distinguish username recovery, password reset, lost-phone access and account-address changes. Establish only the identity prerequisites required by the eligible recovery/change branch; a supplied name is not successful verification.",
+    "procedure.actions": "Distinguish username recovery, password reset, lost-phone access and account-address changes. Perform the authorised recovery or account change with correct target/details; never infer permission to bypass identity checks. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Establish only the identity prerequisites required by the eligible recovery/change branch; a supplied name is not successful verification. Use the required validation-before-change relationships and honour current permission and corrections.",
+    "completeness": "Identify the actual access problem and any supported address correction. Address requested username, password, access or address help separately; do not activate an explicitly deferred request.",
+    "completeness.promises_next_steps": "Account for recovery/change completion, an explained eligible limit or a pending step. Explain customer login/reset/change steps and any actual remaining obligation.",
+    "communication-style": "Clearly distinguish usernames, passwords, links and old versus new account details.",
+    "answer-support": "Eligible recovery guidance and authoritative account/reset/update records; never the Agent assertion alone."
+  },
+  "additional_interpretation_limits": [
+    "Do not infer authority to bypass verification, collect unnecessary secrets or change security settings from an ambiguous guideline."
+  ]
+}

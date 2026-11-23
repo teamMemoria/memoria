@@ -1,0 +1,32 @@
+{
+  "id": "billing",
+  "title": "Unexpected charges and billing disputes",
+  "supported_workflows": [
+    "duplicate-charge",
+    "unrecognised-charge",
+    "unexpected-extra-item",
+    "unwanted-added-service"
+  ],
+  "weights": {
+    "procedure": 35,
+    "completeness": 25,
+    "communication-style": 10,
+    "answer-support": 30
+  },
+  "required_reference_topics": [
+    "Approved billing-dispute, investigation and correction/refund procedures.",
+    "Independent charge history, amounts, service additions/removals and transaction outcomes."
+  ],
+  "check_conditions": {
+    "procedure.information": "Identify the disputed charge or unwanted service without treating a complaint as verified fraud. Follow required identity, purchase, billing and service checks for the established dispute branch.",
+    "procedure.actions": "Identify the disputed charge or unwanted service without treating a complaint as verified fraud. Use the applicable investigation, correction, service-removal or refund process only when its conditions are supported. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Follow required identity, purchase, billing and service checks for the established dispute branch. Apply required investigation/action order and current permission for any refund or service change.",
+    "completeness": "Recognise each disputed charge/service and any conditional refund request. Address the discrepancy and each requested correction/refund separately.",
+    "completeness.promises_next_steps": "Account for each actual correction/refund or an eligible explained refusal; an assertion about billing is not independent proof. Explain genuine remaining discrepancies, investigation commitments and next steps.",
+    "communication-style": "Acknowledge the reported discrepancy and explain findings without unsupported accusations or dismissive wording.",
+    "answer-support": "Authoritative billing/transaction/service records plus eligible dispute and refund rules."
+  },
+  "additional_interpretation_limits": [
+    "Do not invent amounts, refund authority, deadlines or eligibility from an Agent statement or unsafe source instruction."
+  ]
+}

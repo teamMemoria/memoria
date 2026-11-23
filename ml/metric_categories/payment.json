@@ -1,0 +1,28 @@
+{
+  "id": "payment",
+  "title": "Payment methods and credit-card problems",
+  "supported_workflows": [
+    "rejected-card",
+    "change-payment-method",
+    "assisted-purchase-after-payment-failure"
+  ],
+  "weights": {
+    "procedure": 45,
+    "completeness": 20,
+    "communication-style": 10,
+    "answer-support": 25
+  },
+  "required_reference_topics": [
+    "Approved payment troubleshooting/change and purchase authorisation procedures.",
+    "Independent failure reasons, accepted methods, material amounts and transaction outcomes."
+  ],
+  "check_conditions": {
+    "procedure.information": "Distinguish a rejected payment, payment-method change and separately requested assisted purchase. Establish required order/payment state and any approved troubleshooting/verification prerequisites.",
+    "procedure.actions": "Distinguish a rejected payment, payment-method change and separately requested assisted purchase. Use the eligible troubleshooting or authorised payment/change/purchase action with correct target and supported values. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Establish required order/payment state and any approved troubleshooting/verification prerequisites. Apply explicit status/order requirements and permission before making a charge or purchase.",
+    "completeness": "Recognise the actual payment issue and any subsequent method change or purchase request. Address each failed attempt, requested change and authorised assisted purchase separately.",
+    "completeness.promises_next_steps": "Account for actual payment/change/purchase results; a retry suggestion is not proof of payment success. Explain actual pending transactions, supported alternatives and required customer steps.",
+    "communication-style": "Clearly distinguish troubleshooting, changing a method and charging the customer; do not request unnecessary sensitive data.",
+    "answer-support": "Eligible payment instructions and authoritative decline, order, payment-method and transaction records."
+  }
+}

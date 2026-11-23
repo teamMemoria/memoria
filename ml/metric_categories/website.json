@@ -1,0 +1,28 @@
+{
+  "id": "website",
+  "title": "Website and shopping-cart problems",
+  "supported_workflows": [
+    "slow-site",
+    "cart-not-updating",
+    "search-not-working"
+  ],
+  "weights": {
+    "procedure": 20,
+    "completeness": 40,
+    "communication-style": 25,
+    "answer-support": 15
+  },
+  "required_reference_topics": [
+    "Approved troubleshooting and escalation branches.",
+    "Independent technical explanations and incident/report results, where available."
+  ],
+  "check_conditions": {
+    "procedure.information": "Distinguish site slowness, cart failures, search problems and a separately supported stock issue. Use relevant reported symptoms, already-tried steps and results before the next procedure-dependent step.",
+    "procedure.actions": "Distinguish site slowness, cart failures, search problems and a separately supported stock issue. Follow applicable troubleshooting steps and conditional escalation; do not invent a required browser fix. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Use relevant reported symptoms, already-tried steps and results before the next procedure-dependent step. Respect any documented troubleshooting order and obtain permission for a separately requested purchase.",
+    "completeness": "Recognise the actual error and later changes to its description. Respond to each failed attempt and any separate stock or purchase question.",
+    "completeness.promises_next_steps": "Account for the fault as fixed, still present or unresolved using linked evidence; escalation is not proof of repair. Explain the actual remaining step or pending report and any supported follow-up.",
+    "communication-style": "Give one understandable troubleshooting instruction at a time where sequencing matters.",
+    "answer-support": "Approved troubleshooting guidance, documented service information and authoritative incident/report records."
+  }
+}

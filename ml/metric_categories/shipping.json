@@ -1,0 +1,31 @@
+{
+  "id": "shipping",
+  "title": "Shipping and delivery",
+  "supported_workflows": [
+    "delivery-status",
+    "missing-shipment",
+    "upgrade-shipping",
+    "postpone-delivery",
+    "shipping-fee",
+    "international-shipping"
+  ],
+  "weights": {
+    "procedure": 25,
+    "completeness": 35,
+    "communication-style": 15,
+    "answer-support": 25
+  },
+  "required_reference_topics": [
+    "Approved shipping/status/change/fee and geographic eligibility rules.",
+    "Independent delivery/status records and applicable shipping prices and timeframes."
+  ],
+  "check_conditions": {
+    "procedure.information": "Select tracking, missing-delivery, shipping-change or fee/benefit enquiry using the actual request and supported status. Check the required order, shipping state, membership or delivery conditions for the selected branch.",
+    "procedure.actions": "Select tracking, missing-delivery, shipping-change or fee/benefit enquiry using the actual request and supported status. Perform an authorised eligible shipping change, waiver, replacement shipment or escalation only when required by that branch. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Check the required order, shipping state, membership or delivery conditions for the selected branch. Apply explicit status restrictions, required order relationships and permission for any charge/change.",
+    "completeness": "Recognise status questions, non-receipt, requested shipping changes and later corrections separately. Address delivery questions, fees and requested changes without treating an estimate as a completed delivery.",
+    "completeness.promises_next_steps": "Account for each actual change or replacement; missing delivery confirmation remains unresolved. Explain actual customer steps, pending shipment work and supported expectations.",
+    "communication-style": "Distinguish delivery estimates, confirmed states, fees and customer choices.",
+    "answer-support": "Eligible shipping rules plus authoritative status, destination, price and shipment-change records."
+  }
+}

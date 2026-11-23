@@ -1,0 +1,36 @@
+{
+  "id": "pricing",
+  "title": "Prices, promotions and sale dates",
+  "supported_workflows": [
+    "product-price",
+    "price-drop-adjustment",
+    "competitor-price",
+    "promo-code-expiry",
+    "invalid-promo-code",
+    "gift-wrapping-price",
+    "personalisation-price",
+    "sale-or-collection-date"
+  ],
+  "weights": {
+    "procedure": 10,
+    "completeness": 25,
+    "communication-style": 20,
+    "answer-support": 45
+  },
+  "required_reference_topics": [
+    "Approved pricing, promotion, adjustment and escalation branches with conditions.",
+    "Independent amounts, units, expiry anchors, sale dates and code/adjustment facts."
+  ],
+  "check_conditions": {
+    "procedure.information": "Identify the exact product/offer/sale and whether the request is information, adjustment, replacement code or escalation. Check the required price, offer, expiry, membership, purchase and eligibility facts for the chosen branch.",
+    "procedure.actions": "Identify the exact product/offer/sale and whether the request is information, adjustment, replacement code or escalation. Use only the permitted adjustment, code creation or escalation action; an information enquiry alone requires no transaction. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Check the required price, offer, expiry, membership, purchase and eligibility facts for the chosen branch. Apply explicit conditions, action order and permission for any actual adjustment or transaction.",
+    "completeness": "Recognise each price, expiry, eligibility, exception, sale-date and later topic request. Address each question and any separately requested adjustment or Manager contact.",
+    "completeness.promises_next_steps": "Account for actual adjustment/code/escalation outcomes without assuming a promotion or refund was valid. Explain supported restrictions, genuine alternatives and actual remaining commitments.",
+    "communication-style": "Clearly distinguish quoted prices, conditional discounts, expiry and confirmed versus estimated sale dates.",
+    "answer-support": "Independent product/pricing/offer calendars, approved eligibility rules and adjustment/code/escalation records."
+  },
+  "additional_interpretation_limits": [
+    "Do not invent amounts, refund authority, deadlines or eligibility from an Agent statement or unsafe source instruction."
+  ]
+}

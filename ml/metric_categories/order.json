@@ -1,0 +1,29 @@
+{
+  "id": "order",
+  "title": "Order contents, changes and cancellations",
+  "supported_workflows": [
+    "confirm-order-contents",
+    "remove-order-item",
+    "cancel-order",
+    "change-order"
+  ],
+  "weights": {
+    "procedure": 35,
+    "completeness": 40,
+    "communication-style": 10,
+    "answer-support": 15
+  },
+  "required_reference_topics": [
+    "Approved order-content/change/cancellation branches and status restrictions.",
+    "Independent order contents, change payloads, charges and cancellation/refund outcomes."
+  ],
+  "check_conditions": {
+    "procedure.information": "Identify the correct order and current requested contents/change/cancellation, including corrected identifiers. Establish required identity, order/shipping state and eligibility conditions before a dependent change.",
+    "procedure.actions": "Identify the correct order and current requested contents/change/cancellation, including corrected identifiers. Perform the authorised eligible update, cancellation, return or refund branch with correct items/values. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Establish required identity, order/shipping state and eligibility conditions before a dependent change. Apply explicit order/status restrictions and honour current permission; no cancellation after an explicit withdrawal.",
+    "completeness": "Track every requested item, order-ID correction, change and withdrawal in context. Address each requested change and any separate return/refund question.",
+    "completeness.promises_next_steps": "Account for the current requested outcome; a withdrawn action is not still required and is not completed by withdrawal. Explain actual remaining return, refund or customer steps and supported pending commitments.",
+    "communication-style": "Make cancellation, return, replacement, refund and confirmed order contents easy to distinguish.",
+    "answer-support": "Authoritative order contents, status and update records plus applicable order-change/refund rules."
+  }
+}

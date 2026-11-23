@@ -1,0 +1,33 @@
+{
+  "id": "return",
+  "title": "Returns and initial refunds",
+  "supported_workflows": [
+    "return-policy-question",
+    "return-unwanted-item",
+    "return-size",
+    "return-colour",
+    "initiate-refund"
+  ],
+  "weights": {
+    "procedure": 35,
+    "completeness": 30,
+    "communication-style": 10,
+    "answer-support": 25
+  },
+  "required_reference_topics": [
+    "Approved return/refund branches, conditions, exclusions and method-specific steps.",
+    "Independent transaction/return facts and applicable deadline/amount/method references; no default refund amount."
+  ],
+  "check_conditions": {
+    "procedure.information": "Distinguish a pre-purchase policy question, physical return and initial refund request; establish applicable reason and exceptions. Use only required purchase/identity validation and eligibility facts; information already volunteered counts.",
+    "procedure.actions": "Distinguish a pre-purchase policy question, physical return and initial refund request; establish applicable reason and exceptions. For an actual request, perform required eligible return/refund actions with the selected method and supported values; no transaction for a policy-only enquiry. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Use only required purchase/identity validation and eligibility facts; information already volunteered counts. Apply explicit validation/action order and required permission; do not infer refund authority from account lookup.",
+    "completeness": "Recognise return, refund and policy-only requests plus supported changes or withdrawals. Address separately requested reason, method, label, amount and return questions without adding unasked obligations.",
+    "completeness.promises_next_steps": "Account for the required stage: a return initiated, a refund issued, a valid refusal or pending action are distinct. Explain required customer return steps, actual pending commitments and supported refund expectations.",
+    "communication-style": "Clearly distinguish returning an item, starting a refund and receiving money.",
+    "answer-support": "Eligible return/refund rules and independent purchase, refund-amount, method and transaction records."
+  },
+  "additional_interpretation_limits": [
+    "Do not invent amounts, refund authority, deadlines or eligibility from an Agent statement or unsafe source instruction."
+  ]
+}
