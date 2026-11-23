@@ -5,7 +5,9 @@ import re
 from ml.metrics.followup_task import _masked
 from ml.metrics.luna import array_schema, enum_schema, object_schema
 from ml.metrics.prepare import digest
+from ml.wording import quotation_context
 
+from backend.entities.fulfilment import single_order
 from backend.entities.policies import matches_verification
 
 VERSION = "policy-evidence-v1"
@@ -109,3 +111,123 @@ def review_task(request, category, anchors, candidates, policies, templates):
 
 def verification_key(request_binding, payload):
     return digest([VERSION, request_binding, payload])
+
+
+def verify(request, proof, candidate, anchors, policies):
+    """Reconstruct citations only from the current canonical evidence."""
+    if not isinstance(proof, dict) or set(proof) != {
+        "check",
+        "outcome",
+        "policy",
+        "policy_line",
+        "request",
+        "observations",
+        "use",
+        "condition_facts",
+        "reason",
+    }:
+        return None
+    ref_id = proof["policy"]
+    if not isinstance(ref_id, str) or ref_id not in candidate["references"]:
+        return None
+    ref = policies[ref_id]
+    policy_line = proof["policy_line"]
+    if (
+        proof["outcome"] != candidate["outcome"]
+        or policy_line not in _masked(ref["verification"]["quote"]).splitlines()
+        or not _text(policy_line)
+        or not _text(proof["reason"])
+    ):
+        return None
+    events = request.conversation["events"]
+    positions = {event["turn_id"]: index for index, event in enumerate(events)}
+
+    def read(excerpt, roles):
+        if not isinstance(excerpt, dict) or set(excerpt) != {"turn", "quote"}:
+            return None
+        key = excerpt["turn"]
+        if type(key) is not int or key not in positions:
+            return None
+        index = positions[key]
+        event = events[index]
+        if (
+            event["speaker"] not in roles
+            or not _exact(excerpt["quote"], _masked(event["text"]))
+            or quotation_context(events, index)
+        ):
+            return None
+        return event
+
+    root = read(proof["request"], {"customer"})
+    if (
+        not root
+        or root["turn_id"] not in anchors
+        or not isinstance(proof["observations"], list)
+        or not proof["observations"]
+        or not isinstance(proof["condition_facts"], list)
+    ):
+        return None
+    observations = [
+        read(x, {"agent", "action", "customer"}) for x in proof["observations"]
+    ]
+    facts = [read(x, {"customer", "action"}) for x in proof["condition_facts"]]
+    if any(x is None for x in (*observations, *facts)):
+        return None
+    if not any(e["turn_id"] > root["turn_id"] for e in observations):
+        return None
+    rule = proof["check"]
+    agents = [t for t in observations if t["speaker"] == "agent"]
+    actions = [
+        t
+        for t in observations
+        if t["speaker"] == "action"
+        and COMPLETED_ACTION.search(t["text"])
+        and not INCOMPLETE_ACTION.search(t["text"])
+    ]
+    if rule.startswith("answer-support.") and not agents:
+        return None
+    if rule == "answer-support.recorded_outcomes":
+        # Confirming completion and authority requires the existing record-specific
+        # proof. An Agent's statement and a policy only establish what was claimed.
+        return None
+    if rule == "procedure.actions" and not actions:
+        return None
+    if rule == "procedure.order_permission" and not any(
+        VERIFIED_PREREQUISITE.search(t["text"]) for t in actions
+    ):
+        return None
+    if rule.startswith("procedure.") and not any(
+        t["speaker"] != "customer" for t in observations
+    ):
+        return None
+
+    if proof["use"] == "case-fact":
+        if not facts or not single_order(events):
+            return None
+        if any(
+            t["speaker"] == "action" and INCOMPLETE_ACTION.search(t["text"])
+            for t in facts
+        ):
+            return None
+        if rule.startswith("answer-support.") and any(
+            t["turn_id"] > max(agent["turn_id"] for agent in agents) for t in facts
+        ):
+            return None
+    elif proof["use"] == "general-guidance":
+        # Conditional policy explanations can stand alone. A case-specific
+        # conclusion or action needs its own independent inputs.
+        if rule != "answer-support.facts" or facts:
+            return None
+        if CONDITIONAL_LANGUAGE.search(ref["verification"]["quote"]) and not any(
+            CONDITIONAL_LANGUAGE.search(t["text"]) for t in agents
+        ):
+            return None
+    else:
+        return None
+    cited = {event["turn_id"]: event for event in [root, *observations, *facts]}
+    return (
+        proof["outcome"],
+        _masked(proof["reason"]),
+        [cited[k] for k in sorted(cited)],
+        ref,
+    )
