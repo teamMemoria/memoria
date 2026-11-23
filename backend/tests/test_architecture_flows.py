@@ -3,6 +3,8 @@
 from contextlib import asynccontextmanager
 
 import httpx
+from sqlalchemy import select
+
 from backend.core.config import Settings
 from backend.data.demo_profiles import load_profiles
 from backend.data.seed_demo_profiles import seed_demo_profiles
@@ -13,8 +15,6 @@ from backend.frameworks.data_access.authored_policies import (
 )
 from backend.main import create_app
 from backend.models import DraftStatus, KnowledgeDraft, Organization, User
-from sqlalchemy import select
-
 from tests.conftest import TEST_DATABASE_URL
 from tests.database_seed import ALEX, MAYA, SAM, seed
 

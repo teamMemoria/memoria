@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from backend.data import (
     assign_synthetic_dates,
     assign_topics,

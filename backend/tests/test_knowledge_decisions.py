@@ -2,12 +2,12 @@
 
 import httpx
 import pytest
+
 from backend.core.config import Settings
 from backend.entities.guidelines import GUIDELINE_URL, GUIDELINES, PROMO_AGE
 from backend.main import create_app
 from backend.models import DraftStatus, KnowledgeDraft
 from backend.providers.database import create_database_providers
-
 from tests.database_seed import ALEX, MAYA, NORTHWIND, RILEY, seed, sessions_for
 from tests.test_knowledge_import import draft_by_key, import_fixture
 
