@@ -197,7 +197,9 @@ For now it only learns facts with a value, like "promo codes last 7 days" or
 - Once a topic has 10+ calls, a value given in 70%+ of them is a rule. If
   nothing gets to 70% but two values each have 5+ calls, it's a conflict for
   a manager. A call that lists several values for one topic doesn't vote.
-- Scoring a call checks its values against the rules.
+
+Layer 2 doesn't score calls. The category templates do that, and can use these
+rules for the answer support check.
 
 Code: `entities/inferred_knowledge.py`, `use_cases/inferred_knowledge.py`,
 `data/value_claims.py`.
