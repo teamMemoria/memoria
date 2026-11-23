@@ -4,6 +4,7 @@ from ml.metrics.followup_task import _masked
 from ml.metrics.luna import array_schema, enum_schema, known_ids, object_schema
 from ml.metrics.prepare import digest
 
+from backend.entities.assessments import CRITERION_IDS, AnalysisUnavailableError
 from backend.entities.guidelines import (
     CART,
     OVERNIGHT,
@@ -15,6 +16,12 @@ from backend.entities.guidelines import (
 )
 from backend.entities.policies import EXTENSION_KEY, FAQ_KEY, GOLD_EXTENSION_KEY
 from backend.interface_adapters.draft_examples import PUBLISHER_RULES
+from backend.interface_adapters.policy_evidence import (
+    SCORED,
+    review_task,
+    verification_key,
+    verify,
+)
 from backend.interface_adapters.scorer import TemplatePilot
 
 VERSION = "layer1-luna-v2"
@@ -258,3 +265,261 @@ class PolicyScoring(TemplatePilot):
         if category != "unclear" and category == other_category and anchors:
             return category, anchors, proposed, reviewed
         return None
+
+    def evidence_task(self, request, first, second):
+        if review := self._agreed_review(request, first, second):
+            return self._evidence_task(request, review, self.policies(request))
+        return None
+
+    def _evidence_task(self, request, review, policies):
+        category, anchors, proposed, reviewed = review
+        candidates = {}
+        for rule, check in proposed.items():
+            if self.templates[rule]["metric"] not in POLICY_METRICS:
+                continue
+            if (
+                check["outcome"] not in SCORED
+                or check["outcome"] != reviewed[rule]["outcome"]
+            ):
+                continue
+            refs = set(check["references"])
+            if not refs or refs != set(reviewed[rule]["references"]):
+                continue
+            if not all(_policy_applies(policies[ref], category, rule) for ref in refs):
+                continue
+            candidates[rule] = {"outcome": check["outcome"], "references": sorted(refs)}
+        if not candidates:
+            return None
+        questions = {
+            rule: POLICY_WORDING.get(rule, self.templates[rule]["question"])
+            for rule in candidates
+        }
+        payload, schema = review_task(
+            request, category, anchors, candidates, policies, questions
+        )
+        return (
+            verification_key(self.binding(request), payload),
+            payload,
+            schema,
+            anchors,
+            candidates,
+        )
+
+    def _verified_policy_evidence(self, request, case, review_pair, policies, scoped):
+        review = case.get("policy_evidence")
+        if not isinstance(review, dict) or not isinstance(review.get("proofs"), list):
+            return {}
+        task = self._evidence_task(request, review_pair, policies)
+        if not task or review.get("binding") != task[0]:
+            return {}
+        _, _, _, anchors, candidates = task
+        findings, seen = {}, set()
+        for proof in review["proofs"]:
+            rule = proof.get("check") if isinstance(proof, dict) else None
+            if not isinstance(rule, str) or rule not in candidates:
+                continue
+            if rule in seen:
+                findings.pop(rule, None)
+                continue
+            seen.add(rule)
+            local = scoped.get(rule)
+            if local is None:
+                continue
+            evidence = verify(request, proof, candidates[rule], anchors, policies)
+            if evidence is None:
+                continue
+            outcome, reason, turns, ref = evidence
+            local_outcome, _, citations = local
+            reference_ids = {
+                c["reference_id"] for c in citations if c["kind"] == "reference"
+            }
+            turn_ids = {c["turn_id"] for c in citations if c["kind"] == "conversation"}
+            # An exact quote only helps if the cited exchange independently
+            # establishes the same outcome under the same approved policy.
+            if (
+                local_outcome == outcome
+                and reference_ids == {ref["id"]}
+                and proof["request"]["turn"] in turn_ids
+                and turn_ids <= {turn["turn_id"] for turn in turns}
+            ):
+                findings[rule] = (
+                    outcome,
+                    reason,
+                    [self._conversation_citation(request, t) for t in turns]
+                    + [self._reference_citation(ref)],
+                )
+        return findings
+
+    def _finding(
+        self, request, category, rule, first, second, anchors, policies, scoped
+    ):
+        events = {t["turn_id"]: t for t in request.conversation["events"]}
+        ids = sorted(set(first["turns"]) & set(second["turns"]))
+        turns = [events[t] for t in ids]
+        refs = set(first["references"])
+        metric = self.templates[rule]["metric"]
+        outcome = first["outcome"]
+        speakers = {t["speaker"] for t in turns}
+        explanation = _masked(first["reason"].strip())
+        cites = [self._conversation_citation(request, t) for t in turns]
+
+        if outcome == "unresolved" and second["outcome"] == "unresolved":
+            return outcome, explanation, cites
+        if (
+            metric == "completeness"
+            and outcome == second["outcome"] == "supported"
+            and anchors.intersection(ids)
+            and not speakers.intersection({"agent", "action"})
+        ):
+            # The reviews can substantiate the same request with distinct parts
+            # of its reply. Require a real later response in each review.
+            request_turn = min(anchors.intersection(ids))
+            responses = [
+                {
+                    t
+                    for t in row["turns"]
+                    if t > request_turn and events[t]["speaker"] in {"agent", "action"}
+                }
+                for row in (first, second)
+            ]
+            if all(responses):
+                cites += [
+                    self._conversation_citation(request, events[t])
+                    for t in sorted(set.union(*responses))
+                ]
+                speakers.update(events[t]["speaker"] for t in set.union(*responses))
+        if (
+            outcome != second["outcome"]
+            or not turns
+            or refs != set(second["references"])
+        ):
+            return (
+                "unresolved",
+                "The independent assessments did not agree on the evidence.",
+                cites,
+            )
+        if metric in POLICY_METRICS:
+            # Require independently approved, versioned guidance of the right subject.
+            # Confirmation that an action occurred must still come from this call.
+            if not refs or not all(
+                _policy_applies(policies[ref], category, rule) for ref in refs
+            ):
+                return (
+                    "unresolved",
+                    "An applicable approved Layer 1 policy is required.",
+                    cites,
+                )
+            if not anchors.intersection(ids):
+                return (
+                    "unresolved",
+                    "The evidence does not establish the applicable customer request.",
+                    cites,
+                )
+            if outcome in {"supported", "breach"}:
+                proof = scoped.get(rule)
+                if (
+                    not proof
+                    or proof[0] != outcome
+                    or refs
+                    != {c["reference_id"] for c in proof[2] if c["kind"] == "reference"}
+                ):
+                    return (
+                        "unresolved",
+                        "The applicable policy and this call's facts could not be matched by the local evidence check.",
+                        cites,
+                    )
+                return proof
+        if metric == "completeness" and (
+            not anchors.intersection(ids)
+            or not speakers.intersection({"agent", "action"})
+        ):
+            return (
+                "unresolved",
+                "The request and relevant reply or action must both be established.",
+                cites,
+            )
+        if (
+            metric in {"communication-style", "answer-support"}
+            and "agent" not in speakers
+        ):
+            return "unresolved", "The relevant Agent wording is missing.", cites
+        return (
+            outcome,
+            explanation,
+            cites + [self._reference_citation(policies[r]) for r in sorted(refs)],
+        )
+
+    def _local_evidence(self, request, category):
+        """Keep already proven findings within the new rubric's scope."""
+        scoped = self._scoped_findings(request, category)
+        try:
+            local_category, _, rows = self._evaluate_local(request)
+        except AnalysisUnavailableError:
+            return scoped
+        if local_category != category:
+            return scoped
+        policies = self.policies(request)
+        for row in rows:
+            for check in row["scoring"]["checks"]:
+                rule = check["rule_id"]
+                eligible_local = row["category"] in {
+                    "completeness",
+                    "communication-style",
+                }
+                if category == "product" and rule == "procedure.actions":
+                    eligible_local = any(
+                        c.get("reference_id") in policies for c in check["citations"]
+                    )
+                if eligible_local and check["outcome"] != "unresolved":
+                    scoped.setdefault(
+                        rule,
+                        (check["outcome"], check["explanation"], check["citations"]),
+                    )
+        return scoped
+
+    def analyse(self, request):
+        if request.canonical_evidence is None:
+            raise AnalysisUnavailableError("Canonical ABCD evidence is required.")
+        case = self.cases.get(request.conversation["id"])
+        if case is None or case.get("binding") != self.binding(request):
+            raise AnalysisUnavailableError(
+                "Run Luna for the current transcript and approved policies."
+            )
+        try:
+            review = self._agreed_review(request, case["proposal"], case["review"])
+        except (ValueError, TypeError, KeyError) as error:
+            raise AnalysisUnavailableError(
+                "Luna did not return a usable assessment."
+            ) from error
+        if review is None:
+            raise AnalysisUnavailableError(
+                "The independent reviews did not establish the call's category."
+            )
+        category, anchors, first, second = review
+        policies = self.policies(request)
+        scoped = self._local_evidence(request, category)
+        findings = {
+            rule: self._finding(
+                request, category, rule, row, second[rule], anchors, policies, scoped
+            )
+            for rule, row in first.items()
+        }
+        findings.update(
+            self._verified_policy_evidence(request, case, review, policies, scoped)
+        )
+        for rule, proof in scoped.items():
+            if rule not in findings or findings[rule][0] == "unresolved":
+                findings[rule] = proof
+            elif findings[rule][0] != proof[0] and proof[0] != "unresolved":
+                findings[rule] = (
+                    "unresolved",
+                    "The local evidence and Luna assessments disagree.",
+                    proof[2],
+                )
+        rows = [
+            self._category(
+                metric, findings, self.categories[category], False, POLICY_WORDING, None
+            )
+            for metric in CRITERION_IDS
+        ]
+        return self._assessment(request, category, f"{RULE_VERSION}+{VERSION}", rows)
