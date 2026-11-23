@@ -5,7 +5,7 @@ Usage (from backend/, with the database migrated):
     uv run setup-demo [CONVERSATIONS_DIR] [--organization default]
 
 Runs the steps in backend/README.md one after another: import-conversations,
-assign-topics, assign-synthetic-dates and seed-demo-profiles, each with its
+assign-topics, assign-synthetic-dates, seed-demo-profiles and seed-demo-policies, each with its
 default settings. CONVERSATIONS_DIR is the curated/conversations directory of
 the docs repo; it defaults to $MEMORIA_CONVERSATIONS_DIR, else to the docs repo
 cloned next to this one.
@@ -25,6 +25,7 @@ from backend.data import (
     assign_topics,
     import_conversations,
     seed_demo_profiles,
+    seed_policies,
 )
 
 # <repo>/backend/src/backend/data/setup_demo.py -> the folder that holds <repo>.
@@ -44,19 +45,21 @@ def conversations_dir(argument: Path | None) -> Path:
 
 
 async def run(path: Path, organization_slug: str) -> None:
-    print("1/4 Importing conversations")
+    print("1/5 Importing conversations")
     await import_conversations.run(path, organization_slug)
-    print("2/4 Assigning topics")
+    print("2/5 Assigning topics")
     await assign_topics.run(assign_topics.DEFAULT_MAPPING, organization_slug)
-    print("3/4 Assigning synthetic dates")
+    print("3/5 Assigning synthetic dates")
     await assign_synthetic_dates.run(
         assign_synthetic_dates.DEFAULT_START,
         assign_synthetic_dates.DEFAULT_WEEKS,
         assign_synthetic_dates.DEFAULT_SEED,
         organization_slug,
     )
-    print("4/4 Creating demo profiles")
+    print("4/5 Creating demo profiles")
     await seed_demo_profiles.run(organization_slug)
+    print("5/5 Loading Layer 1 policy drafts")
+    await seed_policies.run(organization_slug)
     print("Demo data is ready")
 
 

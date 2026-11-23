@@ -67,9 +67,10 @@ the database running:
 
 ## Importing the curated conversations
 
-`uv run setup-demo` runs all four steps below in order (import, topics, dates,
-demo profiles). It is also what `docker compose up` runs; see "Running it
-locally" in the top-level README. The steps can still be run one at a time:
+`uv run setup-demo` runs the five steps below in order, from importing the
+conversations to loading the Layer 1 policy drafts. It is also what
+`docker compose up` runs. See "Running it locally" in the top-level README.
+The steps can still be run one at a time:
 
 The conversation data lives in the
 [uoft-ftli-2026-genesys-docs](https://github.com/marcomarchesanogenesys/uoft-ftli-2026-genesys-docs)
@@ -98,6 +99,12 @@ ABCD training conversations and one Manager, listed in
 conversations listed for it; nothing is assessed, reviewed or approved:
 
     uv run seed-demo-profiles
+
+Load the five Layer 1 catalogue policies as pending drafts. `setup-demo` runs
+this step too. A Manager approves each exact version before it appears in the
+Agent knowledge base. Re-running the command skips existing drafts and approvals.
+
+    uv run seed-demo-policies
 
 To use them from the frontend, start the backend with
 `MEMORIA_APP_ENV=development` and the frontend with `npm run dev`. Runtime
