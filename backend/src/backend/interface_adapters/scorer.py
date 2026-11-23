@@ -3,11 +3,18 @@
 from collections.abc import Mapping
 
 from ml.metrics.followup_task import VERSION as FOLLOWUP_VERSION
+from ml.metrics.followup_task import binding, make_task, unresolved_rows
+from ml.metrics.luna import TRANSCRIPT_METRICS, agreed_checks
 from ml.metrics.prepare import digest, faq_question
+from ml.metrics.score import MIDPOINT_VERSION, score_checks
 
 from backend.entities.assessments import (
     CRITERION_IDS,
+    RESULTS,
     AnalysisUnavailableError,
+    CategoryResult,
+    ParsedReport,
+    ReportRejectedError,
     WeightProfile,
 )
 from backend.entities.draft_matches import (
@@ -24,6 +31,7 @@ from backend.entities.refund_amount import (
     SUBSCRIPTION_PRICE_CHECK,
     subscription_refund_claims,
 )
+from backend.entities.score_policy import overall_for_profile
 from backend.interface_adapters.call_checks import QUESTIONS, observed_workflow
 from backend.interface_adapters.extension_checks import (
     EXTENSION_LIMITS,
@@ -33,6 +41,7 @@ from backend.interface_adapters.extension_checks import (
     gold_checks,
     gold_extension,
 )
+from backend.interface_adapters.followup_checks import verified_followup
 from backend.interface_adapters.fulfilment_checks import (
     fulfilment_request,
     fulfilment_workflow,
@@ -477,3 +486,227 @@ class TemplatePilot:
             rows = category_rows(checks | followup)
             version += "+" + FOLLOWUP_VERSION
         return category_id, version, rows
+
+    def _assessment(self, request, category_id, version, rows):
+        profile = self.weight_profiles[category_id]
+        return {
+            "schema_version": "assessment-v1",
+            "processing_status": "completed",
+            "conversation_id": request.conversation["id"],
+            "transcript_version": request.conversation["transcript_version"],
+            "evaluation_form_version": request.evaluation_form_version,
+            "as_of": request.as_of,
+            "versions": {
+                "rules": f"{version}:{self.catalogue_version}",
+                "scoring": MIDPOINT_VERSION,
+                "weight_profile": profile.version,
+            },
+            "human_review": None,
+            "approval": None,
+            "categories": rows,
+            "overall": overall_for_profile(
+                profile,
+                {r["category"]: r["scoring"]["score"] for r in rows},
+                {r["category"]: r["scoring"]["coverage"] for r in rows},
+            ),
+        }
+
+    def followup_task(self, request, report):
+        """Prepare the optional model pass without introducing network I/O here."""
+        rows = unresolved_rows(report["categories"])
+        category = self.categories[report["overall"]["profile_id"]]
+        references = list(self._eligible(request))
+        payload, schema = make_task(request, self.common, category, rows, references)
+        return binding(request, category, rows, references), payload, schema
+
+    def _followup_findings(self, request, category, categories, local_policy_checks):
+        if not self.luna_followup:
+            return {}
+        source = request.canonical_evidence["conversations"][0]
+        entry = self.luna_followup.get(source["id"])
+        if not isinstance(entry, dict):
+            return {}
+        rows = unresolved_rows(categories)
+        references = list(self._eligible(request))
+        if entry.get("binding") != binding(request, category, rows, references):
+            return {}
+        return verified_followup(
+            request,
+            rows,
+            entry.get("result"),
+            references,
+            local_policy_checks,
+            lambda turn: self._conversation_citation(request, turn),
+        )
+
+    def _luna_entry(self, request):
+        if not self.luna:
+            return None
+        canonical = request.canonical_evidence["conversations"][0]
+        review = self.luna.get(canonical["id"])
+        if (
+            review
+            and review["evidence_version"] == canonical["transcript_version"]
+            and review["category"] in self.categories
+            and review["category"] != "unclear"
+            and review["verified_checks"]
+        ):
+            return review
+        return None
+
+    def _add_luna_checks(self, request, category, checks, review):
+        # Only add agreed transcript judgments that passed the pilot evidence review.
+        # Never change a local judgment or a Procedure / Answer support check.
+        rules = {
+            item["template"]
+            for metric, data in category["metrics"].items()
+            if metric in TRANSCRIPT_METRICS
+            for item in data["checks"]
+        }
+        events = request.conversation["events"]
+        consensus = agreed_checks(*review["passes"], events, rules)
+        by_id = {turn["turn_id"]: turn for turn in events}
+        combined = dict(checks)
+        for rule, reason in review["verified_checks"].items():
+            if not isinstance(reason, str) or not reason.strip() or len(reason) > 300:
+                raise ValueError("Invalid reviewed Luna explanation")
+            if rule not in consensus:
+                raise ValueError("Reviewed Luna check does not have agreeing evidence")
+            if rule not in checks:
+                row = consensus[rule]
+                combined[rule] = (
+                    row["outcome"],
+                    reason,
+                    [
+                        self._conversation_citation(request, by_id[number])
+                        for number in row["turns"]
+                    ],
+                )
+        return combined
+
+    def _category(self, name, outcomes, category, faq_only, questions, limit):
+        checks = []
+        for item in category["metrics"][name]["checks"]:
+            part = item["template"]
+            if faq_only and name == "procedure" and part != "procedure.actions":
+                continue
+            question = (
+                "Did the Agent open Search FAQ for the product question?"
+                if faq_only and name == "procedure"
+                else (questions or {}).get(part, self.templates[part]["question"])
+            )
+            parts = CHECK_SPLITS.get(part, {})
+            if parts and parts.keys() <= outcomes.keys():
+                maximum = item["points"] / len(parts)
+                checks.extend(
+                    self._scored_check(
+                        f"{category['id']}.{rule}", rule, wording, maximum, outcomes
+                    )
+                    for rule, wording in parts.items()
+                )
+            else:
+                checks.append(
+                    self._scored_check(
+                        item["id"], part, question, item["points"], outcomes
+                    )
+                )
+        applicable = [c for c in checks if c["outcome"] != "not-applicable"]
+        breaches = [c for c in applicable if c["outcome"] == "breach"]
+        unknown = [c for c in applicable if c["outcome"] == "unresolved"]
+        totals = score_checks(checks)
+        verdict = (
+            "needs-review"
+            if breaches
+            else "cannot-assess"
+            if unknown or not applicable
+            else "meets-criteria"
+        )
+        notes = list(dict.fromkeys(c["explanation"] for c in unknown))
+        if not applicable:
+            notes.append("There are no applicable checks in this metric.")
+        summary = " ".join(c["explanation"] for c in breaches) or (
+            " ".join(notes) if notes else "The applicable pilot checks are supported."
+        )
+        if faq_only and name == "procedure":
+            notes.append(FAQ_LIMIT)
+        if limit:
+            notes.append(limit)
+        return {
+            "category": name,
+            "status": "completed",
+            "result": {
+                "category": name,
+                "result": verdict,
+                "explanation": summary,
+                "limitations": notes,
+                "findings": [
+                    {k: c[k] for k in ("explanation", "advice", "citations")}
+                    for c in breaches
+                ],
+            },
+            "scoring": {
+                **totals,
+                "checks": checks,
+                "limitations": notes,
+                "processing_error": None,
+                "interpretation_limits": category["interpretation_limits"],
+                "inventory_complete": True,
+            },
+        }
+
+    @staticmethod
+    def _scored_check(check_id, rule, question, maximum, outcomes):
+        outcome, explanation, citations = outcomes.get(
+            rule,
+            (
+                "unresolved",
+                "This check is outside the current pilot's evidence coverage.",
+                [],
+            ),
+        )
+        return {
+            "id": check_id,
+            "rule_id": rule,
+            "requirement": question,
+            "outcome": outcome,
+            "maximum": maximum,
+            "earned": maximum
+            if outcome == "supported"
+            else 0
+            if outcome == "breach"
+            else None,
+            "explanation": explanation,
+            "advice": (
+                "Check the completed refund record before stating the amount."
+                if question == RECORD_QUESTIONS[VALUE]
+                else "Check and state the approved expiry period."
+            )
+            if outcome == "breach"
+            else "",
+            "citations": citations,
+            "critical": False,
+        }
+
+    def parse(self, request, report):
+        # Recompute the bounded policy instead of trusting supplied points or findings.
+        if report != self.analyse(request):
+            raise ReportRejectedError(
+                "invalid-template-report", "Report differs from the configured pilot."
+            )
+        categories = {}
+        for row in report["categories"]:
+            result = row["result"]
+            categories[row["category"]] = CategoryResult(
+                RESULTS[result["result"]],
+                result["explanation"],
+                " ".join(f["advice"] for f in result["findings"]) or None,
+                [],
+                [],
+            )
+        return ParsedReport(
+            categories,
+            None,
+            digest(report["versions"]),
+            report,
+            weight_profile=self.weight_profiles[report["overall"]["profile_id"]],
+        )
