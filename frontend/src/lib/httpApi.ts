@@ -163,6 +163,8 @@ export function createHttpApis(baseUrl = '') {
   const draftPath = (id: string) =>
     `/api/manager/knowledge/drafts/${encodeURIComponent(id)}`
   const knowledgeReviewApi: KnowledgeReviewApi = {
+    attachVerification: (userId, id, reference) =>
+      request<KnowledgeDraft>(userId, `${draftPath(id)}/verification`, reference, 'PUT'),
     listForManager: (userId) =>
       request<KnowledgeDraft[]>(userId, '/api/manager/knowledge/drafts'),
     getForManager: (userId, id) =>
@@ -173,11 +175,11 @@ export function createHttpApis(baseUrl = '') {
         'GET',
         true,
       ),
-    approve: (userId, id, verifiedReferenceUrl, version) =>
+    approve: (userId, id, verifiedReferenceUrl, version, authoredPolicyVersion) =>
       request<KnowledgeDraft>(
         userId,
         `${draftPath(id)}/approve`,
-        { verifiedReferenceUrl, version },
+        { verifiedReferenceUrl, version, authoredPolicyVersion },
         'POST',
       ),
     reject: (userId, id, reason, version) =>
