@@ -75,12 +75,39 @@ class KnowledgeImportService:
         default_factory=UnconfiguredKnowledgePipeline
     )
     now: Callable[[], datetime] = utc_now
+    generate: Callable[[str, list[dict]], dict] | None = None
+    source_prefix: str | None = None
 
     async def run(self, organization_id: str) -> ImportResult:
         """Run the configured pipeline and store its output."""
 
         async def run_pipeline(scope):
-            return await asyncio.to_thread(self.adapter.run, scope)
+            if self.generate is None:
+                return await asyncio.to_thread(self.adapter.run, scope)
+            from backend.frameworks.data_access.assessment_storage import (
+                validate_prepared,
+            )
+
+            async with self.sessions() as session:
+                sources = await session.scalars(
+                    select(Conversation.canonical_evidence)
+                    .join(Organization, Organization.id == Conversation.organization_id)
+                    .where(
+                        Organization.slug == scope,
+                        Conversation.source_dataset == "ABCD",
+                        Conversation.canonical_evidence["conversations"][0][
+                            "split"
+                        ].as_string()
+                        == "train",
+                        Conversation.canonical_evidence["conversations"][0][
+                            "id"
+                        ].as_string()
+                        == Conversation.original_id,
+                    )
+                    .order_by(Conversation.original_id)
+                )
+                conversations = [validate_prepared(source) for source in sources]
+            return await asyncio.to_thread(self.generate, scope, conversations)
 
         return await KnowledgeImportInteractor(self, run_pipeline).execute(
             organization_id
@@ -392,6 +419,11 @@ class KnowledgeImportService:
             KnowledgeDraft.organization_id == organization.id,
             KnowledgeDraft.source_key.is_not(None),
             KnowledgeDraft.status == DraftStatus.PENDING,
+            *(
+                [KnowledgeDraft.source_key.startswith(self.source_prefix)]
+                if self.source_prefix
+                else []
+            ),
         )
         await session.execute(
             update(KnowledgeDraft)
@@ -545,6 +577,11 @@ class KnowledgeImportService:
             delete(KnowledgeConflict).where(
                 KnowledgeConflict.organization_id == organization.id,
                 KnowledgeConflict.source_key.not_in(current),
+                *(
+                    [KnowledgeConflict.source_key.startswith(self.source_prefix)]
+                    if self.source_prefix
+                    else []
+                ),
                 KnowledgeConflict.lifecycle_status == "open",
                 KnowledgeConflict.draft_id.not_in(
                     select(KnowledgeDraft.id)
