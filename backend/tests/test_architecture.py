@@ -99,7 +99,11 @@ assert app.openapi()['paths']['/api/manager/knowledge/drafts/{draft_id}/approve'
 
 
 def test_ml_rules_have_no_io_dependencies():
-    for path in [*(ROOT / "ml/rules").glob("*.py"), *(ROOT / "ml").glob("*.py")]:
+    for path in [
+        *(ROOT / "ml/rules").glob("*.py"),
+        *(ROOT / "ml").glob("*.py"),
+        ROOT / "ml/metrics/score.py",
+    ]:
         if path.name.startswith("test_") or (
             path.parent == ROOT / "ml"
             and path.name
