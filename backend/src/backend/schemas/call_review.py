@@ -132,6 +132,7 @@ class AssessmentVersion(ApiModel):
     source_id: str
     as_of: str
     rules: str
+    scoring_method: str | None = None
     transcript: str
 
 

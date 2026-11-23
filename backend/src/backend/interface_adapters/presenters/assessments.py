@@ -455,6 +455,7 @@ def with_scoring(call, report):
                 source_id=report["conversation_id"],
                 as_of=report["as_of"],
                 rules=report["versions"]["rules"],
+                scoring_method=report["versions"].get("scoring"),
                 transcript=report["transcript_version"],
             ),
             "request_links": [
