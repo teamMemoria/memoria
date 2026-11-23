@@ -66,6 +66,13 @@ def load_profiles(path: Path = PROFILES_FILE) -> DemoProfiles:
 
 
 @lru_cache
+def demo_profile_ids() -> frozenset[str]:
+    """Only these configured profiles may use public demo identity selection."""
+    profiles = load_profiles()
+    return frozenset((profiles.manager_id, *(agent.id for agent in profiles.agents)))
+
+
+@lru_cache
 def demo_agent_ids() -> dict[tuple[str, str], str]:
     """(dataset, original conversation ID) -> demo profile ID."""
     profiles = load_profiles()

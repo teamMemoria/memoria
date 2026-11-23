@@ -49,13 +49,18 @@ header:
 | `approver-devon-park` | `org-northwind` | `knowledge:approve`, `knowledge:read` |
 | `agent-riley-chen` | `org-harbor` | `conversations:read-own`, `knowledge:read` |
 
-`MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every request gets `401`.
+`MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every
+request gets `401` unless `MEMORIA_PUBLIC_DEMO=true` explicitly enables the
+seeded-profile demo. In that mode, only IDs listed in `demo_profiles.toml` are
+accepted, and stored membership and route permissions still control access.
+See [deployed frontend access](deployed-frontend-access.md).
 
 ### How an identity enters the request context
 
-1. **Authentication** decides *who* is asking. A future login system will verify the user and hand
-   the backend their user ID. Until then, in development and test only, `X-Dev-User` stands in for
-   that verified ID. Nothing else in a request is treated as proof of identity.
+1. **Identity selection** decides *who* is asking. A future login system will verify the user and hand
+   the backend their user ID. In development and test, `X-Dev-User` names a development identity.
+   In the explicitly public seeded-profile demo, it names one of the listed demo profiles. This
+   demo selection is not authentication; any visitor can select a listed profile.
 2. **Authorization** decides *what they may do*, and always comes from the server. `get_current_user`
    passes the user ID to the identity provider (`Providers.identities`), which returns the
    `CurrentUser`:

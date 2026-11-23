@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -52,6 +53,13 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Call Assist", lifespan=lifespan)
     settings = settings or Settings()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.allowed_cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT"],
+        allow_headers=["Content-Type", "X-Dev-User", "X-Organization"],
+    )
     database = create_database(settings.database_url)
     app.state.database = database
     if providers is None:
