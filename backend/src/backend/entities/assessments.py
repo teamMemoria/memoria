@@ -67,12 +67,20 @@ class CategoryResult:
     reference_ids: list[int]
 
 
+@dataclass(frozen=True)
+class WeightProfile:
+    id: str
+    version: str
+    weights: dict[str, int]
+
+
 @dataclass
 class ParsedReport:
     categories: dict[str, CategoryResult]
     summary: str | None
     report_version: str | None
     assessment_report: dict[str, Any] | None = None
+    weight_profile: WeightProfile | None = None
 
 
 def transcript_version(conversation_id: str, events: list[dict[str, Any]]) -> str:
