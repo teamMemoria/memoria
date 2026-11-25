@@ -71,6 +71,16 @@ def create_app(
     app.state.assessment_runs = AssessmentRunsInteractor(
         AnalysisRunsAdapter(app.state.analysis)
     )
+    if (
+        knowledge_import is None
+        and settings.layer2_template_pilot
+        and settings.dev_identity_enabled
+    ):
+        from backend.frameworks.data_access.draft_setup import (
+            pilot_knowledge_import,
+        )
+
+        knowledge_import = pilot_knowledge_import(database.sessions, settings)
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
         database.sessions
     )

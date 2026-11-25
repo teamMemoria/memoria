@@ -3,10 +3,9 @@
 The pipeline (``knowledge-pipeline/1``) returns drafts with cited passages,
 groups with duplicate links and matches to approved entries, possible
 conflicts, and its own verification hints. This module checks that output and
-stores it. It never approves, rejects or disputes anything:
+stores it as pending for review:
 
-* new drafts are stored as ``pending``; approved guidance (``knowledge_entries``)
-  and reviews are never written, so no entry is approved, renewed or replaced;
+* only the built-in Layer 2 pilot can auto-approve source-verified facts;
 * a draft a reviewer has already decided keeps its content;
 * possible conflicts go to ``knowledge_conflicts`` and never change an entry's
   status, so they stay separate from disputes a reviewer confirms.
@@ -21,6 +20,7 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from sqlalchemy import delete, func, select, update
@@ -45,10 +45,13 @@ from backend.entities.knowledge_import import (
     _text,
     check_output,
 )
+from backend.entities.policies import verification_source
 from backend.frameworks.data_access.database import (
     SessionFactory,
+    load_membership,
     unavailable_on_database_error,
 )
+from backend.frameworks.data_access.knowledge_approval import approve_draft
 from backend.frameworks.database.models import (
     Conversation,
     DraftStatus,
@@ -75,19 +78,53 @@ class KnowledgeImportService:
         default_factory=UnconfiguredKnowledgePipeline
     )
     now: Callable[[], datetime] = utc_now
+    generate: Callable[[str, list[dict]], dict] | None = None
+    source_prefix: str | None = None
 
-    async def run(self, organization_id: str) -> ImportResult:
+    async def run(
+        self, organization_id: str, *, requested_by: str | None = None
+    ) -> ImportResult:
         """Run the configured pipeline and store its output."""
 
         async def run_pipeline(scope):
-            return await asyncio.to_thread(self.adapter.run, scope)
+            if self.generate is None:
+                return await asyncio.to_thread(self.adapter.run, scope)
+            from backend.frameworks.data_access.assessment_storage import (
+                validate_prepared,
+            )
 
-        return await KnowledgeImportInteractor(self, run_pipeline).execute(
+            async with self.sessions() as session:
+                sources = await session.scalars(
+                    select(Conversation.canonical_evidence)
+                    .join(Organization, Organization.id == Conversation.organization_id)
+                    .where(
+                        Organization.slug == scope,
+                        Conversation.source_dataset == "ABCD",
+                        Conversation.canonical_evidence["conversations"][0][
+                            "split"
+                        ].as_string()
+                        == "train",
+                        Conversation.canonical_evidence["conversations"][0][
+                            "id"
+                        ].as_string()
+                        == Conversation.original_id,
+                    )
+                    .order_by(Conversation.original_id)
+                )
+                conversations = [validate_prepared(source) for source in sources]
+            return await asyncio.to_thread(self.generate, scope, conversations)
+
+        store = partial(
+            self.import_output, approver_id=requested_by if self.generate else None
+        )
+        return await KnowledgeImportInteractor(store, run_pipeline).execute(
             organization_id
         )
 
     @unavailable_on_database_error
-    async def import_output(self, organization_id: str, output: Any) -> ImportResult:
+    async def import_output(
+        self, organization_id: str, output: Any, *, approver_id: str | None = None
+    ) -> ImportResult:
         check_output(organization_id, output)
         async with self.sessions() as session:
             organization = await session.scalar(
@@ -113,8 +150,57 @@ class KnowledgeImportService:
                 raise ImportRejectedError(
                     "The pipeline output has a value of the wrong type."
                 ) from error
+            if approver_id is not None and self.generate is not None:
+                membership = await load_membership(
+                    session, organization_id, approver_id
+                )
+                if membership and membership.can_approve_knowledge:
+                    await self._auto_approve(
+                        session, membership, stored, output["drafts"]
+                    )
             await session.commit()
             return result
+
+    async def _auto_approve(self, session, membership, stored, drafts):
+        for item in drafts:
+            draft = stored.get(item["draft_id"])
+            if (
+                "agreement" not in item
+                or draft is None
+                or draft.status is not DraftStatus.PENDING
+                or draft.duplicate_of_id
+            ):
+                continue
+            support, total = item["agreement"]
+            source = verification_source(draft.source_key, draft.answer_text)
+            if source is None or total < 10 or support * 10 < total * 7:
+                continue
+            if await session.scalar(
+                select(KnowledgeConflict.id)
+                .where(
+                    KnowledgeConflict.organization_id == draft.organization_id,
+                    KnowledgeConflict.lifecycle_status == "open",
+                    KnowledgeConflict.status.in_(CONFLICT_STATUSES),
+                    (KnowledgeConflict.draft_id == draft.id)
+                    | (KnowledgeConflict.other_draft_id == draft.id),
+                )
+                .limit(1)
+            ):
+                continue
+            await session.refresh(draft, ["topic"])
+            if draft.topic.disputed:
+                continue
+            _, quote, url = source
+            draft.verification_reference = {
+                "title": "ABCD guidelines",
+                "url": url,
+                "quote": quote if isinstance(quote, str) else "\n".join(quote),
+            }
+            entry = await approve_draft(session, draft, membership)
+            entry.approved_review.verified_reference_url = url
+            entry.approved_review.note = (
+                f"Automatically approved: {support}/{total} calls agreed."
+            )
 
     async def _store_drafts(
         self,
@@ -392,6 +478,11 @@ class KnowledgeImportService:
             KnowledgeDraft.organization_id == organization.id,
             KnowledgeDraft.source_key.is_not(None),
             KnowledgeDraft.status == DraftStatus.PENDING,
+            *(
+                [KnowledgeDraft.source_key.startswith(self.source_prefix)]
+                if self.source_prefix
+                else []
+            ),
         )
         await session.execute(
             update(KnowledgeDraft)
@@ -545,6 +636,11 @@ class KnowledgeImportService:
             delete(KnowledgeConflict).where(
                 KnowledgeConflict.organization_id == organization.id,
                 KnowledgeConflict.source_key.not_in(current),
+                *(
+                    [KnowledgeConflict.source_key.startswith(self.source_prefix)]
+                    if self.source_prefix
+                    else []
+                ),
                 KnowledgeConflict.lifecycle_status == "open",
                 KnowledgeConflict.draft_id.not_in(
                     select(KnowledgeDraft.id)

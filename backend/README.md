@@ -201,12 +201,12 @@ For now it only learns facts with a value, like "promo codes last 7 days" or
   because they mirror the guidelines. Customer details are masked.
 - Claims in the same category with the same membership levels and unit, and
   similar words, are one topic.
-- Once a topic has 10+ calls, a value given in 70%+ of them is a rule. If
+- Once a topic has 10+ calls, a value given in 70%+ of them is a candidate. If
   nothing gets to 70% but two values each have 5+ calls, it's a conflict for
   a manager. A call that lists several values for one topic doesn't vote.
 
-Layer 2 doesn't score calls. The category templates do that, and can use these
-rules for the answer support check.
+The ABCD pilot can publish a matching source-verified fact without an unresolved
+conflict. The scoring templates can use published guidance for answer support.
 
 Code: `entities/inferred_knowledge.py`, `use_cases/inferred_knowledge.py`,
 `data/value_claims.py`.
@@ -220,10 +220,10 @@ uv run python -m backend.data.layer2_evaluation
 The first run downloads the ABCD dataset from its GitHub (about 37 MB) into
 `backend/.abcd/`, which git ignores.
 
-It learns from the 8,034 train calls, then checks each rule against the
-guideline text for the same flow. Results go to `results/layer2-eval.md`.
+It learns from the 8,034 train calls, then checks each candidate against the
+guideline text for the same flow. Results go to `results/layer2-candidates.md`.
 
-Limitations: a wrong answer most agents give becomes a rule; answers that
+Limitations: a wrong answer most agents give can become a candidate; answers that
 depend on something other than the membership level can show up as
 conflicts; customer-specific amounts can look like policy; and only values are
 learned. Rules aren't stored in the database or shown in the app yet.

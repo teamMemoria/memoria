@@ -89,6 +89,23 @@ function useKnowledgeQueue(api: KnowledgeReviewApi | null, viewer: Viewer) {
 export function KnowledgeDrafts({ viewer, api }: Props) {
   const [params, setParams] = useSearchParams()
   const { state, retry } = useKnowledgeQueue(api, viewer)
+  const [generating, setGenerating] = useState(false)
+  const [generationMessage, setGenerationMessage] = useState('')
+
+  async function generateDrafts() {
+    if (!api?.generateDrafts || generating) return
+    setGenerating(true)
+    setGenerationMessage('')
+    try {
+      const result = await api.generateDrafts(viewer.id)
+      setGenerationMessage(`New drafts: ${result.created}. Skipped: ${result.skipped.length}.`)
+      retry()
+    } catch {
+      setGenerationMessage('Draft generation could not finish.')
+    } finally {
+      setGenerating(false)
+    }
+  }
   const requestedTab = params.get('tab')
   const tab: QueueTab = isQueueTab(requestedTab) ? requestedTab : 'pending'
   const query = params.get('q') ?? ''
@@ -190,6 +207,12 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
   return (
     <div className="knowledge-drafts">
       <h1>Knowledge drafts</h1>
+      {api?.generateDrafts && (
+        <Button variant="secondary" onClick={() => void generateDrafts()} disabled={generating}>
+          {generating ? 'Generating…' : 'Generate pilot drafts'}
+        </Button>
+      )}
+      {generationMessage && <p role="status">{generationMessage}</p>}
       {!api ? (
         <Panel title="Knowledge review unavailable">
           <p>Knowledge review is not connected.</p>

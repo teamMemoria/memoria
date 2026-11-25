@@ -26,6 +26,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MEMORIA_PUBLIC_DEMO", "public_demo"),
     )
 
+    layer2_template_pilot: bool = False
+    layer2_policy_questions: str | None = None
+
     knowledge_draft_threshold: int = Field(default=10, ge=1)
     knowledge_conflict_threshold_override: int | None = Field(default=None, ge=1)
     knowledge_recent_call_days: int = Field(default=30, ge=1)

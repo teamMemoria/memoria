@@ -64,6 +64,7 @@ export type KnowledgeReviewDetail = {
 export interface KnowledgeReviewApi {
   // Transport capability, separate from the Manager permission returned by the server.
   decisionsAvailable?: boolean
+  generateDrafts?(managerId: string): Promise<{ created: number; skipped: unknown[] }>
   attachVerification?(
     managerId: string,
     entryId: string,

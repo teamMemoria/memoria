@@ -1,9 +1,8 @@
-"""Test Layer 2 with the guidelines hidden.
+"""Compare Layer 2 candidates from ABCD training calls with the guidelines.
 
-Learns rules from the ABCD train calls without the guidelines, then checks
-them against the guideline text afterwards: a rule counts as right if a
-guideline in the same flow gives the same value (and names its membership
-levels, if it has any). Also shows the rules growing as calls are added.
+A candidate matches when a guideline in the same flow gives the same value
+and names its membership levels, if present. The comparison does not approve
+candidates or score conversations.
 
     uv run python -m backend.data.layer2_evaluation
 
@@ -20,10 +19,10 @@ from pathlib import Path
 
 from backend.data.value_claims import LEVELS, claims, values
 from backend.entities.inferred_knowledge import Claim, Settings, Topic
-from backend.use_cases.inferred_knowledge import LearnRules
+from backend.use_cases.inferred_knowledge import InferCandidates
 
 BACKEND = Path(__file__).resolve().parents[3]
-OUT = BACKEND / "results" / "layer2-eval.md"
+OUT = BACKEND / "results" / "layer2-candidates.md"
 CACHE = BACKEND / ".abcd"
 # A fixed version of https://github.com/asappresearch/abcd (MIT licence).
 ABCD = "https://raw.githubusercontent.com/asappresearch/abcd/6b8700ce67c6b37b062dd7a60abc76d7ef832a97/data/"
@@ -65,13 +64,13 @@ def answer_key(guidelines: dict) -> dict[str, list[tuple[str, set[str]]]]:
 
 
 def is_checkable(topic: Topic, flow: str, key: dict) -> bool:
-    """The guidelines for this flow give at least one value in the rule's unit."""
+    """The guidelines give at least one value in the candidate's unit."""
     return any(v.split(" ", 1)[1] == topic.scope[2] for v, _ in key.get(flow, []))
 
 
-def is_right(topic: Topic, flow: str, key: dict) -> bool:
+def matches_guideline(topic: Topic, value: str, flow: str, key: dict) -> bool:
     levels = set(topic.scope[1])
-    return any(v == topic.rule and levels <= lv for v, lv in key.get(flow, []))
+    return any(v == value and levels <= lv for v, lv in key.get(flow, []))
 
 
 def evaluate(dump: dict, guidelines: dict, sizes=(500, 1000, 2000, 4000)) -> str:
@@ -86,42 +85,54 @@ def evaluate(dump: dict, guidelines: dict, sizes=(500, 1000, 2000, 4000)) -> str
             "(agent speech only) without the guidelines."
         ),
         "",
-        "| Calls | Rules | Conflicts | Checkable rules | Right |",
+        "| Calls | Candidates | Conflicts | Checkable candidates | Matches |",
         "|---|---|---|---|---|",
     ]
+    settings = Settings()
     for n in [n for n in sizes if n < len(train)] + [len(train)]:
-        topics = LearnRules(Calls([c for call in train[:n] for c in call])).execute()
-        rules = [t for t in topics if t.decide(Settings()) == "rule"]
-        # Two topics can end up with the same rule; count it once.
-        rules = list({(t.scope, t.rule): t for t in rules}.values())
-        checkable = [t for t in rules if is_checkable(t, flow_of[t.scope[0]], key)]
-        right = sum(is_right(t, flow_of[t.scope[0]], key) for t in checkable)
-        conflicts = [t for t in topics if t.decide(Settings()) == "conflict"]
+        topics = InferCandidates(
+            Calls([c for call in train[:n] for c in call]), settings
+        ).execute()
+        candidates = {
+            (t.scope, t.votes()[0][0]): t
+            for t in topics
+            if t.decide(settings) == "candidate"
+        }
+        checkable = [
+            (t, value)
+            for (_, value), t in candidates.items()
+            if is_checkable(t, flow_of[t.scope[0]], key)
+        ]
+        matches = sum(
+            matches_guideline(t, value, flow_of[t.scope[0]], key)
+            for t, value in checkable
+        )
+        conflicts = [t for t in topics if t.decide(settings) == "conflict"]
         lines.append(
-            f"| {n} | {len(rules)} | {len(conflicts)} | {len(checkable)} | {right} |"
+            f"| {n} | {len(candidates)} | {len(conflicts)} | {len(checkable)} | {matches} |"
         )
 
     lines += [
         "",
-        "## Rules",
+        "## Unapproved candidates",
         "",
         "| Category | Levels | Value | Calls | Guidelines | Example |",
         "|---|---|---|---|---|---|",
     ]
-    for t in sorted(rules, key=lambda t: (t.scope, t.rule)):
-        flow = flow_of[t.scope[0]]
+    for (scope, value), t in sorted(candidates.items()):
+        flow = flow_of[scope[0]]
         check = (
-            "right"
-            if is_right(t, flow, key)
-            else "not in them"
+            "match"
+            if matches_guideline(t, value, flow, key)
+            else "no match"
             if is_checkable(t, flow, key)
             else "-"
         )
-        example = t.example[t.rule].replace("|", "/")[:90]
-        levels = ", ".join(t.scope[1]) or "-"
+        example = t.example[value].replace("|", "/")[:90]
+        levels = ", ".join(scope[1]) or "-"
         calls = len(t.values_by_call)
         lines.append(
-            f"| {t.scope[0]} | {levels} | {t.rule} | {calls} | {check} | {example} |"
+            f"| {scope[0]} | {levels} | {value} | {calls} | {check} | {example} |"
         )
     lines += ["", "## Conflicts for a manager", ""]
     for t in conflicts:

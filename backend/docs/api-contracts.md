@@ -367,15 +367,17 @@ with fixtures they answer `503`.
 
 What an import guarantees, each covered by `tests/test_knowledge_import.py`:
 
-- **Nothing is approved.**
+- **Pipeline output cannot approve drafts.**
   - The output is refused whole (`422`) unless:
     - the status is `ok` or `completed_with_failures`;
     - `company_id` is the requester's organization;
     - `release_checks.release_allowed` is `true`;
     - every draft is an untrusted `draft`.
   - New drafts are stored `pending`.
-  - `knowledge_entries` and `knowledge_reviews` are never written, so no entry is approved, renewed
-    (`last_confirmed_at`) or replaced, and drafts never reach the agent knowledge routes.
+  - The built-in ABCD pilot can automatically publish a fact when at least 70% of at least 10
+    distinct calls support it, its exact wording matches a published guideline, and it has no
+    unresolved conflict or duplicate. The review records the source, counts and Manager who
+    ran the import. External pipeline adapters only create pending drafts.
 - **Reviewed drafts are left alone.** A draft a reviewer has approved or rejected keeps its content
   when the pipeline sends it again.
 - **Evidence is checked and kept.**
@@ -408,8 +410,7 @@ What an import guarantees, each covered by `tests/test_knowledge_import.py`:
     between the "still pending" check and the write.
 
 No pipeline is configured by default, so the import route answers `503` until one is passed to
-`create_app(knowledge_import=KnowledgeImportService(sessions, adapter))`. Approving and rejecting
-drafts are not part of this change.
+`create_app(knowledge_import=KnowledgeImportService(sessions, adapter))` or enabled in the ABCD pilot.
 
 ## Post-call analysis
 

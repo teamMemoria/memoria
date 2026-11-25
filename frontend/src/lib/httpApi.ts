@@ -163,6 +163,11 @@ export function createHttpApis(baseUrl = '') {
   const draftPath = (id: string) =>
     `/api/manager/knowledge/drafts/${encodeURIComponent(id)}`
   const knowledgeReviewApi: KnowledgeReviewApi = {
+    ...(import.meta.env.VITE_LAYER2_TEMPLATE_PILOT === 'true' && {
+      generateDrafts: (userId) => request<{ created: number; skipped: unknown[] }>(
+        userId, '/api/manager/knowledge/imports', undefined, 'POST',
+      ),
+    }),
     attachVerification: (userId, id, reference) =>
       request<KnowledgeDraft>(userId, `${draftPath(id)}/verification`, reference, 'PUT'),
     listForManager: (userId) =>
