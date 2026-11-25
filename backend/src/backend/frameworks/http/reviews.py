@@ -4,6 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from backend.entities.identity import CurrentUser, Permission
 from backend.frameworks.http.auth import require_permission
+from backend.frameworks.http.demo_scorecards import (
+    DemoScorecardsDep,
+    require_saved_calls,
+)
 from backend.frameworks.http.dependencies import ProvidersDep
 from backend.interface_adapters.presenters.reviews import present_decision
 from backend.providers import (
@@ -40,6 +44,7 @@ def review_provider(providers: Providers) -> ReviewProvider:
 async def list_team_conversations(
     user: ReviewerDep,
     providers: ProvidersDep,
+    scorecards: DemoScorecardsDep,
     status_filter: Annotated[QueueStatus, Query(alias="status")] = "all",
     q: Annotated[str, Query(max_length=200)] = "",
 ) -> list[TeamConversation]:
@@ -50,16 +55,23 @@ async def list_team_conversations(
     call ID, topic, agent name, request reason and finding title.
     """
     try:
-        return await review_provider(providers).list_for_manager(
-            user.organization_id, user.user_id, status_filter, q
+        rows = await review_provider(providers).list_for_manager(
+            user.organization_id,
+            user.user_id,
+            "all" if scorecards else status_filter,
+            "" if scorecards else q,
         )
     except RecordNotFoundError:
         return []
+    return scorecards.conversations(rows) if scorecards else rows
 
 
 @router.get("/conversations/{conversation_id}", response_model=FindingReviewDetail)
 async def get_team_call(
-    conversation_id: str, user: ReviewerDep, providers: ProvidersDep
+    conversation_id: str,
+    user: ReviewerDep,
+    providers: ProvidersDep,
+    scorecards: DemoScorecardsDep,
 ) -> FindingReviewDetail:
     """The call, its findings with evidence, the agent's context and any decision."""
     try:
@@ -70,12 +82,15 @@ async def get_team_call(
         detail = None
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    if scorecards:
+        return FindingReviewDetail(call=scorecards.call(detail.call), can_decide=False)
     return detail
 
 
 @router.post(
     "/conversations/{conversation_id}/findings/{finding_id}/decision",
     response_model=ManagerDecision,
+    dependencies=[Depends(require_saved_calls)],
     status_code=status.HTTP_201_CREATED,
     responses={
         200: {"description": "The same decision was already recorded"},

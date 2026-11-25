@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from backend.frameworks.http.calls import get_call
 from backend.frameworks.http.conversations import AgentDep
+from backend.frameworks.http.demo_scorecards import DemoScorecardsDep
 from backend.frameworks.http.dependencies import ProvidersDep
 from backend.frameworks.http.reviews import ReviewerDep, get_team_call
 from backend.schemas import CallReview
@@ -61,8 +62,9 @@ async def agent_narration(
     text_sha256: TextDigest,
     user: AgentDep,
     providers: ProvidersDep,
+    scorecards: DemoScorecardsDep,
 ):
-    call = await get_call(conversation_id, user, providers)
+    call = await get_call(conversation_id, user, providers, scorecards)
     return await narration_response(call, number, voice, text_sha256)
 
 
@@ -74,6 +76,7 @@ async def manager_narration(
     text_sha256: TextDigest,
     user: ReviewerDep,
     providers: ProvidersDep,
+    scorecards: DemoScorecardsDep,
 ):
-    detail = await get_team_call(conversation_id, user, providers)
+    detail = await get_team_call(conversation_id, user, providers, scorecards)
     return await narration_response(detail.call, number, voice, text_sha256)

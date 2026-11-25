@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -24,6 +25,9 @@ class Settings(BaseSettings):
     public_demo: bool = Field(
         default=False,
         validation_alias=AliasChoices("MEMORIA_PUBLIC_DEMO", "public_demo"),
+    )
+    demo_scorecard_file: Path | None = Field(
+        default=None, validation_alias="MEMORIA_SIMULATION_FILE"
     )
 
     layer2_template_pilot: bool = False

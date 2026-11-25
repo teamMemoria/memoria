@@ -10,6 +10,7 @@ from backend.entities.assessments import (
 )
 from backend.entities.identity import CurrentUser, Permission
 from backend.frameworks.http.auth import require_permission
+from backend.frameworks.http.demo_scorecards import require_saved_calls
 from backend.interface_adapters.presenters.assessments import iso_timestamp
 from backend.schemas.analysis import AnalysisRunView, AnalysisStatus, StartAnalysis
 from backend.use_cases.assessment_runs import (
@@ -68,7 +69,11 @@ def status_view(result: RunStatusOutput) -> AnalysisStatus:
     )
 
 
-@router.get("/conversations/{conversation_id}/analysis", response_model=AnalysisStatus)
+@router.get(
+    "/conversations/{conversation_id}/analysis",
+    response_model=AnalysisStatus,
+    dependencies=[Depends(require_saved_calls)],
+)
 async def get_analysis_status(
     conversation_id: str, user: ReviewerDep, analysis: AnalysisDep
 ) -> AnalysisStatus:
@@ -79,6 +84,7 @@ async def get_analysis_status(
 @router.post(
     "/conversations/{conversation_id}/analysis",
     response_model=AnalysisStatus,
+    dependencies=[Depends(require_saved_calls)],
     responses={
         200: {
             "description": "A run was already queued or running; nothing new started"

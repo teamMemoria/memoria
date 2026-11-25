@@ -5,7 +5,7 @@ import type {
 } from '../types/knowledge'
 import type { DemoProfilesApi, ViewerApi } from '../types/viewer'
 import { createHttpApis } from '../lib/httpApi'
-import { demoLoginEnabled } from '../lib/demoLogin'
+import { demoLoginEnabled, demoScorecardsEnabled } from '../lib/demoLogin'
 import type { ConversationsApi } from '../features/conversations/conversations'
 import type { TeamReviewApi } from '../features/review-queue/teamQueue'
 
@@ -28,8 +28,11 @@ export type AppProps = Pick<EntryDependencies, 'viewerApi'> & Partial<AppDepende
 export function createDependencies(): AppDependencies {
   if (import.meta.env.VITE_API_BASE_URL ||
       (import.meta.env.DEV && import.meta.env.MODE !== 'test')) {
-    const simulation = import.meta.env.MODE === 'simulation'
-    const apis = createHttpApis(simulation ? '' : import.meta.env.VITE_API_BASE_URL ?? '', simulation)
+    const localSimulation = import.meta.env.MODE === 'simulation'
+    const apis = createHttpApis(
+      localSimulation ? '' : import.meta.env.VITE_API_BASE_URL ?? '',
+      demoScorecardsEnabled(),
+    )
     return { ...apis, profilesApi: demoLoginEnabled() ? apis.profilesApi : null }
   }
 

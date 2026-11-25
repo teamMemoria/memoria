@@ -28,6 +28,7 @@ from backend.frameworks.http import (
     reviews,
     viewer,
 )
+from backend.frameworks.http.demo_scorecards import DemoScorecards
 from backend.providers import (
     Providers,
     ProviderUnavailableError,
@@ -53,6 +54,11 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Call Assist", lifespan=lifespan)
     settings = settings or Settings()
+    app.state.demo_scorecards = (
+        DemoScorecards(settings.demo_scorecard_file)
+        if settings.public_demo and settings.demo_scorecard_file
+        else None
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_cors_origins,

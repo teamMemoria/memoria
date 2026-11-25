@@ -1,6 +1,6 @@
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from backend.schemas.base import ApiModel
 from backend.schemas.call_review import OverallScoring
@@ -14,6 +14,9 @@ ReviewStatus = Literal["feedback-ready", "review-requested", "review-complete"]
 
 class Conversation(ApiModel):
     source_id: str | None = None
+    simulation_score: float | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     id: str
     topic: str
     agent_id: str

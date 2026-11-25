@@ -42,7 +42,7 @@ class ScoringCheck(ApiModel):
     id: str
     rule_id: str
     requirement: str
-    outcome: Literal["supported", "breach", "unresolved", "not-applicable"]
+    outcome: Literal["supported", "partial", "breach", "unresolved", "not-applicable"]
     earned: FiniteFloat | None = Field(ge=0, strict=True)
     maximum: FiniteFloat = Field(gt=0, strict=True)
     explanation: str
@@ -147,6 +147,9 @@ class RequestLink(ApiModel):
 
 class CallReview(ApiModel):
     source_id: str | None = None
+    assessment_source: Literal["simulation"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     id: str
     agent_id: str
     agent_name: str

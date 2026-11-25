@@ -8,3 +8,8 @@
 export function demoLoginEnabled(): boolean {
   return import.meta.env.DEV || import.meta.env.VITE_DEMO_LOGIN === 'true'
 }
+
+export function demoScorecardsEnabled(): boolean {
+  return import.meta.env.MODE === 'simulation' ||
+    (demoLoginEnabled() && import.meta.env.VITE_HOSTED_DEMO_SCORECARDS === 'true')
+}

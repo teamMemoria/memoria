@@ -1,7 +1,11 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from backend.entities.identity import can_read_agent_record
 from backend.frameworks.http.conversations import AgentDep
+from backend.frameworks.http.demo_scorecards import (
+    DemoScorecardsDep,
+    require_saved_calls,
+)
 from backend.frameworks.http.dependencies import ProvidersDep
 from backend.frameworks.http.knowledge import for_requester
 from backend.providers import (
@@ -18,7 +22,10 @@ router = APIRouter(prefix="/api/agent")
 
 @router.get("/conversations/{conversation_id}", response_model=CallReview)
 async def get_call(
-    conversation_id: str, user: AgentDep, providers: ProvidersDep
+    conversation_id: str,
+    user: AgentDep,
+    providers: ProvidersDep,
+    scorecards: DemoScorecardsDep,
 ) -> CallReview:
     """The call overview and audit evidence for one of the requester's conversations.
 
@@ -33,6 +40,8 @@ async def get_call(
         user, user.organization_id, call.agent_id
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    if scorecards:
+        return scorecards.call(call)
     # References follow the same rule as the knowledge routes: no other agents' IDs.
     return call.model_copy(
         update={
@@ -50,7 +59,11 @@ def feedback_provider(providers: Providers) -> FeedbackProvider:
     return providers.feedback
 
 
-@router.put("/conversations/{conversation_id}/context", response_model=AgentContext)
+@router.put(
+    "/conversations/{conversation_id}/context",
+    response_model=AgentContext,
+    dependencies=[Depends(require_saved_calls)],
+)
 async def save_context(
     conversation_id: str,
     body: SaveContextInput,
@@ -73,6 +86,7 @@ async def save_context(
 @router.post(
     "/conversations/{conversation_id}/review-requests",
     response_model=ReviewRequest,
+    dependencies=[Depends(require_saved_calls)],
     status_code=status.HTTP_201_CREATED,
     responses={200: {"description": "The finding already had a review request"}},
 )

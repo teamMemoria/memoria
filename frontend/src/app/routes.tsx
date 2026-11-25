@@ -14,6 +14,7 @@ import { ReviewQueue } from '../features/review-queue/ReviewQueue'
 import type { WorkspaceDependencies } from './dependencies'
 import { KnowledgeDrafts } from '../features/knowledge-drafts/KnowledgeDrafts'
 import { KnowledgeReview } from '../features/knowledge-drafts/KnowledgeReview'
+import { demoScorecardsEnabled } from '../lib/demoLogin'
 
 function RouteMessage({ title, home }: { title: string; home: string }) {
   return (
@@ -37,7 +38,7 @@ export function AppRoutes({
   onSwitchProfile?: () => void
 }) {
   const home = `/${viewer.role}/conversations`
-  const simulation = import.meta.env.MODE === 'simulation'
+  const simulation = demoScorecardsEnabled()
 
   return (
     <Routes>
