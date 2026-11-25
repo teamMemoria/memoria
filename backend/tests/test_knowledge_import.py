@@ -398,18 +398,20 @@ async def test_import_route_runs_the_pipeline(session, data):
 
 
 @pytest.mark.parametrize(
-    ("values", "approved", "external"),
+    ("values", "approved", "external", "manager_change"),
     [
-        ([7] * 10, True, False),
-        ([7] * 7 + [30] * 3, False, False),  # Exactly 70%, with an unresolved conflict.
-        ([7] * 6 + [30] * 4, False, False),
-        ([7] * 9, False, False),
-        ([30] * 10, False, False),  # No matching policy, even at 100%.
-        pytest.param([7] * 10, False, True, id="external-adapter"),
+        ([7] * 10, True, False, None),
+        ([7] * 7 + [30] * 3, False, False, None),  # 70%, with an unresolved conflict.
+        ([7] * 6 + [30] * 4, False, False, None),
+        ([7] * 9, False, False, None),
+        ([30] * 10, False, False, None),  # No matching policy, even at 100%.
+        pytest.param([7] * 10, False, True, None, id="external-adapter"),
+        pytest.param([7] * 10, False, False, "edit", id="manager-edited"),
+        pytest.param([7] * 10, False, False, "unapprove", id="manager-unapproved"),
     ],
 )
 async def test_pilot_only_auto_approves_source_verified_facts(
-    session, data, values, approved, external
+    session, data, values, approved, external, manager_change
 ):
     settings = Settings(app_env="test", knowledge_draft_threshold=2)
     conversations = []
@@ -450,10 +452,40 @@ async def test_pilot_only_auto_approves_source_verified_facts(
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
-        for _ in range(2):
-            response = await client.post(
-                "/api/manager/knowledge/imports", headers=APPROVER
+        imports = "/api/manager/knowledge/imports"
+        if manager_change == "edit":
+            await service.import_output(
+                NORTHWIND,
+                draft_candidates(NORTHWIND, conversations, AgreementSettings()),
             )
+        elif manager_change == "unapprove":
+            first = await client.post(imports, headers=APPROVER)
+            assert first.status_code == 200, first.text
+
+        if manager_change:
+            target = await draft_by_key(session, VERIFIED_PROMO_KEY)
+            path = f"/api/manager/knowledge/drafts/{target.id}"
+            current = (await client.get(path, headers=APPROVER)).json()["entry"]
+            change = {"version": current["version"]}
+            if manager_change == "edit":
+                changed = await client.put(
+                    path + "/content",
+                    headers=APPROVER,
+                    json={
+                        **change,
+                        "title": "Standard promo expiry",
+                        "question": current["question"],
+                        "guidance": target.answer_text,
+                    },
+                )
+            else:
+                changed = await client.post(
+                    path + "/unapprove", headers=APPROVER, json=change
+                )
+            assert changed.status_code == 200, changed.text
+
+        for _ in range(2):
+            response = await client.post(imports, headers=APPROVER)
             assert response.status_code == 200, response.text
         rows = await drafts(client, status="approved")
         visible = await client.get("/api/agent/knowledge", headers={"X-Dev-User": ALEX})
@@ -465,7 +497,13 @@ async def test_pilot_only_auto_approves_source_verified_facts(
             select(KnowledgeReview).where(KnowledgeReview.draft_id == draft.id)
         )
     ).all()
-    assert len(reviews) == int(approved)
+    expected_actions = {
+        "edit": [ReviewAction.EDITED],
+        "unapprove": [ReviewAction.APPROVED, ReviewAction.UNAPPROVED],
+    }
+    assert sorted(event.action for event in reviews) == expected_actions.get(
+        manager_change, [ReviewAction.APPROVED] if approved else []
+    )
     assert (draft.status is DraftStatus.APPROVED) == approved
     assert (
         any(draft.answer_text in row["paragraphs"] for row in visible.json())

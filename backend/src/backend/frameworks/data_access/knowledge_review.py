@@ -5,10 +5,11 @@ are never shown to agents: the approved-knowledge routes read
 ``knowledge_entries`` only.
 """
 
+import json
 from collections import defaultdict
 from urllib.parse import urlparse
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -29,11 +30,14 @@ from backend.frameworks.data_access.database import (
     unavailable_on_database_error,
 )
 from backend.frameworks.data_access.knowledge_approval import approve_draft
+from backend.frameworks.data_access.knowledge_import import IMPORT_LOCK
 from backend.frameworks.database.models import (
     DraftStatus,
+    EntryStatus,
     KnowledgeConflict,
     KnowledgeDraft,
     KnowledgeDraftEntryMatch,
+    KnowledgeEntry,
     KnowledgeReview,
     OrganizationMembership,
     ReviewAction,
@@ -44,12 +48,15 @@ from backend.interface_adapters.presenters.knowledge_review import (
     _decision,
     draft_schema,
     draft_version,
+    pinned_draft_reference,
 )
-from backend.schemas.knowledge_review import KnowledgeDraft as KnowledgeDraftSchema
 from backend.schemas.knowledge_review import (
+    EditKnowledgeDraftInput,
     KnowledgeQueueCounts,
     KnowledgeReviewDetail,
 )
+from backend.schemas.knowledge_review import KnowledgeDraft as KnowledgeDraftSchema
+from backend.services.clock import utc_now
 from backend.use_cases.knowledge import KnowledgeInteractor
 
 STATUS_NAMES = {
@@ -195,7 +202,13 @@ class DatabaseKnowledgeReviewProvider:
                 not search
                 or search
                 in " ".join(
-                    [draft.id, draft.topic, draft.title, *draft.paragraphs]
+                    [
+                        draft.id,
+                        draft.topic,
+                        draft.title,
+                        draft.question or "",
+                        *draft.paragraphs,
+                    ]
                 ).casefold()
             )
         ]
@@ -228,7 +241,92 @@ class DatabaseKnowledgeReviewProvider:
         if not drafts:
             return None
         # Only knowledge approvers reach this, so they hold the permission to decide.
-        return KnowledgeReviewDetail(entry=drafts[0], can_decide=True)
+        return KnowledgeReviewDetail(
+            entry=drafts[0], can_decide=True, can_edit=drafts[0].status == "draft"
+        )
+
+    @unavailable_on_database_error
+    async def edit_draft(
+        self,
+        organization_id: str,
+        user_id: str,
+        draft_id: str,
+        edit: EditKnowledgeDraftInput,
+    ) -> KnowledgeDraftSchema:
+        async with self._sessions() as session:
+            membership = await _approver(session, organization_id, user_id)
+            await session.execute(
+                select(
+                    func.pg_advisory_xact_lock(IMPORT_LOCK, membership.organization_id)
+                )
+            )
+            draft = await session.scalar(
+                select(KnowledgeDraft)
+                .where(
+                    KnowledgeDraft.organization_id == membership.organization_id,
+                    KnowledgeDraft.id == parse_id(draft_id),
+                )
+                .with_for_update()
+                .options(selectinload(KnowledgeDraft.topic))
+            )
+            if draft is None:
+                raise RecordNotFoundError("Knowledge draft not found")
+            if (
+                draft.status is not DraftStatus.PENDING
+                or draft_version(draft) != edit.version
+            ):
+                raise KnowledgeDecisionRejected(
+                    "Draft changed or already decided. Reload before editing."
+                )
+
+            title = (
+                None
+                if edit.title == (draft.question or draft.topic.name)
+                else edit.title
+            )
+            question = None if edit.question == draft.question else edit.question
+            if (title, question, edit.guidance) != (
+                draft.title,
+                draft.edited_question,
+                draft.answer_text,
+            ):
+                session.add(
+                    KnowledgeReview(
+                        organization_id=draft.organization_id,
+                        draft_id=draft.id,
+                        reviewer_membership_id=membership.id,
+                        action=ReviewAction.EDITED,
+                        note=json.dumps(
+                            {
+                                "version": edit.version,
+                                "title": draft.title
+                                or draft.question
+                                or draft.topic.name,
+                                "question": draft.edited_question or draft.question,
+                                "guidance": draft.answer_text,
+                                "verificationReference": draft.verification_reference,
+                            }
+                        ),
+                    )
+                )
+                if (question, edit.guidance) != (
+                    draft.edited_question,
+                    draft.answer_text,
+                ):
+                    draft.embedding = None
+                    draft.ml_verification = None
+                draft.title = title
+                draft.edited_question = question
+                draft.answer_text = edit.guidance
+                draft.verification_reference = None
+                draft.updated_at = utc_now()
+                await session.flush()
+
+            [updated] = await self._load(
+                session, membership.organization_id, [draft.id]
+            )
+            await session.commit()
+        return updated
 
     @unavailable_on_database_error
     async def attach_verification(self, organization_id, user_id, draft_id, reference):
@@ -263,6 +361,7 @@ class DatabaseKnowledgeReviewProvider:
                 or url.username
                 or url.password
                 or not reference.title.strip()
+                or draft.edited_question is not None
                 or not matches_verification(
                     draft.source_key, draft.answer_text, reference.quote, reference.url
                 )
@@ -285,7 +384,9 @@ class DatabaseKnowledgeReviewProvider:
             membership = await _approver(session, organization_id, user_id)
             # Serialize with pipeline imports so newly discovered conflicts cannot race approval.
             await session.execute(
-                select(func.pg_advisory_xact_lock(7901, membership.organization_id))
+                select(
+                    func.pg_advisory_xact_lock(IMPORT_LOCK, membership.organization_id)
+                )
             )
             draft = await session.scalar(
                 select(KnowledgeDraft)
@@ -308,9 +409,11 @@ class DatabaseKnowledgeReviewProvider:
                 ),
                 KnowledgeTransaction(session, draft, membership),
             )
+            [updated] = await self._load(
+                session, membership.organization_id, [draft.id]
+            )
             await session.commit()
-        detail = await self.get_for_approver(organization_id, user_id, draft_id)
-        return detail.entry
+        return updated
 
 
 class KnowledgeTransaction:
@@ -318,6 +421,7 @@ class KnowledgeTransaction:
 
     def __init__(self, session, draft, membership):
         self.session, self.draft, self.membership = session, draft, membership
+        self.reference = draft.verification_reference or pinned_draft_reference(draft)
 
     async def state(self):
         draft, membership, session = self.draft, self.membership, self.session
@@ -335,15 +439,19 @@ class KnowledgeTransaction:
         return DraftDecisionState(
             draft.status == DraftStatus.PENDING,
             draft_version(draft),
-            draft.verification_reference,
+            self.reference,
             bool(conflicts),
             bool(draft.duplicate_of_id),
             authored_policy_version(draft),
+            approved=draft.status == DraftStatus.APPROVED,
         )
 
     async def save(self, decision):
         session, draft, membership = self.session, self.draft, self.membership
         if decision.outcome == "approved":
+            if decision.authored_policy_version is None:
+                # The interactor has checked the draft version and exact source URL.
+                draft.verification_reference = self.reference
             entry = await approve_draft(session, draft, membership)
             if decision.authored_policy_version is not None:
                 entry.approved_review.note = (
@@ -354,6 +462,8 @@ class KnowledgeTransaction:
                 entry.approved_review.verified_reference_url = (
                     draft.verification_reference["url"]
                 )
+        elif decision.outcome == "unapproved":
+            await self._withdraw()
         else:
             draft.status = DraftStatus.REJECTED
             session.add(
@@ -365,6 +475,53 @@ class KnowledgeTransaction:
                     note=decision.reason.strip(),
                 )
             )
+
+    async def _withdraw(self):
+        session, draft, membership = self.session, self.draft, self.membership
+        now = utc_now()
+        withdrawn = list(
+            await session.scalars(
+                update(KnowledgeEntry)
+                .where(
+                    KnowledgeEntry.organization_id == draft.organization_id,
+                    KnowledgeEntry.status != EntryStatus.WITHDRAWN,
+                    KnowledgeEntry.approved_review_id.in_(
+                        select(KnowledgeReview.id).where(
+                            KnowledgeReview.organization_id == draft.organization_id,
+                            KnowledgeReview.draft_id == draft.id,
+                        )
+                    ),
+                )
+                .values(status=EntryStatus.WITHDRAWN)
+                .returning(KnowledgeEntry.id)
+            )
+        )
+        if withdrawn:
+            await session.execute(
+                update(KnowledgeConflict)
+                .where(
+                    KnowledgeConflict.organization_id == draft.organization_id,
+                    KnowledgeConflict.other_entry_id.in_(withdrawn),
+                    KnowledgeConflict.lifecycle_status == "open",
+                )
+                .values(lifecycle_status="resolved", resolved_at=now)
+            )
+            await session.execute(
+                delete(KnowledgeDraftEntryMatch).where(
+                    KnowledgeDraftEntryMatch.organization_id == draft.organization_id,
+                    KnowledgeDraftEntryMatch.entry_id.in_(withdrawn),
+                )
+            )
+        draft.status = DraftStatus.PENDING
+        draft.updated_at = now
+        session.add(
+            KnowledgeReview(
+                organization_id=draft.organization_id,
+                draft=draft,
+                reviewer_membership=membership,
+                action=ReviewAction.UNAPPROVED,
+            )
+        )
 
 
 __all__ = ["KnowledgeDecisionRejected", "_decision", "draft_schema", "draft_version"]

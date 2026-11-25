@@ -60,6 +60,7 @@ class EntryStatus(StrEnum):
     APPROVED = "approved"
     DISPUTED = "disputed"
     STALE = "stale"
+    WITHDRAWN = "withdrawn"
 
 
 class DraftStatus(StrEnum):
@@ -72,3 +73,4 @@ class ReviewAction(StrEnum):
     APPROVED = "approved"
     EDITED = "edited"
     REJECTED = "rejected"
+    UNAPPROVED = "unapproved"

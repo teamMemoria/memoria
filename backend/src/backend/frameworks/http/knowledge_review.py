@@ -21,6 +21,7 @@ from backend.providers import (
 from backend.schemas.knowledge_review import (
     AttachVerificationInput,
     DraftQueueStatus,
+    EditKnowledgeDraftInput,
     KnowledgeDecisionInput,
     KnowledgeDraft,
     KnowledgeImportResult,
@@ -120,6 +121,24 @@ async def import_pipeline_output(
     return KnowledgeImportResult(**asdict(result))
 
 
+@router.put("/drafts/{draft_id}/content", response_model=KnowledgeDraft)
+async def edit_draft(
+    draft_id: str,
+    body: EditKnowledgeDraftInput,
+    user: ApproverDep,
+    providers: ProvidersDep,
+) -> KnowledgeDraft:
+    """Replace the editable content of a pending draft at its current version."""
+    try:
+        return await review_provider(providers).edit_draft(
+            user.organization_id, user.user_id, draft_id, body
+        )
+    except RecordNotFoundError:
+        raise HTTPException(404, "Knowledge draft not found") from None
+    except KnowledgeDecisionRejected as error:
+        raise HTTPException(409, str(error)) from None
+
+
 @router.put("/drafts/{draft_id}/verification", response_model=KnowledgeDraft)
 async def attach_verification(
     draft_id: str,
@@ -155,6 +174,17 @@ async def reject(
     providers: ProvidersDep,
 ):
     return await decide(draft_id, body, user, providers, "rejected")
+
+
+@router.post("/drafts/{draft_id}/unapprove", response_model=KnowledgeDraft)
+async def unapprove(
+    draft_id: str,
+    body: KnowledgeDecisionInput,
+    user: ApproverDep,
+    providers: ProvidersDep,
+):
+    """Withdraw published guidance and return its draft to pending review."""
+    return await decide(draft_id, body, user, providers, "unapproved")
 
 
 async def decide(draft_id, body, user, providers, outcome):

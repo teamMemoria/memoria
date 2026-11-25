@@ -253,6 +253,9 @@ async def test_layer2_manual_approval_and_persisted_template_assessment(
             PROMO_PREFIX + "14",
             (reference["quote"], reference["quote"], reference["url"]),
         )
+        assert (await verify(reference)).status_code == 409
+        current = (await client.get(base, headers=headers(MAYA))).json()["entry"]
+        reference["version"] = decision["version"] = current["version"]
         for invalid in (
             {**reference, "quote": "Standard promo codes expire after 30 days."},
             {**reference, "url": "https://[broken/policy"},

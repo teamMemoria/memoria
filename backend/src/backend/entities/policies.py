@@ -2,6 +2,7 @@
 
 from backend.entities.guidelines import GUIDELINE_URL, GUIDELINES, PROMO_AGE
 
+AUTHORED_POLICY_PREFIX = "layer1-memoria-"
 SOURCE_PREFIX = "layer2-"
 PROMO_PREFIX = SOURCE_PREFIX + "promo-days-"
 VERIFIED_PROMO_KEY = PROMO_PREFIX + "7"

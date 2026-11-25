@@ -21,6 +21,7 @@ from backend.schemas import (
 from backend.schemas.knowledge_review import (
     AttachVerificationInput,
     DraftQueueStatus,
+    EditKnowledgeDraftInput,
     KnowledgeDecisionInput,
     KnowledgeDraft,
     KnowledgeQueueCounts,
@@ -178,6 +179,14 @@ class KnowledgeReviewProvider(Protocol):
         user_id: str,
         draft_id: str,
         reference: AttachVerificationInput,
+    ) -> KnowledgeDraft: ...
+
+    async def edit_draft(
+        self,
+        organization_id: str,
+        user_id: str,
+        draft_id: str,
+        edit: EditKnowledgeDraftInput,
     ) -> KnowledgeDraft: ...
 
     async def decide(

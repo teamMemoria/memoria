@@ -101,7 +101,9 @@ class KnowledgeDraft(Base):
     # Set for drafts imported from the knowledge pipeline: its draft ID, so
     # importing the same output again updates the row instead of adding one.
     source_key: Mapped[str | None] = mapped_column(String(100))
+    title: Mapped[str | None] = mapped_column(String(140))
     question: Mapped[str | None] = mapped_column(Text)
+    edited_question: Mapped[str | None] = mapped_column(String(600))
     verification_reference: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # The pipeline's grouping of similar drafts, replaced on every import.
     group_key: Mapped[str | None] = mapped_column(String(100))
