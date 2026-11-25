@@ -5,12 +5,11 @@ from itertools import combinations
 from ml.versions import digest
 
 from backend.entities.draft_matches import (
-    PROMO_PREFIX,
     account_lookup,
     faq_search,
     promo_exchange,
 )
-from backend.entities.guidelines import GUIDELINES
+from backend.entities.guidelines import GUIDELINES, PROMO_AGE
 from backend.entities.inferred_knowledge import Claim, Settings, learn
 from backend.entities.policies import (
     EXTENSION_ANSWER,
@@ -19,6 +18,8 @@ from backend.entities.policies import (
     FAQ_KEY,
     GOLD_EXTENSION_ANSWER,
     GOLD_EXTENSION_KEY,
+    PROMO_PREFIX,
+    VERIFIED_PROMO_KEY,
 )
 from backend.interface_adapters.draft_examples import event, examples
 
@@ -74,10 +75,14 @@ def draft_candidates(organization, conversations, settings: Settings, questions=
 
     drafts, conflicts = [], []
     for topic in learn(claims, settings):
-        if topic.decide(settings) == "undecided":
+        outcome = topic.decide(settings)
+        if outcome == "undecided":
             continue
         # Even a minority alternate value needs visibility before approval.
-        for value, _ in topic.votes():
+        votes = topic.votes()
+        for value, support in votes:
+            key = PROMO_PREFIX + value
+            verified = key == VERIFIED_PROMO_KEY
             evidence = [
                 (conv, question, answer)
                 for days, conv, question, answer in exchanges.values()
@@ -85,10 +90,17 @@ def draft_candidates(organization, conversations, settings: Settings, questions=
             ]
             drafts.append(
                 {
-                    **_pending_draft(organization, PROMO_PREFIX + value),
+                    **_pending_draft(organization, key),
                     "topic": "Standard promo code expiry",
                     "question": "How long are standard promo codes valid?",
-                    "answer": f"Standard promo codes expire after {value} days.",
+                    "answer": GUIDELINES[PROMO_AGE].answer
+                    if verified
+                    else f"Standard promo codes expire after {value} days.",
+                    **(
+                        {"agreement": (support, len(topic.values_by_call))}
+                        if verified and outcome == "candidate" and value == votes[0][0]
+                        else {}
+                    ),
                     "question_passages": [_passage(c, q) for c, q, _ in evidence],
                     "answer_passages": [_passage(c, a) for c, _, a in evidence],
                 }

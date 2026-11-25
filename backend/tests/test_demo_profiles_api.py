@@ -7,6 +7,7 @@ from backend.core.config import Settings
 from backend.data.demo_profiles import load_profiles, profile_display_name
 from backend.main import create_app
 from backend.providers import ProviderUnavailableError, create_fixture_providers
+from backend.schemas import DemoProfile
 
 
 def make_client(app_env="test", providers=None):
@@ -42,6 +43,42 @@ def test_profiles_are_not_offered_in_production():
     assert (
         make_client(app_env="production").get("/api/demo/profiles").status_code == 404
     )
+
+
+def test_public_demo_lists_only_configured_seeded_profiles():
+    class MixedProfiles:
+        async def list_profiles(self):
+            return [
+                DemoProfile(
+                    id="demo-agent-01",
+                    display_name="Alex",
+                    role="agent",
+                    conversation_count=2,
+                ),
+                DemoProfile(
+                    id="demo-unlisted",
+                    display_name="Other",
+                    role="agent",
+                    conversation_count=1,
+                ),
+                DemoProfile(
+                    id="demo-manager-01", display_name="Manager", role="manager"
+                ),
+            ]
+
+    response = TestClient(
+        create_app(
+            providers=replace(
+                create_fixture_providers(), demo_profiles=MixedProfiles()
+            ),
+            settings=Settings(app_env="production", public_demo=True),
+        )
+    ).get("/api/demo/profiles")
+    assert response.status_code == 200
+    assert [profile["id"] for profile in response.json()] == [
+        "demo-agent-01",
+        "demo-manager-01",
+    ]
 
 
 def test_unavailable_data_source_is_a_503():

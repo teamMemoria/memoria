@@ -106,10 +106,10 @@ async def import_pipeline_output(
 ) -> KnowledgeImportResult:
     """Run the knowledge pipeline for the requester's organization and store its drafts.
 
-    Everything is stored as pending. Importing the same output again changes nothing.
+    The Layer 2 pilot may publish eligible facts automatically.
     """
     try:
-        result = await service.run(user.organization_id)
+        result = await service.run(user.organization_id, requested_by=user.user_id)
     except KnowledgePipelineUnavailableError as error:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(error)) from None
     except ImportRejectedError as error:

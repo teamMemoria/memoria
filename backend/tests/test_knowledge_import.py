@@ -6,9 +6,15 @@ from pathlib import Path
 
 import httpx
 import pytest
+from ml.abcd import prepare_dataset
+from ml.test_evidence import SOURCE
 from sqlalchemy import func, select
 
 from backend.core.config import Settings
+from backend.entities.inferred_knowledge import Settings as AgreementSettings
+from backend.entities.policies import PROMO_PREFIX, VERIFIED_PROMO_KEY
+from backend.frameworks.data_access.draft_setup import pilot_knowledge_import
+from backend.interface_adapters.drafts import draft_candidates
 from backend.main import create_app
 from backend.models import (
     DraftStatus,
@@ -24,6 +30,7 @@ from backend.models import (
 )
 from backend.providers import create_fixture_providers
 from backend.providers.database import create_database_providers
+from backend.services.assessment_storage import import_prepared
 from backend.services.knowledge_import import (
     ImportRejectedError,
     KnowledgeImportService,
@@ -388,6 +395,86 @@ async def test_import_route_runs_the_pipeline(session, data):
     assert first.status_code == 200
     assert (first.json()["created"], second.json()["unchanged"]) == (3, 3)
     assert agent.status_code == 403
+
+
+@pytest.mark.parametrize(
+    ("values", "approved", "external"),
+    [
+        ([7] * 10, True, False),
+        ([7] * 7 + [30] * 3, False, False),  # Exactly 70%, with an unresolved conflict.
+        ([7] * 6 + [30] * 4, False, False),
+        ([7] * 9, False, False),
+        ([30] * 10, False, False),  # No matching policy, even at 100%.
+        pytest.param([7] * 10, False, True, id="external-adapter"),
+    ],
+)
+async def test_pilot_only_auto_approves_source_verified_facts(
+    session, data, values, approved, external
+):
+    settings = Settings(app_env="test", knowledge_draft_threshold=2)
+    conversations = []
+    for index, days in enumerate(values, 90000):
+        evidence = prepare_dataset(
+            {
+                "train": [
+                    {
+                        "convo_id": index,
+                        "original": [
+                            ["customer", "How long are standard promo codes valid?"],
+                            [
+                                "agent",
+                                f"Standard promo codes expire after {days} days.",
+                            ],
+                        ],
+                    }
+                ],
+                "dev": [],
+                "test": [],
+            },
+            SOURCE,
+            (str(index),),
+        )
+        await import_prepared(session, data.northwind.id, data.alex_agent.id, evidence)
+        conversations.extend(evidence["conversations"])
+    await session.commit()
+    if external:
+        output = draft_candidates(NORTHWIND, conversations, AgreementSettings())
+        service = service_for(session, FixedPipeline(output))
+    else:
+        service = pilot_knowledge_import(sessions_for(session), settings)
+    app = create_app(
+        providers=create_database_providers(sessions_for(session)),
+        settings=settings,
+        knowledge_import=service,
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        for _ in range(2):
+            response = await client.post(
+                "/api/manager/knowledge/imports", headers=APPROVER
+            )
+            assert response.status_code == 200, response.text
+        rows = await drafts(client, status="approved")
+        visible = await client.get("/api/agent/knowledge", headers={"X-Dev-User": ALEX})
+        assert visible.status_code == 200
+    key = VERIFIED_PROMO_KEY if 7 in values else PROMO_PREFIX + "30"
+    draft = await draft_by_key(session, key)
+    reviews = (
+        await session.scalars(
+            select(KnowledgeReview).where(KnowledgeReview.draft_id == draft.id)
+        )
+    ).all()
+    assert len(reviews) == int(approved)
+    assert (draft.status is DraftStatus.APPROVED) == approved
+    assert (
+        any(draft.answer_text in row["paragraphs"] for row in visible.json())
+        == approved
+    )
+    if approved:
+        assert "Automatically approved: 10/10" in reviews[0].note
+        assert reviews[0].verified_reference_url == draft.verification_reference["url"]
+        assert any(row["id"] == str(draft.id) for row in rows)
 
 
 async def test_import_route_reports_refused_and_missing_pipelines(session, data):

@@ -1,8 +1,10 @@
 """Verify the exact policy answer and independent source for a draft."""
 
-from backend.entities.guidelines import GUIDELINE_URL, GUIDELINES
+from backend.entities.guidelines import GUIDELINE_URL, GUIDELINES, PROMO_AGE
 
 SOURCE_PREFIX = "layer2-"
+PROMO_PREFIX = SOURCE_PREFIX + "promo-days-"
+VERIFIED_PROMO_KEY = PROMO_PREFIX + "7"
 FAQ_KEY = SOURCE_PREFIX + "product-faq-search"
 FAQ_ANSWER = "Open Search FAQ for a product question covered by the FAQ."
 FAQ_QUOTE = "When you realize that the customer is asking something that can be found in the FAQ, click the [Search FAQ] button"
@@ -37,6 +39,11 @@ _VERIFICATION_SOURCES = {
         key: (guideline.answer, guideline.quote, GUIDELINE_URL)
         for key, guideline in GUIDELINES.items()
     },
+    VERIFIED_PROMO_KEY: (
+        GUIDELINES[PROMO_AGE].answer,
+        GUIDELINES[PROMO_AGE].quote,
+        GUIDELINE_URL,
+    ),
     FAQ_KEY: (FAQ_ANSWER, FAQ_QUOTE, FAQ_URL),
     EXTENSION_KEY: (EXTENSION_ANSWER, EXTENSION_QUOTES, EXTENSION_URL),
     GOLD_EXTENSION_KEY: (GOLD_EXTENSION_ANSWER, GOLD_EXTENSION_QUOTES, EXTENSION_URL),
