@@ -38,7 +38,7 @@ Every route except `/health` reads the requester from `get_current_user`
 organization ID and set of permissions.
 
 There is no login system yet. When `MEMORIA_APP_ENV` is `development` or `test`, the requester
-is one of the fixed identities in `backend/src/backend/core/auth.py`, named in the `X-Dev-User`
+is one of the fixed identities in `backend/src/backend/entities/identity.py`, named in the `X-Dev-User`
 header:
 
 | `X-Dev-User` | Organization | Permissions |
@@ -66,7 +66,7 @@ See [deployed frontend access](deployed-frontend-access.md).
    `CurrentUser`:
    - At runtime it is built from the user's stored `OrganizationMembership`:
      `organization_id` is the organization's `slug`, and permissions come from
-     `permissions_for_membership` in `backend/core/auth.py`. Tests can inject
+     `permissions_for_membership` in `backend/src/backend/entities/identity.py`. Tests can inject
      fixture providers explicitly.
 
    | Membership | Permissions |

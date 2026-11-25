@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 
-from backend.core.auth import Permission
 from backend.core.config import Settings
+from backend.entities.identity import Permission
 from backend.frameworks.data_access.database import (
     DatabaseCallReviewProvider,
     create_database_providers,

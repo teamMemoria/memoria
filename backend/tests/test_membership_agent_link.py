@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from backend.core.auth import Permission, permissions_for_membership
+from backend.entities.identity import Permission, permissions_for_membership
 from backend.frameworks.database.models import (
     Agent,
     Organization,
