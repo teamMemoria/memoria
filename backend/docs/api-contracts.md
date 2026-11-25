@@ -34,7 +34,7 @@ is always `null` while a call is processing.
 ## Identity and permissions
 
 Every route except `/health` reads the requester from `get_current_user`
-(`backend/src/backend/api/auth.py`), which returns a `CurrentUser` with a user ID,
+(`backend/src/backend/frameworks/http/auth.py`), which returns a `CurrentUser` with a user ID,
 organization ID and set of permissions.
 
 There is no login system yet. When `MEMORIA_APP_ENV` is `development` or `test`, the requester

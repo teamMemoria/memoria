@@ -5,7 +5,6 @@ import pytest
 from fastapi import Depends
 from fastapi.testclient import TestClient
 
-from backend.api.auth import require_permission
 from backend.core.auth import (
     DEV_IDENTITIES,
     CurrentUser,
@@ -13,6 +12,7 @@ from backend.core.auth import (
     can_read_agent_record,
 )
 from backend.core.config import Settings
+from backend.frameworks.http.auth import require_permission
 from backend.main import create_app
 from backend.providers import ProviderUnavailableError, create_fixture_providers
 

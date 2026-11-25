@@ -5,8 +5,8 @@ from dataclasses import replace
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import narration
 from backend.core.config import Settings
+from backend.frameworks.http import narration
 from backend.main import create_app
 from backend.providers import create_fixture_providers
 from backend.providers.fixture_data import CALLS, NORTHWIND
