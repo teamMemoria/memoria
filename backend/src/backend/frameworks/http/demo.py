@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.core.config import Settings
+from backend.data.demo_profiles import demo_profile_ids
 from backend.frameworks.http.auth import get_settings
 from backend.frameworks.http.dependencies import ProvidersDep
 from backend.schemas import DemoProfile
@@ -16,6 +17,10 @@ async def list_demo_profiles(
 ) -> list[DemoProfile]:
     # Picking a profile is how the demo signs in, so the list needs no identity.
     # It only exists where X-Dev-User is accepted; elsewhere it is a 404.
-    if not settings.dev_identity_enabled or providers.demo_profiles is None:
+    if not settings.demo_profile_selection_enabled or providers.demo_profiles is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not Found")
-    return await providers.demo_profiles.list_profiles()
+    profiles = await providers.demo_profiles.list_profiles()
+    if settings.dev_identity_enabled:
+        return profiles
+    allowed = demo_profile_ids()
+    return [profile for profile in profiles if profile.id in allowed]
