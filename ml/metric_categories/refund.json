@@ -1,0 +1,32 @@
+{
+  "id": "refund",
+  "title": "Existing refund status and changes",
+  "supported_workflows": [
+    "refund-status",
+    "refund-not-received",
+    "add-item-to-refund",
+    "change-existing-refund"
+  ],
+  "weights": {
+    "procedure": 30,
+    "completeness": 30,
+    "communication-style": 10,
+    "answer-support": 30
+  },
+  "required_reference_topics": [
+    "Approved status, missing-refund, update and escalation branches.",
+    "Independent current refund status, supported amounts/destinations and applicable timeframes."
+  ],
+  "check_conditions": {
+    "procedure.information": "Identify whether the customer wants refund status, a missing refund investigation or a change to the existing refund. Establish the required purchase/refund identifier and current supported refund state before a dependent change.",
+    "procedure.actions": "Identify whether the customer wants refund status, a missing refund investigation or a change to the existing refund. Use the permitted status lookup, update or escalation process and correct target and values. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Establish the required purchase/refund identifier and current supported refund state before a dependent change. Follow explicit status restrictions, required action order and permission for the specific refund change.",
+    "completeness": "Recognise the original refund question and any additional item or method request. Address status and changes separately; do not substitute an order change for a refund request.",
+    "completeness.promises_next_steps": "Account for the requested refund outcome with matching records or an eligible explained limit. Explain what remains pending and any actual next step or supported timeframe.",
+    "communication-style": "Use consistent refund-versus-order wording and explain pending versus completed states.",
+    "answer-support": "Eligible existing-refund rules plus independent refund, purchase, update and transaction records."
+  },
+  "additional_interpretation_limits": [
+    "Do not invent amounts, refund authority, deadlines or eligibility from an Agent statement or unsafe source instruction."
+  ]
+}

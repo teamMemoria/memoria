@@ -1,0 +1,31 @@
+{
+  "id": "unclear",
+  "title": "Unclear or inconsistent purpose",
+  "supported_workflows": [
+    "unclear-purpose",
+    "conflicting-purpose",
+    "incomplete-dialogue"
+  ],
+  "weights": {
+    "procedure": 25,
+    "completeness": 25,
+    "communication-style": 25,
+    "answer-support": 25
+  },
+  "required_reference_topics": [
+    "Eligible guidance only for independently supported subworkflows.",
+    "Independent facts for identifiable claims; no whole-conversation policy guessed from keywords."
+  ],
+  "check_conditions": {
+    "procedure.information": "Use a specific procedure branch only where the purpose and its conditions can actually be established. Assess prerequisites only for an independently supported action/branch; unknown requirements remain unresolved.",
+    "procedure.actions": "Use a specific procedure branch only where the purpose and its conditions can actually be established. Assess only independently identifiable required actions; unrelated or empty action records do not define the workflow. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Assess prerequisites only for an independently supported action/branch; unknown requirements remain unresolved. Assess only explicit permission/order requirements whose applicability and relevant events are independently supported.",
+    "completeness": "Retain identifiable requests and clarify their uncertain targets without inventing a single coherent purpose. Assess responses to independently supported request parts; preserve contradictory or incomplete links.",
+    "completeness.promises_next_steps": "Account only for identifiable requested outcomes; unsupported request/outcome boundaries stay unresolved. Identify actual clarification needs and supported pending commitments without inventing a repair to the dialogue.",
+    "communication-style": "Judge specific observable wording only where surrounding context is sufficient.",
+    "answer-support": "Independent references/records only for identifiable factual claims; no assumption that ambiguous dialogue is an Agent fault."
+  },
+  "additional_interpretation_limits": [
+    "Unclear is a recorded applicability problem, not a poor performance score. Preserve any independently assessable metrics."
+  ]
+}

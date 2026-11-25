@@ -1,0 +1,32 @@
+{
+  "id": "general",
+  "title": "General support",
+  "supported_workflows": [
+    "general-information",
+    "general-service-request",
+    "general-follow-up"
+  ],
+  "weights": {
+    "procedure": 25,
+    "completeness": 30,
+    "communication-style": 25,
+    "answer-support": 20
+  },
+  "required_reference_topics": [
+    "Eligible general-support procedure, or a supported more specific branch.",
+    "Independent facts/records relevant to the actual purpose; a broad category label is not authority."
+  ],
+  "check_conditions": {
+    "procedure.information": "Use general only for a clear legitimate support purpose outside the named categories; apply a named branch as soon as it becomes supported. Check prerequisites only if an eligible procedure explicitly requires them; do not infer identity checks for every enquiry.",
+    "procedure.actions": "Use general only for a clear legitimate support purpose outside the named categories; apply a named branch as soon as it becomes supported. Assess only actions required by a supported, eligible general-support procedure; unknown procedure obligations remain unresolved. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Check prerequisites only if an eligible procedure explicitly requires them; do not infer identity checks for every enquiry. Check explicit permission and ordering requirements for supported actions; general is not permission to invent rules.",
+    "completeness": "Identify every clear customer request, constraint, correction and contextual withdrawal. Check a direct response, relevant next step or explained refusal for each requested part.",
+    "completeness.promises_next_steps": "Account for each requested outcome, separating information, actions, legitimate refusals and pending work. Explain actual outstanding promises, hand-offs or customer steps without requiring formulaic closing language.",
+    "communication-style": "Use the same acknowledgement, clarity, consistency and respectful-wording criteria as other categories.",
+    "answer-support": "An eligible independent source for each factual claim and authoritative records for account/action claims; general does not supply missing truth."
+  },
+  "additional_interpretation_limits": [
+    "General is not an automatic pass, a replacement for unclear, or a way to remove unresolved policy checks.",
+    "No conversations are reassigned here by this draft; use positive purpose evidence to select it."
+  ]
+}

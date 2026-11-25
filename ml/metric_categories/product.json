@@ -1,0 +1,30 @@
+{
+  "id": "product",
+  "title": "Product information and care",
+  "supported_workflows": [
+    "product-specifications",
+    "product-care",
+    "warranty-enquiry",
+    "stock-enquiry",
+    "product-price-enquiry"
+  ],
+  "weights": {
+    "procedure": 15,
+    "completeness": 25,
+    "communication-style": 20,
+    "answer-support": 40
+  },
+  "required_reference_topics": [
+    "Product/service specifications and approved enquiry procedure.",
+    "Independent variant-specific specifications and any current inventory/price records."
+  ],
+  "check_conditions": {
+    "procedure.information": "Identify the correct product, brand and variant and use the matching specification/care enquiry branch. Check any product identifier or variant needed by that reference. Do not require account identity for a public enquiry unless an eligible rule requires it.",
+    "procedure.actions": "Identify the correct product, brand and variant and use the matching specification/care enquiry branch. Look up the matching specifications, care instructions or stock information; perform a purchase only when separately requested and authorised. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Check any product identifier or variant needed by that reference. Do not require account identity for a public enquiry unless an eligible rule requires it. Apply any documented lookup order or purchase permission only when that branch requires it.",
+    "completeness": "Recognise every asked feature, size, material, colour, care or warranty question. Answer each requested feature separately and keep any later purchase request separate.",
+    "completeness.promises_next_steps": "Account for the requested information or a supported limit; a purchase promise is not purchase completion. Explain remaining information sources or customer steps without inventing an unnecessary hand-off.",
+    "communication-style": "Use specific product features and understandable care steps.",
+    "answer-support": "Product specifications, care instructions, stock records, warranty terms and price references for the exact variant."
+  }
+}

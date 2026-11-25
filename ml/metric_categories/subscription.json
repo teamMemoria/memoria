@@ -1,0 +1,33 @@
+{
+  "id": "subscription",
+  "title": "Subscriptions and membership",
+  "supported_workflows": [
+    "membership-qualification",
+    "membership-duration",
+    "subscription-due-date",
+    "subscription-payment",
+    "extension",
+    "restore-membership",
+    "cancellation-policy",
+    "late-payment-policy"
+  ],
+  "weights": {
+    "procedure": 30,
+    "completeness": 25,
+    "communication-style": 15,
+    "answer-support": 30
+  },
+  "required_reference_topics": [
+    "Approved subscription/membership information and change/payment procedures.",
+    "Independent account-specific amounts/dates plus applicable benefits, grace periods and cancellation terms."
+  ],
+  "check_conditions": {
+    "procedure.information": "Distinguish membership information, due dates, payments, extensions, restoration and hypothetical cancellation questions. Check only the identity, membership and payment/extension conditions required by the applicable branch.",
+    "procedure.actions": "Distinguish membership information, due dates, payments, extensions, restoration and hypothetical cancellation questions. Perform only the authorised eligible payment or subscription change; a policy question is not permission to cancel. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Check only the identity, membership and payment/extension conditions required by the applicable branch. Apply explicit validation/order requirements and current permission before charges or changes.",
+    "completeness": "Recognise each due-date, amount, benefit or requested-change question and any correction. Address each question or requested action separately; distinguish hypothetical questions from instructions.",
+    "completeness.promises_next_steps": "Account for actual payments, extensions or restoration without assuming a query proves the account state. Explain actual remaining payment/customer steps and supported deadlines or extension periods.",
+    "communication-style": "Explain recurring charges, due dates and changes plainly, without misleading reassurance or pressure.",
+    "answer-support": "Eligible membership/subscription terms plus authoritative account, payment, extension and cancellation records."
+  }
+}

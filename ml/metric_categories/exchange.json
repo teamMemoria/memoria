@@ -1,0 +1,27 @@
+{
+  "id": "exchange",
+  "title": "Wrong item and replacement",
+  "supported_workflows": [
+    "wrong-item-correction",
+    "replacement-item"
+  ],
+  "weights": {
+    "procedure": 30,
+    "completeness": 40,
+    "communication-style": 15,
+    "answer-support": 15
+  },
+  "required_reference_topics": [
+    "Approved wrong-item correction/replacement and any applicable return branch.",
+    "Independent item identifiers, replacement state, fees, delivery facts and return requirements."
+  ],
+  "check_conditions": {
+    "procedure.information": "Establish the reported mismatch and applicable correction/replacement branch; do not assume a discretionary size/colour exchange. Check required order, item, delivery and eligibility facts before a dependent correction.",
+    "procedure.actions": "Establish the reported mismatch and applicable correction/replacement branch; do not assume a discretionary size/colour exchange. Perform the authorised eligible correction/replacement and any specifically required return arrangements. Compare the recorded agreed operation here; required verification/eligibility/permission relationships remain in procedure.order_permission, and factual policy claims require independent eligible support in Answer support.",
+    "procedure.order_permission": "Check required order, item, delivery and eligibility facts before a dependent correction. Follow explicit replacement/return ordering and current permission; do not invent a return-before-replacement rule.",
+    "completeness": "Identify the intended item, reported wrong item and each separate replacement/return request. Address the correction, replacement and original-item return separately when applicable.",
+    "completeness.promises_next_steps": "Account for the action required at this stage; a corrected order record is not physical delivery of a replacement. Explain actual return arrangements, pending replacement work and supported next steps.",
+    "communication-style": "Clearly distinguish correcting an order from dispatching or receiving a replacement.",
+    "answer-support": "Authoritative original order, item/change/replacement records and eligible correction/return guidance."
+  }
+}
