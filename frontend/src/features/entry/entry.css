@@ -8,9 +8,6 @@
 }
 
 .entry-panel {
-  display: grid;
-  place-items: center;
-  min-width: 0;
   border-radius: 20px;
   background: var(--color-canvas);
 }
@@ -105,15 +102,7 @@
 /* Native inputs retain their keyboard behaviour and accessible names. */
 .entry-choice input,
 .entry-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
   margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
 }
 
 .entry-role-top {
@@ -169,8 +158,6 @@
 }
 
 .entry-avatar {
-  display: grid;
-  place-items: center;
   flex: 0 0 48px;
   width: 48px;
   height: 48px;
@@ -212,8 +199,6 @@
 }
 
 .entry-brand {
-  display: grid;
-  place-items: center;
   padding-bottom: 48px;
   background: var(--color-nav);
 }

@@ -1,16 +1,6 @@
+import { formatDate } from '../lib/dates'
 import type { KnowledgeEntry } from '../types/knowledge'
 import './approved-reference.css'
-
-function date(value: string | null) {
-  if (!value) return 'Not supplied'
-  const parsed = new Date(`${value.slice(0, 10)}T00:00:00Z`)
-  return Number.isNaN(parsed.getTime())
-    ? 'Not supplied'
-    : new Intl.DateTimeFormat('en-US', {
-        dateStyle: 'medium',
-        timeZone: 'UTC',
-      }).format(parsed)
-}
 
 export function ApprovedReference({
   entry,
@@ -34,7 +24,7 @@ export function ApprovedReference({
         </div>
         <div>
           <dt>Approved</dt>
-          <dd>{date(entry.approvedAt)}</dd>
+          <dd>{formatDate(entry.approvedAt)}</dd>
         </div>
         <div>
           <dt>Approved by</dt>
@@ -42,11 +32,11 @@ export function ApprovedReference({
         </div>
         <div>
           <dt>Effective</dt>
-          <dd>{date(entry.effectiveAt)}</dd>
+          <dd>{formatDate(entry.effectiveAt)}</dd>
         </div>
         <div>
           <dt>Last confirmed</dt>
-          <dd>{date(entry.lastConfirmedAt)}</dd>
+          <dd>{formatDate(entry.lastConfirmedAt)}</dd>
         </div>
         <div>
           <dt>Policy owner</dt>

@@ -1,10 +1,13 @@
+import { conversationFilters } from '../lib/workspaceSearch'
+import { AssessmentState } from '../components/AssessmentState'
+import { ResourceNotice } from '../components/ResourceNotice'
+import { ConversationMetadata } from '../components/ConversationMetadata'
 import { pilotLabel } from '../types/callReview'
 import { screens } from '../features/assessment-shared/screens'
-import { DefaultAssessmentScreen } from '../features/assessment-shared/DefaultAssessmentScreen'
-import { decisionOutcomes } from '../features/review-queue/teamQueue'
+import { decisionOutcomes } from '../types/callReview'
 import { useEffect, useRef } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { Button, Panel, StatusLabel } from '../components/controls'
+import { Panel, StatusLabel } from '../components/controls'
 import { Icon } from '../components/Icon'
 import { useCallReview } from '../lib/useCallReview'
 import type {
@@ -53,20 +56,10 @@ export function AssessmentRoute({
         <p>Unknown category.</p>
       </Panel>
     )
-  if (state.status === 'loading')
-    return <p role="status">Loading assessment…</p>
-  if (state.status === 'error')
+  if (state.status !== 'ready')
     return (
-      <Panel title="Unable to load assessment">
-        <p role="alert">Please try again.</p>
-        <Button onClick={state.retry}>Try again</Button>
-      </Panel>
-    )
-  if (state.status === 'unavailable')
-    return (
-      <Panel title="Conversation unavailable">
-        <p>This conversation is not available in your workspace.</p>
-      </Panel>
+      <ResourceNotice state={state} loading="Loading assessment…" errorTitle="Unable to load assessment"
+        unavailableTitle="Conversation unavailable" unavailable="This conversation is not available in your workspace." />
     )
   return (
     <AssessmentContent
@@ -96,9 +89,7 @@ function AssessmentContent({
   const simulation = call.assessmentSource === 'simulation'
   const base = `/${role}/conversations/${encodeURIComponent(call.id)}`
   const sourceId = call.sourceId ?? call.assessmentVersion?.sourceId
-  const backParams = new URLSearchParams()
-  for (const key of ['q', 'status'])
-    if (params.has(key)) backParams.set(key, params.get(key)!)
+  const backParams = conversationFilters(params)
   const search = backParams.size ? `?${backParams}` : ''
   const turns = [
     ...new Set(
@@ -148,10 +139,10 @@ function AssessmentContent({
   const data = assessmentData(call, category)
   const hasBreach = data.checks.some((check) => check.outcome === 'breach')
   const attention = hasBreach || (!simulation && data.criterion?.result === 'needs-review')
-  const Screen = screens[category] ?? DefaultAssessmentScreen
+  const Screen = screens[category]
   return (
     <div className="assessment-page">
-      <Link className="detail-back" to={`${base}${search}`}>
+      <Link className="detail-back inline-center" to={`${base}${search}`}>
         {call.topic && call.topic !== 'Unassigned' ? call.topic : 'Back to conversation'}
       </Link>
       <header className="assessment-heading">
@@ -160,18 +151,10 @@ function AssessmentContent({
             {categories.find((item) => item.id === category)!.title}
           </h1>
           {!simulation && pilotLabel(call) && <p className="metadata-line">{pilotLabel(call)}</p>}
-          <ul className="call-overview-metadata" aria-label="Call details">
-            <li>{simulation ? `ABCD ${sourceId}` : `Call ${call.id}${sourceId ? ` (ABCD ${sourceId})` : ''}`}</li>
-            <li>{call.agentName}</li>
-            <li>
-              {call.transcript
-                ? `${call.transcript.turns.length} ${call.transcript.complete ? '' : 'recorded '}${call.transcript.turns.length === 1 ? 'turn' : 'turns'}`
-                : 'Turns unavailable'}
-            </li>
-          </ul>
+          <ConversationMetadata call={call} sourceId={sourceId} />
         </div>
         <button
-          className="transcript-shortcut"
+          className="transcript-shortcut inline-center"
           onClick={(event) => {
             trigger.current = event.currentTarget
             const next = new URLSearchParams(backParams)
@@ -189,30 +172,17 @@ function AssessmentContent({
         search={search}
         call={call}
       />
-      {call.status === 'unavailable' ? (
-        <Panel title="Assessment unavailable"><p>No assessment is stored for this conversation. This is not an Agent performance result.</p></Panel>
-      ) : call.status === 'processing' ? (
-        <Panel title="Feedback is processing">
-          <p role="status">Assessment results are not ready.</p>
-        </Panel>
-      ) : (
-        <>
-          {call.status === 'partial' && (
-            <Panel title="Assessment incomplete">
-              <p role="status">Processing failed for part of this assessment. Available checks are shown below; feedback is not ready.</p>
-            </Panel>
-          )}
-          <div
-            className={`metric-content ${simulation ? 'metric-content--simulation' : ''} ${attention ? 'metric-content--attention' : ''}`}
-          >
-            <Screen data={data} onOpen={openEvidence} loadNarration={loadNarration} />
-          </div>
-        </>
-      )}
+      <AssessmentState call={call}>
+        <div
+          className={`metric-content ${simulation ? 'metric-content--simulation' : ''} ${attention ? 'metric-content--attention' : ''}`}
+        >
+          <Screen data={data} onOpen={openEvidence} loadNarration={loadNarration} />
+        </div>
+      </AssessmentState>
       {!simulation && <section className="assessment-actions" aria-label="Review actions">
         {data.findings.map((finding) => (
           <Link
-            className="source-link"
+            className="source-link inline-center"
             key={finding.id}
             to={`${base}/findings/${encodeURIComponent(finding.id)}${search}`}
           >
@@ -223,7 +193,7 @@ function AssessmentContent({
           </Link>
         ))}
         {role === 'agent' && !data.findings.length && (
-          <Link className="source-link" to={`${base}/transcript${search}`}>
+          <Link className="source-link inline-center" to={`${base}/transcript${search}`}>
             Transcript and Agent context
           </Link>
         )}

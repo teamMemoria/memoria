@@ -6,16 +6,6 @@
 .knowledge-drafts > * {
   min-width: 0;
 }
-.knowledge-drafts-sr-only,
-.knowledge-drafts [role='search'] .field > span:first-child,
-.knowledge-review-decision > h2 {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 .knowledge-drafts .tab-list {
   border-bottom: 0;
 }
@@ -33,19 +23,13 @@
   padding-top: 8px;
 }
 .knowledge-drafts-results {
-  display: grid;
   gap: 40px;
-  min-width: 0;
 }
 .knowledge-draft-groups {
-  display: grid;
   gap: 32px;
-  min-width: 0;
 }
 .knowledge-draft-group {
-  display: grid;
   gap: 8px;
-  min-width: 0;
 }
 .knowledge-draft-group > header {
   display: flex;
@@ -61,8 +45,6 @@
   border-radius: 6px;
 }
 .knowledge-drafts-back {
-  display: inline-flex;
-  align-items: center;
   gap: 12px;
   justify-self: start;
 }
@@ -70,9 +52,7 @@
   gap: 24px;
 }
 .knowledge-review-title {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 12px 24px;
 }
 .knowledge-review-title .status-dot {
@@ -105,8 +85,6 @@
   gap: 8px;
 }
 .knowledge-source {
-  display: flex;
-  align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 88px;
@@ -170,8 +148,6 @@
   }
 }
 .knowledge-flow-node {
-  display: flex;
-  align-items: center;
   gap: 16px;
   min-height: 96px;
   padding: 20px;
@@ -288,10 +264,8 @@
   grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
 }
 .knowledge-draft-editor {
-  display: grid;
   align-content: start;
   gap: 12px;
-  min-width: 0;
   padding: 18px;
   background: white;
 }
@@ -379,8 +353,6 @@
   }
 }
 .knowledge-review-reference {
-  display: inline-flex;
-  align-items: center;
   justify-self: start;
   gap: 12px;
   text-decoration: underline;
@@ -418,8 +390,6 @@
   overflow-wrap: anywhere;
 }
 .knowledge-review-check {
-  display: flex;
-  align-items: center;
   gap: 12px;
 }
 .knowledge-review-check input {
@@ -448,8 +418,6 @@
   margin: 0 0 8px;
 }
 .knowledge-approval-icon {
-  display: grid;
-  place-items: center;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -472,9 +440,7 @@
   100% { transform: translate(-50%, -50%) scale(1); }
 }
 .knowledge-review-actions {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
   justify-content: flex-end;
   gap: 16px;
 }

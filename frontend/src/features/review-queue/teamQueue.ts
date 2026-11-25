@@ -29,25 +29,6 @@ export interface TeamReviewApi extends ManagerCallApi {
   ): Promise<ManagerDecision>
 }
 
-export const decisionOutcomes = {
-  confirmed: {
-    label: 'Confirmed',
-    description: 'The automatic feedback is correct.',
-  },
-  corrected: {
-    label: 'Corrected',
-    description: 'The feedback needs a correction, explained below.',
-  },
-  dismissed: {
-    label: 'Dismissed',
-    description: 'The feedback does not apply to this call.',
-  },
-  'cannot-assess': {
-    label: 'Cannot assess',
-    description: 'The evidence is not enough to decide.',
-  },
-} as const satisfies Record<ManagerDecision['outcome'], { label: string; description: string }>
-
 // Managers land on flagged feedback first.
 export const defaultQueueStatus = 'review-requested'
 

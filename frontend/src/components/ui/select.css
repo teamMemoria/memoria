@@ -1,6 +1,4 @@
 .memoria-select-trigger {
-  display: flex;
-  align-items: center;
   gap: 16px;
   width: 100%;
   min-height: 48px;
@@ -60,8 +58,6 @@
 
 .memoria-select-item {
   position: relative;
-  display: flex;
-  align-items: center;
   gap: 12px;
   min-height: 48px;
   padding: 10px 40px 10px 12px;
@@ -117,8 +113,6 @@
 }
 
 .memoria-select-scroll {
-  display: flex;
-  align-items: center;
   justify-content: center;
   min-height: 24px;
   color: var(--color-muted);

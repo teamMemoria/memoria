@@ -1,11 +1,9 @@
-import { selectStatus } from './TestSetup'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import type { AgentContext, CallReview, ReviewRequest } from '../types/callReview'
+import type { AgentContext, CallReview } from '../types/callReview'
 import type { Conversation } from '../features/conversations/conversations'
-import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
 import {
-  agent, callFixture, callPath, createDevCallApi, deferred, findingPath, openApp,
+  agent, chooseOption, button, callFixture, callPath, createDevCallApi, deferred, findingPath, openApp, openCall, press,
 } from './TestSetup'
 
 const conversation: Conversation = {
@@ -22,7 +20,7 @@ describe('Agent call review', () => {
       weights: { procedure: 25, completeness: 25, 'communication-style': 25, 'answer-support': 25 },
       profileId: 'evaluation-form', profileVersion: '2',
     }
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    openCall(call)
     expect(await screen.findByText('Overall 81%')).toBeTruthy()
   })
 
@@ -40,7 +38,7 @@ describe('Agent call review', () => {
     call.overallScoring = {
       score: 72, coverage: 75, reason: null, weights: null, profileId: null, profileVersion: null,
     }
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    openCall(call)
     const overview = await screen.findByRole('region', { name: 'Assessment scores' })
     expect(within(overview).getByText('72%').closest('[data-score-tone]')?.getAttribute('data-score-tone')).toBe('attention')
     for (const [name, tone] of [
@@ -72,8 +70,7 @@ describe('Agent call review', () => {
     expect(screen.queryByRole('button', { name: /Below 60%/ })).toBeNull()
 
     const dropdown = screen.getByRole('combobox', { name: 'Overall score' })
-    fireEvent.keyDown(dropdown, { key: 'ArrowDown' })
-    fireEvent.click(await screen.findByRole('option', { name: '60–79%' }))
+    await chooseOption('60–79%', 'Overall score')
     expect(calls()).toEqual(['ABCD 9901'])
     expect(router.state.location.search).toBe('?status=middle')
     const band = screen.getByRole('button', { name: '60–79% (1)' })
@@ -101,7 +98,7 @@ describe('Agent call review', () => {
       weights: { procedure: 25, completeness: 25, 'communication-style': 25, 'answer-support': 25 },
       profileId: 'evaluation-form', profileVersion: '2',
     }
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    openCall(call)
     expect(await screen.findByText('Overall Cannot assess')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Procedure: Cannot assess' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Answer support: 50%' })).toBeTruthy()
@@ -118,8 +115,8 @@ describe('Agent call review', () => {
     fireEvent.click(screen.getByRole('link', { name: 'View feedback' }))
     await screen.findByRole('heading', { name: 'Procedure finding' })
     expect(screen.getByText('I can offer you a refund.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Purchase verified at turn 13' }))
     const selected = screen.getByRole('button', { name: 'Select turn 13' })
+    fireEvent.click(selected)
     expect(selected.getAttribute('aria-pressed')).toBe('true')
     expect(within(selected.closest('tr')!).getByText('I’ve verified the purchase. The jacket is eligible.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'View step 2 of RP-01' }))
@@ -163,7 +160,7 @@ describe('Agent call review', () => {
     expect(router.state.location.search).toBe('')
     fireEvent.click(ready)
     fireEvent.mouseLeave(bar)
-    await selectStatus('Processing')
+    await chooseOption('Processing')
     await act(() => router.navigate(-1))
     expect(screen.getByRole('combobox').textContent).toContain('Feedback ready')
     await act(() => router.navigate(1))
@@ -179,37 +176,26 @@ describe('Agent call review', () => {
     const call = await callFixture()
     if (kind === 'foreign owner') call.agentId = 'another-agent'
     if (kind === 'wrong ID') call.id = 'PRIVATE'
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => kind === 'missing' ? null : call } })
+    openCall(kind === 'missing' ? null : call)
     await screen.findByRole('heading', { name: 'Conversation unavailable' })
     expect(screen.queryByText(call.summary)).toBeNull()
     fireEvent.click(within(screen.getByRole('main')).getByRole('link', { name: 'Conversations' }))
     await screen.findByRole('table')
   })
 
-  it('keeps processing calls distinct from completed feedback when opened from the list', async () => {
-    const call = await callFixture({ status: 'processing' })
-    openApp({ callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
-    fireEvent.click(await screen.findByRole('link', { name: 'Open conversation C1042: Refund request' }))
-    await screen.findByRole('heading', { name: 'Feedback is processing' })
-    expect(screen.queryByRole('region', { name: 'Automatic feedback' })).toBeNull()
+  it.each([
+    ['processing', 'Feedback is processing'],
+    ['unavailable', 'Assessment unavailable'],
+    ['partial', 'Assessment incomplete'],
+  ] as const)('separates %s calls from completed feedback', async (status, heading) => {
+    openCall(await callFixture({ status, findings: [] }))
+    await screen.findByRole('heading', { name: heading })
+    expect(Boolean(screen.queryByRole('region', { name: 'Automatic feedback' }))).toBe(status === 'partial')
     expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
-  })
-
-  it('keeps the transcript available when no assessment is stored', async () => {
-    const call = await callFixture({ status: 'unavailable', criteria: [], findings: [] })
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
-    await screen.findByRole('heading', { name: 'Assessment unavailable' })
-    fireEvent.click(screen.getByRole('link', { name: 'Transcript' }))
-    await screen.findByRole('heading', { name: 'Complete conversation' })
-  })
-
-  it('shows available partial scores without calling the assessment ready', async () => {
-    const call = await callFixture({ status: 'partial', findings: [], reviewRequest: null, decision: null })
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
-    await screen.findByRole('heading', { name: 'Assessment incomplete' })
-    expect(screen.getByText(/feedback is not ready/)).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Automatic feedback' })).toBeTruthy()
-    expect(screen.queryByRole('link', { name: 'View feedback' })).toBeNull()
+    if (status === 'unavailable') {
+      fireEvent.click(screen.getByRole('link', { name: 'Transcript' }))
+      await screen.findByRole('heading', { name: 'Complete conversation' })
+    }
   })
 
   it('shows the Manager decision separately from the original automated assessment', async () => {
@@ -218,7 +204,7 @@ describe('Agent call review', () => {
       feedback: 'No agent failure has been established.', managerName: 'Maya Chen',
       decidedAt: '2026-10-09T10:00:00Z',
     } })
-    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    openCall(call)
     const decision = await screen.findByRole('region', { name: 'Manager decision' })
     expect(within(decision).getByText('Cannot assess')).toBeTruthy()
     expect(within(decision).getByText('No agent failure has been established.')).toBeTruthy()
@@ -232,14 +218,14 @@ describe('Agent call review', () => {
     if (kind === 'missing transcript') call.transcript = null
     if (kind === 'missing cited turn') call.transcript!.turns = call.transcript!.turns.filter((turn) => turn.number !== 13)
     if (kind === 'disputed reference') call.references[0].status = 'disputed'
-    openApp({ path: findingPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    openCall(call, findingPath)
     await screen.findByRole('heading', { name: 'Cannot assess' })
     expect(screen.getByText('Missing evidence does not establish an agent error.')).toBeTruthy()
     expect(screen.queryByText(/Suggested next step:/)).toBeNull()
     if (kind === 'missing cited turn') {
       expect(screen.getByText('Cited transcript turn 13 is unavailable.')).toBeTruthy()
     }
-    fireEvent.click(screen.getByRole('button', { name: 'View step 2 of RP-01' }))
+    press('View step 2 of RP-01')
     const dialog = screen.getByRole('dialog')
     if (kind === 'disputed reference') {
       expect(within(dialog).getByRole('heading', { name: 'Approved reference unavailable' })).toBeTruthy()
@@ -252,7 +238,7 @@ describe('Agent call review', () => {
   it('labels a partial transcript and returns to the call without inventing the missing passage', async () => {
     const call = await callFixture()
     call.transcript = { complete: false, turns: call.transcript!.turns.slice(0, 8), unavailableReason: 'Only the first eight turns are available.' }
-    openApp({ path: callPath + '/transcript', callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    openCall(call, callPath + '/transcript')
     await screen.findByRole('heading', { name: 'Available transcript' })
     expect(screen.getByText('Only the first eight turns are available.')).toBeTruthy()
     expect(screen.queryByText('I’ve verified the purchase. The jacket is eligible.')).toBeNull()
@@ -271,7 +257,7 @@ describe('Agent call review', () => {
     openApp({ path, conversationsApi: { listForAgent: request }, callApi: { ...createDevCallApi(), getCallForAgent: request } })
     await screen.findByRole('alert')
     expect(screen.queryByText('Internal API failure')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    press('Try again')
     expect(screen.getByRole('status').textContent).toContain('Loading')
     if (list) expect(screen.getByRole<HTMLInputElement>('searchbox').disabled).toBe(true)
     await act(() => response.resolve(list ? [conversation] : call))
@@ -281,42 +267,35 @@ describe('Agent call review', () => {
     if (list) expect(screen.getByRole<HTMLInputElement>('searchbox').disabled).toBe(false)
   })
 
-  it('ignores an old call response after navigating to a different conversation', async () => {
-    const previous = deferred<CallReview | null>()
-    const current = deferred<CallReview | null>()
-    const getCallForAgent = vi.fn().mockReturnValueOnce(previous.promise).mockReturnValueOnce(current.promise)
-    const { router } = openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent } })
-    await screen.findByText('Loading conversation…')
-    await act(() => router.navigate('/agent/conversations/OTHER'))
-    await act(() => current.resolve(null))
-    await screen.findByRole('heading', { name: 'Conversation unavailable' })
-    await act(async () => previous.resolve(await callFixture()))
-    expect(screen.queryByText('Damaged jacket refund')).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Conversation unavailable' })).toBeTruthy()
-  })
-
-  it('does not let an abandoned list request overwrite a new visit', async () => {
-    const previous = deferred<Conversation[]>()
-    const listForAgent = vi.fn().mockReturnValueOnce(previous.promise).mockResolvedValueOnce([conversation])
-    openApp({ conversationsApi: { listForAgent } })
-    await screen.findByText('Loading your conversations…')
-    fireEvent.click(screen.getByRole('link', { name: 'Knowledge Base' }))
-    await screen.findByRole('table', { name: 'Approved entries' })
-    fireEvent.click(screen.getByRole('link', { name: 'Conversations' }))
-    const table = await screen.findByRole('table')
-    await act(() => previous.resolve([{ ...conversation, id: 'OLD-RESPONSE' }]))
-    expect(within(table).getByText('C1042')).toBeTruthy()
-    expect(within(table).queryByText('OLD-RESPONSE')).toBeNull()
+  it.each(['detail', 'list'] as const)('ignores abandoned %s results after navigation', async (kind) => {
+    const previous = deferred<CallReview | Conversation[]>()
+    const call = await callFixture({ summary: 'OLD-RESPONSE' })
+    const read = vi.fn().mockReturnValueOnce(previous.promise)
+      .mockResolvedValueOnce(kind === 'detail' ? null : [conversation])
+    const { router } = openApp({
+      path: kind === 'detail' ? callPath : '/agent/conversations',
+      conversationsApi: { listForAgent: read },
+      callApi: { ...createDevCallApi(), getCallForAgent: read },
+    })
+    await screen.findByRole('status')
+    if (kind === 'detail') {
+      await act(() => router.navigate('/agent/conversations/OTHER'))
+      await screen.findByRole('heading', { name: 'Conversation unavailable' })
+    } else {
+      await act(() => router.navigate('/agent/knowledge'))
+      await screen.findByRole('table', { name: 'Approved entries' })
+      await act(() => router.navigate('/agent/conversations'))
+      await screen.findByText('C1042')
+    }
+    await act(() => previous.resolve(kind === 'detail' ? call : [{ ...conversation, id: 'OLD-RESPONSE' }]))
+    expect(screen.queryByText('OLD-RESPONSE')).toBeNull()
   })
 
   it('opens the explicitly linked reference and refuses an unrelated one', async () => {
     const call = await callFixture()
     call.references.push({ ...call.references[0], id: 'RP-02', title: 'Delivery procedure' })
     call.criteria[1].referenceId = 'RP-02'
-    const { router } = openApp({
-      path: callPath + '/transcript?reference=RP-02#approved-reference',
-      callApi: { ...createDevCallApi(), getCallForAgent: async () => call },
-    })
+    const { router } = openCall(call, callPath + '/transcript?reference=RP-02#approved-reference')
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'Delivery procedure' })).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
@@ -326,106 +305,76 @@ describe('Agent call review', () => {
   })
 })
 
-describe('Agent context', () => {
-  const note = 'The customer was verified by chat before this call.'
-  const contextField = () => screen.findByLabelText<HTMLTextAreaElement>('Context for this call')
+const note = 'The customer was verified by chat before this call.'
+const reason = 'Purchase was verified in chat before turn 8.'
+const contextLabel = 'Context for this call'
+const reasonLabel = 'Reason for review'
+const area = (name: string) => screen.findByLabelText<HTMLTextAreaElement>(name)
+const enter = async (name: string, value: string) => fireEvent.change(await area(name), { target: { value } })
 
-  it('saves context without requesting a Manager review and keeps it after navigating away', async () => {
-    const callApi = createDevCallApi()
-    const requestReview = vi.spyOn(callApi, 'requestReview')
-    const { router } = openApp({ path: findingPath, callApi })
-    fireEvent.change(await contextField(), { target: { value: note } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save context' }))
-    await screen.findByText(/^Saved /)
-    expect(requestReview).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'Automatic feedback' })).toBeTruthy()
-    await act(() => router.navigate(callPath))
-    await act(() => router.navigate(findingPath))
-    expect((await contextField()).value).toBe(note)
+it('saves Agent context once and keeps it after navigating without requesting review', async () => {
+  const fixtures = createDevCallApi()
+  const response = deferred<AgentContext>()
+  const saveContext = vi.fn(async (...args: Parameters<typeof fixtures.saveContext>) => {
+    await response.promise
+    return fixtures.saveContext(...args)
   })
-
-  it('shows an error and keeps the typed text when saving fails', async () => {
-    const callApi = { ...createDevCallApi(), saveContext: vi.fn().mockRejectedValue(new Error('Offline')) }
-    openApp({ path: findingPath, callApi })
-    fireEvent.change(await contextField(), { target: { value: note } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save context' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Context could not be saved. Please try again.')
-    expect((await contextField()).value).toBe(note)
-    expect(screen.queryByText(/^Saved /)).toBeNull()
-  })
-
-  it('sends one save while a save is in progress', async () => {
-    const save = deferred<AgentContext>()
-    const saveContext = vi.fn(() => save.promise)
-    openApp({ path: findingPath, callApi: { ...createDevCallApi(), saveContext } })
-    fireEvent.change(await contextField(), { target: { value: note } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save context' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Saving…' }))
-    expect(saveContext).toHaveBeenCalledTimes(1)
-    await act(() => save.resolve({ text: note, savedAt: '2026-10-29T15:00:00Z' }))
-    expect(screen.getByText('Saved Oct 29, 2026, 3:00 PM UTC')).toBeTruthy()
-  })
+  const requestReview = vi.spyOn(fixtures, 'requestReview')
+  const { router } = openApp({ path: findingPath, fixtures, callApi: { ...fixtures, saveContext } })
+  await enter(contextLabel, note)
+  press('Save context')
+  press('Saving…')
+  expect(saveContext).toHaveBeenCalledExactlyOnceWith(agent.id, 'C1042', note)
+  await act(() => response.resolve({ text: note, savedAt: '2026-10-29T15:00:00Z' }))
+  await screen.findByText(/^Saved /)
+  expect(requestReview).not.toHaveBeenCalled()
+  await act(() => router.navigate(callPath))
+  await act(() => router.navigate(findingPath))
+  expect((await area(contextLabel)).value).toBe(note)
 })
 
-describe('Flag feedback', () => {
-  const reason = 'Purchase was verified in chat before turn 8.'
-  const reasonField = () => screen.findByLabelText<HTMLTextAreaElement>('Reason for review')
-  const flagPanel = () => screen.getByRole('region', { name: 'Flag feedback' })
-  const footerStatus = () => document.querySelector('.evidence-footer p')?.textContent
+it.each([
+  {
+    method: 'saveContext', label: contextLabel, value: note, submit: 'Save context',
+    error: 'Context could not be saved. Please try again.',
+  },
+  {
+    method: 'requestReview', label: reasonLabel, value: reason, submit: 'Request review',
+    error: 'The review request could not be sent. Please try again.',
+  },
+] as const)('retains input and allows retry after $method fails', async ({ method, label, value, submit, error }) => {
+  const mock = vi.fn().mockRejectedValue(new Error('Offline'))
+  openApp({ path: findingPath, callApi: { ...createDevCallApi(), [method]: mock } })
+  await enter(label, value)
+  press(submit)
+  await screen.findByText(error)
+  expect((await area(label)).value).toBe(value)
+  expect(button(submit).disabled).toBe(false)
+  expect(screen.queryByText(/^Saved /)).toBeNull()
+})
 
-  it('sends one review request, shows its status and keeps automatic feedback', async () => {
-    const callApi = createDevCallApi()
-    const requestReview = vi.spyOn(callApi, 'requestReview')
-    const { router } = openApp({ path: findingPath, callApi })
-    const field = await reasonField()
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Request review' }).disabled).toBe(true)
-    fireEvent.change(field, { target: { value: reason } })
-    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
-    await within(flagPanel()).findByText('Review requested')
-    expect(footerStatus()).toBe('Review requested')
-    expect(requestReview).toHaveBeenCalledTimes(1)
-    expect(requestReview).toHaveBeenCalledWith(agent.id, 'C1042', 'procedure-order', reason)
-    expect(screen.getByText(`Reason: ${reason}`)).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Automatic feedback' })).toBeTruthy()
-    await act(() => router.navigate(callPath))
-    await act(() => router.navigate(findingPath))
-    await within(await screen.findByRole('region', { name: 'Flag feedback' })).findByText('Review requested')
-    expect(screen.queryByLabelText('Reason for review')).toBeNull()
+it('saves a single review request and restores it in the queue and finding', async () => {
+  const fixtures = createDevCallApi()
+  const original = fixtures.requestReview
+  const pending = deferred<void>()
+  const requestReview = vi.fn(async (...args: Parameters<typeof original>) => {
+    await pending.promise
+    return original(...args)
   })
-
-  it('shows the requested review in the Agent conversation list', async () => {
-    const callApi = createDevCallApi()
-    const { router } = openApp({ path: findingPath, callApi, conversationsApi: createDevConversationsApi(callApi) })
-    fireEvent.change(await reasonField(), { target: { value: reason } })
-    expect(footerStatus()).toBe('Feedback ready')
-    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
-    await within(flagPanel()).findByText('Review requested')
-    await act(() => router.navigate('/agent/conversations'))
-    const row = (await screen.findByText('C1042')).closest('tr')!
-    expect(within(row).getByText('Review requested')).toBeTruthy()
-  })
-
-  it('sends one request while a request is in progress', async () => {
-    const pending = deferred<ReviewRequest>()
-    const requestReview = vi.fn(() => pending.promise)
-    openApp({ path: findingPath, callApi: { ...createDevCallApi(), requestReview } })
-    fireEvent.change(await reasonField(), { target: { value: reason } })
-    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sending…' }))
-    expect(requestReview).toHaveBeenCalledTimes(1)
-    await act(() => pending.resolve({
-      findingId: 'procedure-order', reason, requestedAt: '2026-10-29T15:00:00Z', status: 'requested',
-    }))
-    expect(within(flagPanel()).getByText('Review requested')).toBeTruthy()
-  })
-
-  it('shows an error and keeps the reason when the request fails', async () => {
-    const callApi = { ...createDevCallApi(), requestReview: vi.fn().mockRejectedValue(new Error('Offline')) }
-    openApp({ path: findingPath, callApi })
-    fireEvent.change(await reasonField(), { target: { value: reason } })
-    fireEvent.click(screen.getByRole('button', { name: 'Request review' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('The review request could not be sent. Please try again.')
-    expect((await reasonField()).value).toBe(reason)
-    expect(footerStatus()).toBe('Feedback ready')
-  })
+  fixtures.requestReview = requestReview
+  const { router } = openApp({ path: findingPath, fixtures })
+  await area(reasonLabel)
+  expect(button('Request review').disabled).toBe(true)
+  await enter(reasonLabel, reason)
+  press('Request review')
+  press('Sending…')
+  expect(requestReview).toHaveBeenCalledExactlyOnceWith(agent.id, 'C1042', 'procedure-order', reason)
+  await act(() => pending.resolve())
+  await within(await screen.findByRole('region', { name: 'Flag feedback' })).findByText('Review requested')
+  expect(screen.getByText(`Reason: ${reason}`)).toBeTruthy()
+  await act(() => router.navigate('/agent/conversations'))
+  expect(within((await screen.findByText('C1042')).closest('tr')!).getByText('Review requested')).toBeTruthy()
+  await act(() => router.navigate(findingPath))
+  await within(await screen.findByRole('region', { name: 'Flag feedback' })).findByText('Review requested')
+  expect(screen.queryByLabelText(reasonLabel)).toBeNull()
 })

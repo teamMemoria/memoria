@@ -1,19 +1,18 @@
-import { selectStatus } from './TestSetup'
+import { chooseOption } from './TestSetup'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
+import { createDevTeamReviewApi } from '../test/devTeamReviewApi'
 import type { TeamConversation } from '../features/review-queue/teamQueue'
 import { agent, createDevCallApi, manager, openApp } from './TestSetup'
 
 const path = '/manager/conversations'
-const asManager = { getViewer: async () => manager }
 const calls = () =>
   screen.getAllByRole<HTMLTableRowElement>('row').slice(1).map((row) => row.cells[0].textContent)
 const status = () => screen.getByRole<HTMLSelectElement>('combobox', { name: 'Review status' })
 
 describe('Manager review queue', () => {
   it('opens on flagged feedback with the agent, conversation, flag reason and status', async () => {
-    openApp({ path, viewerApi: asManager })
+    openApp({ path, as: manager })
     await screen.findByRole('table')
     expect(screen.getByText('2 flagged for review')).toBeTruthy()
     expect(status().textContent).toContain('Review requested')
@@ -27,18 +26,18 @@ describe('Manager review queue', () => {
   })
 
   it('filters by status and search, and clears back to flagged feedback', async () => {
-    const { router } = openApp({ path, viewerApi: asManager })
+    const { router } = openApp({ path, as: manager })
     await screen.findByRole('table')
-    await selectStatus('All statuses')
+    await chooseOption('All statuses')
     expect(calls()).toHaveLength(6)
-    await selectStatus('Review complete')
+    await chooseOption('Review complete')
     expect(calls()).toEqual(['C1060'])
-    await selectStatus('Processing')
+    await chooseOption('Processing')
     expect(calls()).toEqual(['C1063'])
-    await selectStatus('Feedback ready')
+    await chooseOption('Feedback ready')
     expect(calls()).toEqual(['C1047', 'C1042'])
     expect(router.state.location.search).toBe('?status=feedback-ready')
-    await selectStatus('All statuses')
+    await chooseOption('All statuses')
     const search = screen.getByRole('searchbox', { name: 'Search team calls' })
     fireEvent.change(search, { target: { value: 'stock' } })
     expect(calls()).toEqual(['C1051'])
@@ -50,37 +49,33 @@ describe('Manager review queue', () => {
 
   it('sorts the demo by overall score and shares its filter between the bar and dropdown', async () => {
     vi.stubEnv('MODE', 'simulation')
-    try {
-      const api = createDevTeamReviewApi()
-      const [example] = await api.listForManager(manager.id)
-      const records = [82.1, 43, 82.4].map((simulationScore, index) => ({
-        ...example,
-        id: `demo-${index}`,
-        sourceId: String(9901 + index),
-        flag: null,
-        simulationScore,
-      }))
-      openApp({ path, viewerApi: asManager, teamReviewApi: { ...api, listForManager: async () => records } })
-      await screen.findByRole('table')
-      expect(calls()).toEqual(['ABCD 9903', 'ABCD 9901', 'ABCD 9902'])
+    const api = createDevTeamReviewApi()
+    const [example] = await api.listForManager(manager.id)
+    const records = [82.1, 43, 82.4].map((simulationScore, index) => ({
+      ...example,
+      id: `demo-${index}`,
+      sourceId: String(9901 + index),
+      flag: null,
+      simulationScore,
+    }))
+    openApp({ path, as: manager, teamReviewApi: { ...api, listForManager: async () => records } })
+    await screen.findByRole('table')
+    expect(calls()).toEqual(['ABCD 9903', 'ABCD 9901', 'ABCD 9902'])
 
-      const dropdown = screen.getByRole('combobox', { name: 'Overall score' })
-      expect(dropdown.textContent).toContain('All scores')
-      fireEvent.keyDown(dropdown, { key: 'ArrowDown' })
-      fireEvent.click(await screen.findByRole('option', { name: 'Below 60%' }))
-      expect(calls()).toEqual(['ABCD 9902'])
-      expect(screen.getByRole('button', { name: 'Below 60% (1)' }).getAttribute('aria-pressed')).toBe('true')
+    const dropdown = screen.getByRole('combobox', { name: 'Overall score' })
+    expect(dropdown.textContent).toContain('All scores')
+    fireEvent.keyDown(dropdown, { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: 'Below 60%' }))
+    expect(calls()).toEqual(['ABCD 9902'])
+    expect(screen.getByRole('button', { name: 'Below 60% (1)' }).getAttribute('aria-pressed')).toBe('true')
 
-      fireEvent.click(screen.getByRole('button', { name: '80–100% (2)' }))
-      expect(dropdown.textContent).toContain('80–100%')
-      expect(calls()).toEqual(['ABCD 9903', 'ABCD 9901'])
-    } finally {
-      vi.unstubAllEnvs()
-    }
+    fireEvent.click(screen.getByRole('button', { name: '80–100% (2)' }))
+    expect(dropdown.textContent).toContain('80–100%')
+    expect(calls()).toEqual(['ABCD 9903', 'ABCD 9901'])
   })
 
   it('opens the flagged finding from its row and keeps the filters on return', async () => {
-    const { router } = openApp({ path: `${path}?q=lamp`, viewerApi: asManager })
+    const { router } = openApp({ path: `${path}?q=lamp`, as: manager })
     fireEvent.click(await screen.findByRole('link', { name: 'Review C1051: Exchange offered without checking stock.' }))
     await screen.findByRole('heading', { name: 'Exchange offered without checking stock.', level: 1 })
     expect(router.state.location.pathname).toBe('/manager/conversations/C1051/findings/answer-support')
@@ -93,7 +88,7 @@ describe('Manager review queue', () => {
   it('shows feedback an agent flagged in this session', async () => {
     const callApi = createDevCallApi()
     await callApi.requestReview(agent.id, 'C1042', 'procedure-order', 'Purchase was verified in chat.')
-    openApp({ path, viewerApi: asManager, callApi, teamReviewApi: createDevTeamReviewApi(callApi) })
+    openApp({ path, as: manager, fixtures: callApi })
     await screen.findByRole('table')
     expect(calls()).toEqual(['C1042', 'C1058', 'C1051'])
     const row = screen.getByRole('link', { name: /^Review C1042/ }).closest('tr')!
@@ -105,7 +100,7 @@ describe('Manager review queue', () => {
     const listForManager = vi.fn()
       .mockRejectedValueOnce(new Error('Internal details'))
       .mockResolvedValueOnce([])
-    openApp({ path, viewerApi: asManager, teamReviewApi: { ...createDevTeamReviewApi(), listForManager } })
+    openApp({ path, as: manager, teamReviewApi: { ...createDevTeamReviewApi(), listForManager } })
     expect(await screen.findByText('Loading team conversations…')).toBeTruthy()
     expect((await screen.findByRole('alert')).textContent).toBe('Team conversations could not be loaded. Please try again.')
     expect(screen.queryByText('Internal details')).toBeNull()
@@ -116,7 +111,7 @@ describe('Manager review queue', () => {
   it('says when nothing is flagged and offers all conversations', async () => {
     const records = (await createDevTeamReviewApi().listForManager(manager.id))
       .filter((record): record is TeamConversation => record.reviewStatus !== 'review-requested')
-    openApp({ path, viewerApi: asManager, teamReviewApi: { ...createDevTeamReviewApi(), listForManager: async () => records } })
+    openApp({ path, as: manager, teamReviewApi: { ...createDevTeamReviewApi(), listForManager: async () => records } })
     await screen.findByRole('heading', { name: 'No flagged feedback' })
     expect(screen.getByText('0 flagged for review')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Show all conversations' }))
@@ -125,7 +120,7 @@ describe('Manager review queue', () => {
 
   it('refuses the review queue to Agents, in the page and in the development API', async () => {
     const listForManager = vi.fn()
-    openApp({ path, viewerApi: { getViewer: async () => agent }, teamReviewApi: { ...createDevTeamReviewApi(), listForManager } })
+    openApp({ path, teamReviewApi: { ...createDevTeamReviewApi(), listForManager } })
     await screen.findByRole('heading', { name: 'Page unavailable for your role' })
     expect(listForManager).not.toHaveBeenCalled()
     await expect(createDevTeamReviewApi().listForManager(agent.id)).rejects.toThrow()

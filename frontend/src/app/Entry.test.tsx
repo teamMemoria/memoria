@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DemoProfile, Viewer } from '../types/viewer'
-import { agent, manager, openApp } from './TestSetup'
+import { agent, manager, openApp, chooseOption } from './TestSetup'
 
 const profiles: DemoProfile[] = [
   { ...agent, conversationCount: 6 },
@@ -17,27 +17,11 @@ const viewerApi = {
   },
 }
 
-// jsdom does not implement the scrolling API used by Radix's roving focus.
-HTMLElement.prototype.scrollIntoView ??= () => {}
-
-async function selectProfile(name: RegExp) {
-  fireEvent.keyDown(await screen.findByRole('combobox'), { key: 'ArrowDown' })
-  fireEvent.click(await screen.findByRole('option', { name }))
-}
-
 function openEntry(overrides = {}) {
   return openApp({ profilesApi, viewerApi, ...overrides })
 }
 
-// A fresh in-memory localStorage for each test; TestSetup removes it afterwards.
-beforeEach(() => {
-  const items = new Map<string, string>()
-  vi.stubGlobal('localStorage', {
-    getItem: (key: string) => items.get(key) ?? null,
-    setItem: (key: string, value: string) => void items.set(key, value),
-    removeItem: (key: string) => void items.delete(key),
-  })
-})
+beforeEach(() => localStorage.clear())
 
 describe('demo entry screen', () => {
   it('opens the chosen Agent profile on their own conversations', async () => {
@@ -45,7 +29,7 @@ describe('demo entry screen', () => {
     await screen.findByRole('heading', { name: 'Welcome to Memoria' })
     const continueButton = screen.getByRole<HTMLButtonElement>('button', { name: 'Continue' })
     expect(continueButton.disabled).toBe(true)
-    await selectProfile(/Alex Morgan/)
+    await chooseOption(/Alex Morgan/, '')
     expect(screen.getByText(/6 conversations/)).toBeTruthy()
     fireEvent.click(continueButton)
 
@@ -59,14 +43,14 @@ describe('demo entry screen', () => {
     openEntry()
     fireEvent.click(await screen.findByRole('radio', { name: 'Manager' }))
     expect(screen.queryByRole('option', { name: /Alex Morgan/ })).toBeNull()
-    await selectProfile(/Maya Chen/)
+    await chooseOption(/Maya Chen/, '')
     fireEvent.click(screen.getByRole('button', { name: /Continue/ }))
     await screen.findByRole('heading', { name: 'Team conversations' })
   })
 
   it('clears the selection when changing roles', async () => {
     openEntry()
-    await selectProfile(/Alex Morgan/)
+    await chooseOption(/Alex Morgan/, '')
     expect(screen.getByRole<HTMLButtonElement>('button', { name: /Continue as Alex/ }).disabled).toBe(false)
     fireEvent.click(screen.getByRole('radio', { name: 'Manager' }))
     expect(screen.getByRole('combobox').textContent).toContain('Select a profile')

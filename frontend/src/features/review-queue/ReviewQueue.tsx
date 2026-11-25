@@ -1,17 +1,16 @@
-import { MemoriaSelectField } from '../../components/ui/select'
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
-import { WorkspaceTable } from '../../components/WorkspaceTable'
+import { useWorkspaceSearch } from '../../lib/workspaceSearch'
+import { ConversationFilters, NoMatchingConversations } from '../conversations/ConversationFilters'
+import { useResource } from '../../lib/useResource'
+import { useCallback, useState } from 'react'
+import { ConversationTable } from '../conversations/ConversationTable'
 import {
   Button,
   Panel,
   StatusLabel,
-  TextField,
 } from '../../components/controls'
-import { percentage } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import { ConversationScoreBar } from '../conversations/ConversationScoreBar'
-import { rankByScore, scoreBandFrom, scoreColumns, scoreOptions, type ScoreBand } from '../conversations/scoreBands'
+import { rankByScore, scoreBandFrom, type ScoreBand } from '../conversations/scoreBands'
 import {
   conversationStatusLabels,
   formatConversationDate,
@@ -24,15 +23,13 @@ import {
   filterTeamConversations,
   findingReviewPath,
   queueStatusFrom,
-  type TeamConversation,
   type TeamReviewApi,
 } from './teamQueue'
 import './review-queue.css'
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; records: TeamConversation[] }
+const queueFilters = Object.entries(conversationStatusLabels).map(([value, label]) =>
+  [value, value === defaultQueueStatus ? `${label} (flagged)` : label] as const,
+)
 
 const statusTones = {
   'review-requested': 'attention',
@@ -58,58 +55,21 @@ export function ReviewQueue({
   api: TeamReviewApi | null
   simulation?: boolean
 }) {
-  const [params, setParams] = useSearchParams()
-  const [state, setState] = useState<LoadState>({ status: 'loading' })
-  const [attempt, setAttempt] = useState(0)
+  const { params, filter: setParam, setParams, query, search } = useWorkspaceSearch({ status: defaultQueueStatus })
   const [previewBand, setPreviewBand] = useState<ScoreBand | null>(null)
-  const query = params.get('q') ?? ''
   const status = simulation ? 'all' : queueStatusFrom(params.get('status'))
   const selectedBand = simulation ? scoreBandFrom(params.get('status')) : null
-  const search = params.size ? `?${params}` : ''
 
-  // Reloads on every visit so the queue reflects decisions made elsewhere.
-  useEffect(() => {
-    let active = true
-    if (!api || viewer.role !== 'manager') return
-    void api.listForManager(viewer.id).then(
-      (records) => {
-        if (active) setState({ status: 'ready', records })
-      },
-      () => {
-        if (active) setState({ status: 'error' })
-      },
-    )
-    return () => {
-      active = false
-    }
-  }, [api, viewer.id, viewer.role, attempt])
+  const read = useCallback(() => api!.listForManager(viewer.id), [api, viewer.id])
+  const state = useResource(api ? read : null)
 
-  function setParam(key: 'q' | 'status', value: string) {
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous)
-        if (!value || (key === 'status' && value === defaultQueueStatus)) next.delete(key)
-        else next.set(key, value)
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   function selectScoreBand(value: string) {
     setPreviewBand(null)
     setParam('status', value === 'all' ? '' : value)
   }
 
-  if (viewer.role !== 'manager') {
-    return (
-      <Panel title="Page unavailable for your role">
-        <p>The review queue is available in the Manager workspace.</p>
-      </Panel>
-    )
-  }
-
-  const records = state.status === 'ready' ? state.records : []
+  const records = state.status === 'ready' ? state.data : []
   const matches = filterTeamConversations(records, { query, status })
   const visible = simulation ? rankByScore(matches, previewBand ?? selectedBand) : matches
   const flaggedCount = records.filter(
@@ -134,38 +94,16 @@ export function ReviewQueue({
           </StatusLabel>
         </p>
       )}
-      <div
-        className="conversation-filters"
-        role="search"
-        aria-label="Find team conversations"
-      >
-        <TextField
-          id="review-queue-search"
-          label="Search team calls"
-          type="search"
-          placeholder={simulation ? 'Search by call, agent or topic' : 'Search by call, agent, topic or reason'}
-          value={query}
-          onChange={(event) => setParam('q', event.target.value)}
-          disabled={state.status !== 'ready'}
-        />
-        {simulation ? (
-          <MemoriaSelectField
-            id="review-queue-score"
-            label="Overall score"
-            value={selectedBand ?? 'all'}
-            onValueChange={selectScoreBand}
-            disabled={state.status !== 'ready'}
-            options={scoreOptions}
-          />
-        ) : <MemoriaSelectField
-          id="review-queue-status"
-          label="Review status"
-          value={status}
-          onValueChange={(value) => setParam('status', value)}
-          disabled={state.status !== 'ready'}
-          options={Object.entries(conversationStatusLabels).map(([value, label]) => [value, value === defaultQueueStatus ? `${label} (flagged)` : label] as const)}
-        />}
-      </div>
+      <ConversationFilters
+        team
+        simulation={simulation}
+        query={query}
+        value={simulation ? selectedBand ?? 'all' : status}
+        statusOptions={queueFilters}
+        disabled={state.status !== 'ready'}
+        onSearch={(value) => setParam('q', value)}
+        onSelect={simulation ? selectScoreBand : (value) => setParam('status', value)}
+      />
       {!api ? (
         <Panel title="Team review unavailable">
           <p>Team review data is not connected.</p>
@@ -176,10 +114,7 @@ export function ReviewQueue({
         <Panel title="Unable to load team conversations">
           <p role="alert">Team conversations could not be loaded. Please try again.</p>
           <Button
-            onClick={() => {
-              setState({ status: 'loading' })
-              setAttempt((value) => value + 1)
-            }}
+            onClick={state.retry}
           >
             Try again
           </Button>
@@ -190,12 +125,7 @@ export function ReviewQueue({
         </Panel>
       ) : visible.length === 0 ? (
         query.trim() || status !== defaultQueueStatus ? (
-          <Panel title="No matching conversations">
-            <p>{simulation ? 'Try another search or score range.' : 'Try another search or review status.'}</p>
-            <Button variant="secondary" onClick={() => setParams({})}>
-              Clear filters
-            </Button>
-          </Panel>
+          <NoMatchingConversations scored={simulation} onClear={() => setParams({})} />
         ) : (
           <Panel title="No flagged feedback">
             <p>Nothing needs your review right now.</p>
@@ -205,64 +135,45 @@ export function ReviewQueue({
           </Panel>
         )
       ) : (
-        <>
-          <p className="conversation-sr-only" role="status">
-            {visible.length} {visible.length === 1 ? 'conversation' : 'conversations'} shown
-          </p>
-          <WorkspaceTable
-            label="Team conversations table"
-            caption={simulation ? 'Team conversations.' : 'Team conversations, flagged feedback newest first.'}
-            columns={simulation ? scoreColumns : reviewColumns}
-          >
-            {visible.map((conversation) => {
-              const path = findingReviewPath(conversation, search) ?? `/manager/conversations/${encodeURIComponent(conversation.id)}${search}`
-              return (
-                <tr key={conversation.id}>
-                  <td>
-                    <Link
-                      to={path}
-                      aria-label={simulation ? `Open ABCD ${conversation.sourceId}` : `Review ${conversation.id}: ${conversation.flag?.findingTitle ?? conversation.topic}`}
-                    >
-                      {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
-                    </Link>
-                  </td>
-                  <td>{conversation.agentName}</td>
-                  <td>{conversation.topic}</td>
-                  {simulation ? (
-                    <td>{percentage(conversation.simulationScore)}</td>
-                  ) : (
-                    <>
-                      <td>
-                        {conversation.flag ? (
-                          <span className="review-queue-flag">
-                            <span>{conversation.flag.reason}</span>
-                            <span className="metadata-line">{conversation.flag.findingTitle}</span>
-                          </span>
-                        ) : (
-                          <span className="review-queue-muted">Not flagged</span>
-                        )}
-                      </td>
-                      <td>
-                        <time dateTime={conversation.date ?? undefined}>
-                          {formatConversationDate(conversation.date)}
-                        </time>
-                      </td>
-                      <td>
-                        {conversation.automatedResult === 'processing' || !conversation.reviewStatus ? (
-                          <StatusLabel>{conversation.automatedResult === 'unavailable' ? 'Assessment unavailable' : 'Processing'}</StatusLabel>
-                        ) : (
-                          <StatusLabel tone={statusTones[conversation.reviewStatus]}>
-                            {reviewStatusLabels[conversation.reviewStatus]}
-                          </StatusLabel>
-                        )}
-                      </td>
-                    </>
-                  )}
-                </tr>
-              )
-            })}
-          </WorkspaceTable>
-        </>
+        <ConversationTable
+          rows={visible}
+          label="Team conversations table"
+          caption={simulation ? 'Team conversations.' : 'Team conversations, flagged feedback newest first.'}
+          scored={simulation}
+          columns={reviewColumns}
+          link={(conversation) => ({
+            to: findingReviewPath(conversation, search) ?? `/manager/conversations/${encodeURIComponent(conversation.id)}${search}`,
+            'aria-label': simulation ? `Open ABCD ${conversation.sourceId}` : `Review ${conversation.id}: ${conversation.flag?.findingTitle ?? conversation.topic}`,
+          })}
+          details={(conversation) => (
+            <>
+              <td>{conversation.agentName}</td>
+              <td>{conversation.topic}</td>
+              <td>
+                {conversation.flag ? (
+                  <span className="review-queue-flag">
+                    <span>{conversation.flag.reason}</span>
+                    <span className="metadata-line">{conversation.flag.findingTitle}</span>
+                  </span>
+                ) : (
+                  <span className="review-queue-muted">Not flagged</span>
+                )}
+              </td>
+              <td>
+                <time dateTime={conversation.date ?? undefined}>{formatConversationDate(conversation.date)}</time>
+              </td>
+              <td>
+                {conversation.automatedResult === 'processing' || !conversation.reviewStatus ? (
+                  <StatusLabel>{conversation.automatedResult === 'unavailable' ? 'Assessment unavailable' : 'Processing'}</StatusLabel>
+                ) : (
+                  <StatusLabel tone={statusTones[conversation.reviewStatus]}>
+                    {reviewStatusLabels[conversation.reviewStatus]}
+                  </StatusLabel>
+                )}
+              </td>
+            </>
+          )}
+        />
       )}
     </div>
   )

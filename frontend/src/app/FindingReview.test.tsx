@@ -1,10 +1,9 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
+import { createDevTeamReviewApi } from '../test/devTeamReviewApi'
 import type { TeamReviewApi } from '../features/review-queue/teamQueue'
-import { agent, createDevCallApi, manager, openApp } from './TestSetup'
+import { agent, createDevCallApi, input, manager, openApp } from './TestSetup'
 
-const asManager = { getViewer: async () => manager }
 const lampPath = '/manager/conversations/C1051/findings/answer-support'
 const decisionPanel = () => screen.getByRole('region', { name: 'Manager decision' })
 const save = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Save decision' })
@@ -12,26 +11,26 @@ const save = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Save d
 function fillDecision(outcome: string) {
   fireEvent.click(screen.getByRole('radio', { name: new RegExp(`^${outcome}`) }))
   if (outcome === 'Corrected') {
-    fireEvent.change(screen.getByLabelText('Corrected result'), { target: { value: 'meets-criteria' } })
+    input('Corrected result', 'meets-criteria')
   }
-  fireEvent.change(screen.getByLabelText('Reason for this decision'), { target: { value: 'Stock check is in the order log.' } })
-  fireEvent.change(screen.getByLabelText('Feedback for the agent'), { target: { value: 'Say the stock check aloud next time.' } })
+  input('Reason for this decision', 'Stock check is in the order log.')
+  input('Feedback for the agent', 'Say the stock check aloud next time.')
 }
 
 function openLamp(teamReviewApi?: TeamReviewApi) {
   const callApi = createDevCallApi()
   const view = openApp({
     path: lampPath,
-    viewerApi: asManager,
-    callApi,
-    teamReviewApi: teamReviewApi ?? createDevTeamReviewApi(callApi),
+    as: manager,
+    fixtures: callApi,
+    ...(teamReviewApi && { teamReviewApi }),
   })
   return { callApi, ...view }
 }
 
 describe('Manager decisions on flagged feedback', () => {
   it('shows the transcript, approved reference, agent input and the original assessment separately', async () => {
-    openApp({ path: '/manager/conversations/C1058/findings/completeness', viewerApi: asManager })
+    openApp({ path: '/manager/conversations/C1058/findings/completeness', as: manager })
     await screen.findByRole('heading', { name: 'Refund timeline not confirmed with the customer.', level: 1 })
     const transcript = screen.getByRole('region', { name: 'Transcript' })
     expect(within(transcript).getByText('It can take 5 to 10 business days to reach your card.')).toBeTruthy()
@@ -54,9 +53,9 @@ describe('Manager decisions on flagged feedback', () => {
       .getByText('I checked stock on the order screen while the customer was talking.')).toBeTruthy()
     expect(save().disabled).toBe(true)
     fireEvent.click(screen.getByRole('radio', { name: /^Cannot assess/ }))
-    fireEvent.change(screen.getByLabelText('Reason for this decision'), { target: { value: 'Log unavailable.' } })
+    input('Reason for this decision', 'Log unavailable.')
     expect(save().disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Feedback for the agent'), { target: { value: 'No action needed.' } })
+    input('Feedback for the agent', 'No action needed.')
     expect(save().disabled).toBe(false)
     fireEvent.click(save())
     await within(decisionPanel()).findByText('Maya Chen')
@@ -83,20 +82,22 @@ describe('Manager decisions on flagged feedback', () => {
   it('lets the Agent read the decision and feedback on their call', async () => {
     const callApi = createDevCallApi()
     await callApi.requestReview(agent.id, 'C1042', 'procedure-order', 'Purchase was verified in chat.')
-    const teamReviewApi = createDevTeamReviewApi(callApi)
     const managerView = openApp({
       path: '/manager/conversations/C1042/findings/procedure-order',
-      viewerApi: asManager, callApi, teamReviewApi,
+      as: manager, fixtures: callApi,
     })
     await screen.findByRole('radio', { name: /^Corrected/ })
     fillDecision('Corrected')
     fireEvent.click(save())
     await within(decisionPanel()).findByText('Corrected')
     managerView.unmount()
-    openApp({ path: '/agent/conversations/C1042', callApi, teamReviewApi })
+    const { router } = openApp({ path: '/agent/conversations/C1042', fixtures: callApi })
     const decision = await screen.findByRole('region', { name: 'Manager decision' })
     expect(within(decision).getByText('Corrected')).toBeTruthy()
     expect(within(decision).getByText('Say the stock check aloud next time.')).toBeTruthy()
+    await act(() => router.navigate('/agent/conversations'))
+    const row = (await screen.findByText('C1042')).closest('tr')!
+    expect(within(row).getByText('Review complete')).toBeTruthy()
   })
 
   it('asks for the corrected result only when the outcome is Corrected', async () => {
@@ -104,10 +105,10 @@ describe('Manager decisions on flagged feedback', () => {
     await screen.findByRole('radio', { name: /^Dismissed/ })
     expect(screen.queryByLabelText('Corrected result')).toBeNull()
     fireEvent.click(screen.getByRole('radio', { name: /^Corrected/ }))
-    fireEvent.change(screen.getByLabelText('Reason for this decision'), { target: { value: 'Stock check is in the order log.' } })
-    fireEvent.change(screen.getByLabelText('Feedback for the agent'), { target: { value: 'No change needed.' } })
+    input('Reason for this decision', 'Stock check is in the order log.')
+    input('Feedback for the agent', 'No change needed.')
     expect(save().disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Corrected result'), { target: { value: 'meets-criteria' } })
+    input('Corrected result', 'meets-criteria')
     expect(save().disabled).toBe(false)
     fireEvent.click(screen.getByRole('radio', { name: /^Dismissed/ }))
     expect(screen.queryByLabelText('Corrected result')).toBeNull()
@@ -146,7 +147,7 @@ describe('Manager decisions on flagged feedback', () => {
   })
 
   it('shows an existing decision without the form', async () => {
-    openApp({ path: '/manager/conversations/C1060/findings/procedure-order', viewerApi: asManager })
+    openApp({ path: '/manager/conversations/C1060/findings/procedure-order', as: manager })
     await within(await screen.findByRole('region', { name: 'Manager decision' })).findByText('Dismissed')
     expect(screen.getByText('The order system log shows tracking was checked first.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Save decision' })).toBeNull()

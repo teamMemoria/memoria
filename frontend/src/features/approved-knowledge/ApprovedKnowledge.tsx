@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { useWorkspaceSearch } from '../../lib/workspaceSearch'
+import { formatDate } from '../../lib/dates'
+import { useResource } from '../../lib/useResource'
+import { useCallback } from 'react'
+import { Link, useParams } from 'react-router'
 import { WorkspaceTable } from '../../components/WorkspaceTable'
 import { Button, Panel, TextField } from '../../components/controls'
-import {
-  canReadKnowledge,
-  type ApprovedKnowledgeApi,
-  type KnowledgeEntry,
-} from '../../types/knowledge'
+import type { ApprovedKnowledgeApi } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
-import { filterApprovedKnowledge, formatKnowledgeDate } from './knowledge'
+import { filterApprovedKnowledge } from './knowledge'
 import { KnowledgeArticleContent } from './KnowledgeArticleContent'
 import './approved-knowledge.css'
 
@@ -20,96 +19,24 @@ const columns = [
   { label: 'Approved', width: 18 },
 ] as const
 
-type LoadState = {
-  api: ApprovedKnowledgeApi | null
-  agentId: string
-  entryId: string | undefined
-} & (
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; entries: KnowledgeEntry[] }
-)
-
 export function ApprovedKnowledge({ viewer, api }: Props) {
   const { entryId } = useParams()
-  const [params, setParams] = useSearchParams()
-  const [attempt, setAttempt] = useState(0)
-  const [loaded, setLoaded] = useState<LoadState>({
-    api,
-    agentId: viewer.id,
-    entryId,
-    status: 'loading',
-  })
-  const identity = { api, agentId: viewer.id, entryId }
-  const isCurrentRequest =
-    loaded.api === api &&
-    loaded.agentId === viewer.id &&
-    loaded.entryId === entryId
-
-  if (!isCurrentRequest) {
-    setLoaded({ ...identity, status: 'loading' })
-  }
-
-  const state = isCurrentRequest ? loaded : { status: 'loading' as const }
-  const query = params.get('q') ?? ''
-  const search = params.size ? `?${params}` : ''
-
-  useEffect(() => {
-    let active = true
-    if (!api || viewer.role !== 'agent') return
-
-    void (async () => {
-      try {
-        const entry = entryId
-          ? await api.getForAgent(viewer.id, entryId)
-          : null
-        const entries = entryId
-          ? entry && entry.id === entryId
-            ? [entry]
-            : []
-          : await api.listForAgent(viewer.id)
-        if (active) {
-          setLoaded({
-            api,
-            agentId: viewer.id,
-            entryId,
-            status: 'ready',
-            entries: filterApprovedKnowledge(entries, viewer.id),
-          })
-        }
-      } catch {
-        if (active) {
-          setLoaded({ api, agentId: viewer.id, entryId, status: 'error' })
-        }
-      }
-    })()
-
-    return () => {
-      active = false
-    }
-  }, [api, viewer.id, viewer.role, entryId, attempt])
-
-  function retry() {
-    setLoaded({ ...identity, status: 'loading' })
-    setAttempt((value) => value + 1)
-  }
-
-  const available =
-    state.status === 'ready'
-      ? filterApprovedKnowledge(state.entries, viewer.id)
-      : []
+  const { filter: setParam, query, search } = useWorkspaceSearch()
+  const read = useCallback(async () => {
+    if (!entryId) return api!.listForAgent(viewer.id)
+    const entry = await api!.getForAgent(viewer.id, entryId)
+    return entry?.id === entryId ? [entry] : []
+  }, [api, viewer.id, entryId])
+  const state = useResource(api ? read : null)
+  const available = state.status === 'ready' ? filterApprovedKnowledge(state.data, viewer.id) : []
   const visible = filterApprovedKnowledge(available, viewer.id, query)
-  const entry = available.find((item) => item.id === entryId)
-  const articleEntry =
-    viewer.role === 'agent' && api && entry && canReadKnowledge(entry, viewer.id)
-      ? entry
-      : undefined
+  const articleEntry = available.find((item) => item.id === entryId)
 
   return (
     <div className={`approved-knowledge${articleEntry ? ' approved-knowledge--article' : ''}`}>
       {entryId && (
-        <nav className="approved-knowledge-breadcrumb" aria-label="Breadcrumb">
-          <Link className="approved-knowledge-back" to={`/agent/knowledge${search}`}>
+        <nav className="approved-knowledge-breadcrumb flex-center" aria-label="Breadcrumb">
+          <Link className="approved-knowledge-back inline-center" to={`/agent/knowledge${search}`}>
             Approved knowledge
           </Link>
           {articleEntry && (
@@ -121,12 +48,7 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
         </nav>
       )}
       {!articleEntry && <h1>Approved knowledge</h1>}
-      {viewer.role !== 'agent' ? (
-        <Panel title="Page unavailable for your role">
-          <p>This is the Agent knowledge workspace.</p>
-          <Link to="/manager/conversations">Back to your conversations</Link>
-        </Panel>
-      ) : !api ? (
+      {!api ? (
         <Panel title="Knowledge unavailable">
           <p>Approved knowledge is not connected.</p>
         </Panel>
@@ -137,7 +59,7 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
           <p role="alert">
             Approved guidance could not be loaded. Please try again.
           </p>
-          <Button onClick={retry}>Try again</Button>
+          <Button onClick={state.retry}>Try again</Button>
         </Panel>
       ) : entryId ? (
         articleEntry ? (
@@ -158,16 +80,12 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
               >
                 <TextField
                   id="approved-knowledge-search"
+                  hideLabel
                   type="search"
                   label="Search approved knowledge"
                   placeholder="Search approved knowledge"
                   value={query}
-                  onChange={(event) => {
-                    const next = new URLSearchParams(params)
-                    if (event.target.value) next.set('q', event.target.value)
-                    else next.delete('q')
-                    setParams(next, { replace: true })
-                  }}
+                  onChange={(event) => setParam('q', event.target.value)}
                 />
               </div>
               {visible.length > 0 ? (
@@ -194,7 +112,7 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
                         </td>
                         <td>{item.topic}</td>
                         <td>{item.kind === 'procedure' ? 'Procedure' : 'Knowledge'}</td>
-                        <td className="approved-knowledge-date">{formatKnowledgeDate(item.approvedAt)}</td>
+                        <td className="approved-knowledge-date">{formatDate(item.approvedAt)}</td>
                       </tr>
                     )
                   })}
@@ -207,11 +125,7 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
                   <p>Try another search to find approved guidance.</p>
                   <Button
                     variant="secondary"
-                    onClick={() => {
-                      const next = new URLSearchParams(params)
-                      next.delete('q')
-                      setParams(next, { replace: true })
-                    }}
+                    onClick={() => setParam('q', '')}
                   >
                     Clear search
                   </Button>

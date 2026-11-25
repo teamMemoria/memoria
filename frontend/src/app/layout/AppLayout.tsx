@@ -29,14 +29,14 @@ export function AppLayout({
         <header className="workspace-header">
           {onSwitchProfile ? (
             <ProfileMenu viewer={viewer} onSwitchProfile={onSwitchProfile}>
-              <button className="avatar profile-trigger" type="button"
+              <button className="avatar grid-center profile-trigger" type="button"
                 aria-label={`Open profile menu for ${viewer.displayName}`}>
                 <span role="img" aria-label={`${viewer.displayName}, ${viewer.role}`}>{initials}</span>
               </button>
             </ProfileMenu>
           ) : (
           <span
-            className="avatar"
+            className="avatar grid-center"
             role="img"
             aria-label={`${viewer.displayName}, ${viewer.role}`}
             title={viewer.displayName}

@@ -1,3 +1,4 @@
+import { formatDate } from '../../lib/dates.js'
 import type { ReviewRequest } from '../../types/callReview.js'
 
 export const automatedResultLabels = {
@@ -47,14 +48,8 @@ export interface ConversationsApi {
   listForAgent(agentId: string): Promise<Conversation[]>
 }
 
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeZone: 'UTC',
-})
-
 export function formatConversationDate(date: string | null) {
-  if (!date) return 'Date not recorded'
-  return dateFormatter.format(new Date(`${date}T00:00:00Z`))
+  return formatDate(date, 'Date not recorded')
 }
 
 export function getAgentConversations(

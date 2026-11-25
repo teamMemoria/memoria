@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Card } from '../../components/ui/card'
 import { Icon } from '../../components/Icon'
-import { CheckList, EvidenceLink, EvidenceNotes, MaterialLimits, Quote, ScoreCard } from '../assessment-shared/AssessmentElements'
+import { CheckList, CoachingNotice, EvidenceLink, EvidenceSection, MaterialLimits, Quote, AssessmentDashboard } from '../assessment-shared/AssessmentElements'
 import { ConversationChart } from '../assessment-shared/ConversationChart'
 import { checkLabels, checkTitle, linkedCheckTurns, type ScreenProps } from '../assessment-shared/assessment'
 
@@ -27,8 +27,7 @@ export function ArchivedCompleteness({ data, onOpen }: ScreenProps) {
 
   return (
     <>
-      <section className="dashboard-top dashboard-top--wide" aria-label="Request completeness checks">
-        <ScoreCard data={data} label="Requests" />
+      <AssessmentDashboard data={data} category="completeness">
         <Card className="dashboard-card action-area request-coverage">
           <h2>Agent actions</h2>
           {requests.length > 0 && (
@@ -38,7 +37,7 @@ export function ArchivedCompleteness({ data, onOpen }: ScreenProps) {
                   setSelectedId(check.id)
                   onOpen(linked.map((turn) => turn.number), undefined, undefined, check.id)
                 }}>
-                  <span className="request-icon"><Icon name="document" size={20} /></span>
+                  <span className="request-icon grid-center"><Icon name="document" size={20} /></span>
                   <strong>{checkTitle(check)}</strong>
                   <small>Linked turns {linked.map((turn) => turn.number).join(', ')}</small>
                   <span className={`mini-status mini-status--${check.outcome === 'breach' ? 'attention' : 'neutral'}`}>
@@ -53,15 +52,17 @@ export function ArchivedCompleteness({ data, onOpen }: ScreenProps) {
             <CheckList checks={otherChecks} onOpen={onOpen} />
           )}
         </Card>
-      </section>
+      </AssessmentDashboard>
       {selected && (
-        <section className="evidence-section evidence-section--plain" aria-labelledby="completeness-evidence-title">
-          <div className="section-heading">
-            <h2 id="completeness-evidence-title">Evidence</h2>
+        <EvidenceSection
+          titleId="completeness-evidence-title"
+          data={data}
+          action={
             <EvidenceLink turns={numbers} checkId={selected.check.id} onOpen={onOpen}>
               View linked turns
             </EvidenceLink>
-          </div>
+          }
+        >
           <ConversationChart
             turns={data.call.transcript?.turns ?? []}
             events={numbers}
@@ -89,30 +90,22 @@ export function ArchivedCompleteness({ data, onOpen }: ScreenProps) {
             ))}
           </div>
           {request && response && (
-            <div className="completion-strip">
+            <div className="completion-strip flex-center">
               <span className="assessment-metadata"><span>Customer</span><span>Turn {request.number}</span></span>
               <i />
               <span className="assessment-metadata"><span>Agent</span><span>Turn {response.number}</span></span>
             </div>
           )}
-          <EvidenceNotes data={data} />
-          <MaterialLimits data={data} />
-        </section>
+        </EvidenceSection>
       )}
       {!selected && <MaterialLimits data={data} />}
       {progress && selected && (
-        <section className="coaching" aria-label="What remains unverified">
-          <div className="coaching-summary">
-            <span className="coaching-icon"><Icon name="info" size={23} /></span>
-            <div>
-              <h2>What remains unverified</h2>
-              <p>Purchase validation is recorded as in progress in the linked evidence.</p>
-              <EvidenceLink turns={[progress.number]} checkId={selected.check.id} onOpen={onOpen}>
-                View turn {progress.number}
-              </EvidenceLink>
-            </div>
-          </div>
-        </section>
+        <CoachingNotice title="What remains unverified">
+          <p>Purchase validation is recorded as in progress in the linked evidence.</p>
+          <EvidenceLink turns={[progress.number]} checkId={selected.check.id} onOpen={onOpen}>
+            View turn {progress.number}
+          </EvidenceLink>
+        </CoachingNotice>
       )}
     </>
   )

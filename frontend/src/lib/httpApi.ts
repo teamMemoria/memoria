@@ -1,33 +1,8 @@
-import type {
-  CallApi,
-  CallReview,
-  AgentContext,
-  ReviewRequest,
-  TranscriptTurn,
-} from '../types/callReview'
-import type {
-  Viewer,
-  ViewerApi,
-  DemoProfile,
-  DemoProfilesApi,
-} from '../types/viewer'
-import type {
-  ApprovedKnowledgeApi,
-  KnowledgeEntry,
-  KnowledgeReviewApi,
-  KnowledgeDraft,
-  KnowledgeReviewDetail,
-} from '../types/knowledge'
-import type {
-  Conversation,
-  ConversationsApi,
-} from '../features/conversations/conversations'
-import type {
-  FindingReviewDetail,
-  ManagerDecision,
-  TeamConversation,
-  TeamReviewApi,
-} from '../features/review-queue/teamQueue'
+import type { CallApi, TranscriptTurn } from '../types/callReview'
+import type { DemoProfilesApi, ViewerApi } from '../types/viewer'
+import type { ApprovedKnowledgeApi, KnowledgeReviewApi } from '../types/knowledge'
+import type { ConversationsApi } from '../features/conversations/conversations'
+import type { TeamReviewApi } from '../features/review-queue/teamQueue'
 import { demoLoginEnabled } from './demoLogin'
 
 export function createHttpApis(baseUrl = '', simulation = false) {
@@ -60,10 +35,11 @@ export function createHttpApis(baseUrl = '', simulation = false) {
     if (!response.ok) throw new Error('The request could not be completed.')
     return response.json() as Promise<T>
   }
-  const callPath = (id: string) =>
-    `/api/agent/conversations/${encodeURIComponent(id)}`
-  const managerPath = (id: string) =>
-    `/api/manager/conversations/${encodeURIComponent(id)}`
+  const optional = <T>(user: string, path: string) => request<T | null>(user, path, undefined, 'GET', true)
+  const callPath = (role: 'agent' | 'manager', id: string) =>
+    `/api/${role}/conversations/${encodeURIComponent(id)}`
+  const draftPath = (id: string) => `/api/manager/knowledge/drafts/${encodeURIComponent(id)}`
+
   async function narration(
     role: 'agent' | 'manager',
     userId: string,
@@ -83,7 +59,7 @@ export function createHttpApis(baseUrl = '', simulation = false) {
     ).join('')
     const query = new URLSearchParams({ voice, text_sha256: hash })
     const response = await fetch(
-      `${base}/api/${role}/conversations/${encodeURIComponent(id)}/turns/${turn.number}/narration?${query}`,
+      `${base}${callPath(role, id)}/turns/${turn.number}/narration?${query}`,
       {
         credentials: 'include',
         signal,
@@ -102,106 +78,46 @@ export function createHttpApis(baseUrl = '', simulation = false) {
     return response.blob()
   }
   const viewerApi: ViewerApi = {
-    getViewer: async (id) => {
-      if (demoLoginEnabled() && !id) return null
-      return request<Viewer | null>(id, '/api/viewer', undefined, 'GET', true)
-    },
+    getViewer: async (id) => demoLoginEnabled() && !id ? null : optional(id ?? '', '/api/viewer'),
   }
   const profilesApi: DemoProfilesApi = {
-    listProfiles: () => request<DemoProfile[]>(undefined, '/api/demo/profiles'),
+    listProfiles: () => request(undefined, '/api/demo/profiles'),
   }
   const conversationsApi: ConversationsApi = {
-    listForAgent: (userId) =>
-      request<Conversation[]>(userId, '/api/agent/conversations'),
+    listForAgent: (user) => request(user, '/api/agent/conversations'),
   }
   const callApi: CallApi = {
     getNarration: (...args) => narration('agent', ...args),
-    getCallForAgent: (userId, id) =>
-      request<CallReview | null>(userId, callPath(id), undefined, 'GET', true),
-    saveContext: (userId, id, text) =>
-      request<AgentContext>(userId, `${callPath(id)}/context`, { text }, 'PUT'),
-    requestReview: (userId, id, findingId, reason) =>
-      request<ReviewRequest>(
-        userId,
-        `${callPath(id)}/review-requests`,
-        { findingId, reason },
-        'POST',
-      ),
+    getCallForAgent: (user, id) => optional(user, callPath('agent', id)),
+    saveContext: (user, id, text) => request(user, `${callPath('agent', id)}/context`, { text }, 'PUT'),
+    requestReview: (user, id, findingId, reason) =>
+      request(user, `${callPath('agent', id)}/review-requests`, { findingId, reason }, 'POST'),
   }
   const knowledgeApi: ApprovedKnowledgeApi = {
-    listForAgent: (userId) =>
-      request<KnowledgeEntry[]>(userId, '/api/agent/knowledge'),
-    getForAgent: (userId, id) =>
-      request<KnowledgeEntry | null>(
-        userId,
-        `/api/agent/knowledge/${encodeURIComponent(id)}`,
-        undefined,
-        'GET',
-        true,
-      ),
+    listForAgent: (user) => request(user, '/api/agent/knowledge'),
+    getForAgent: (user, id) => optional(user, `/api/agent/knowledge/${encodeURIComponent(id)}`),
   }
+  const pilot = import.meta.env.VITE_LAYER2_TEMPLATE_PILOT === 'true'
   const teamReviewApi: TeamReviewApi = {
     getNarration: (...args) => narration('manager', ...args),
-    listForManager: (userId) =>
-      request<TeamConversation[]>(userId, '/api/manager/conversations'),
-    getCallForManager: (userId, id) =>
-      request<FindingReviewDetail | null>(
-        userId,
-        managerPath(id),
-        undefined,
-        'GET',
-        true,
-      ),
-    ...(!simulation && import.meta.env.VITE_LAYER2_TEMPLATE_PILOT === 'true' && {
-      startAnalysis: (userId, id) =>
-        request(userId, `${managerPath(id)}/analysis`, undefined, 'POST'),
-    }),
-    saveDecision: (userId, id, findingId, decision) =>
-      request<ManagerDecision>(
-        userId,
-        `${managerPath(id)}/findings/${encodeURIComponent(findingId)}/decision`,
-        decision,
-        'POST',
-      ),
+    listForManager: (user) => request(user, '/api/manager/conversations'),
+    getCallForManager: (user, id) => optional(user, callPath('manager', id)),
+    startAnalysis: !simulation && pilot
+      ? (user, id) => request(user, `${callPath('manager', id)}/analysis`, undefined, 'POST')
+      : undefined,
+    saveDecision: (user, id, findingId, decision) =>
+      request(user, `${callPath('manager', id)}/findings/${encodeURIComponent(findingId)}/decision`, decision, 'POST'),
   }
-  const draftPath = (id: string) =>
-    `/api/manager/knowledge/drafts/${encodeURIComponent(id)}`
   const knowledgeReviewApi: KnowledgeReviewApi = {
-    ...(import.meta.env.VITE_LAYER2_TEMPLATE_PILOT === 'true' && {
-      generateDrafts: (userId) => request<{ created: number; skipped: unknown[] }>(
-        userId, '/api/manager/knowledge/imports', undefined, 'POST',
-      ),
-    }),
-    editDraft: (userId, id, content) =>
-      request<KnowledgeDraft>(userId, `${draftPath(id)}/content`, content, 'PUT'),
-    attachVerification: (userId, id, reference) =>
-      request<KnowledgeDraft>(userId, `${draftPath(id)}/verification`, reference, 'PUT'),
-    listForManager: (userId) =>
-      request<KnowledgeDraft[]>(userId, '/api/manager/knowledge/drafts'),
-    getForManager: (userId, id) =>
-      request<KnowledgeReviewDetail | null>(
-        userId,
-        draftPath(id),
-        undefined,
-        'GET',
-        true,
-      ),
-    approve: (userId, id, verifiedReferenceUrl, version, authoredPolicyVersion) =>
-      request<KnowledgeDraft>(
-        userId,
-        `${draftPath(id)}/approve`,
-        { verifiedReferenceUrl, version, authoredPolicyVersion },
-        'POST',
-      ),
-    reject: (userId, id, reason, version) =>
-      request<KnowledgeDraft>(
-        userId,
-        `${draftPath(id)}/reject`,
-        { reason, version },
-        'POST',
-      ),
-    unapprove: (userId, id, version) =>
-      request<KnowledgeDraft>(userId, `${draftPath(id)}/unapprove`, { version }, 'POST'),
+    generateDrafts: pilot ? (user) => request(user, '/api/manager/knowledge/imports', undefined, 'POST') : undefined,
+    editDraft: (user, id, content) => request(user, `${draftPath(id)}/content`, content, 'PUT'),
+    attachVerification: (user, id, reference) => request(user, `${draftPath(id)}/verification`, reference, 'PUT'),
+    listForManager: (user) => request(user, '/api/manager/knowledge/drafts'),
+    getForManager: (user, id) => optional(user, draftPath(id)),
+    approve: (user, id, verifiedReferenceUrl, version, authoredPolicyVersion) =>
+      request(user, `${draftPath(id)}/approve`, { verifiedReferenceUrl, version, authoredPolicyVersion }, 'POST'),
+    reject: (user, id, reason, version) => request(user, `${draftPath(id)}/reject`, { reason, version }, 'POST'),
+    unapprove: (user, id, version) => request(user, `${draftPath(id)}/unapprove`, { version }, 'POST'),
   }
   return {
     viewerApi,

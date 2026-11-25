@@ -1,315 +1,144 @@
 /// <reference types="node" />
-import { webcrypto, createHash } from 'node:crypto'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createHttpApis } from './httpApi'
-import { callFixture } from './callReview.test-data'
+import { createHash, webcrypto } from 'node:crypto'
+import { afterEach, expect, it, vi } from 'vitest'
 import { createDependencies } from '../app/dependencies'
+import { callFixture } from '../test/callReview.test-data'
+import { createHttpApis } from './httpApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
 })
 
-describe('HTTP dependency boundary', () => {
-  it('uses the backend by default in development', async () => {
-    vi.stubEnv('MODE', 'development')
-    vi.stubEnv('DEV', true)
-    const fetch = vi.fn(async () => new Response(JSON.stringify([])))
-    vi.stubGlobal('fetch', fetch)
-    await createDependencies().profilesApi!.listProfiles()
-    expect((fetch.mock.calls as unknown as [string, RequestInit][])[0][0]).toBe('/api/demo/profiles')
-  })
-
-  it('uses configured HTTP APIs without falling back to demo records', async () => {
-    vi.stubEnv('VITE_API_BASE_URL', '/backend/')
-    vi.stubEnv('VITE_DEV_USER', 'test-agent')
-    const fetch = vi.fn(async () => new Response(JSON.stringify([])))
-    vi.stubGlobal('fetch', fetch)
-    const deps = createDependencies()
-    expect(
-      await deps.conversationsApi!.listForAgent('selected-agent'),
-    ).toEqual([])
-    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('/backend/api/agent/conversations')
-    expect(init.credentials).toBe('include')
-    expect(init.headers).toEqual({ 'X-Dev-User': 'selected-agent' })
-    expect(init.signal).toBeInstanceOf(AbortSignal)
-    expect(deps.knowledgeReviewApi).toBeTruthy()
-  })
-
-  it('binds knowledge decisions to the displayed version and stored reference', async () => {
-    const fetch = vi.fn(async () => new Response('{}'))
-    vi.stubGlobal('fetch', fetch)
-    const api = createHttpApis('/').knowledgeReviewApi
-    await api.approve(
-      'manager',
-      'draft/1',
-      'https://example.test/policy',
-      'sha256:reviewed',
-    )
-    await api.reject('manager', 'draft/2', 'Missing evidence', 'sha256:other')
-    const calls = fetch.mock.calls as unknown as [string, RequestInit][]
-    expect(calls[0][0]).toBe('/api/manager/knowledge/drafts/draft%2F1/approve')
-    expect(calls[0][1].headers).toMatchObject({ 'X-Dev-User': 'manager' })
-    expect(calls[1][1].headers).toMatchObject({ 'X-Dev-User': 'manager' })
-    expect(JSON.parse(calls[0][1].body as string)).toEqual({
-      verifiedReferenceUrl: 'https://example.test/policy',
-      version: 'sha256:reviewed',
-    })
-    expect(JSON.parse(calls[1][1].body as string)).toEqual({
-      reason: 'Missing evidence',
-      version: 'sha256:other',
-    })
-  })
-
-  it('sends the editable draft content and its version to the Manager API', async () => {
-    const fetch = vi.fn(async () => new Response('{}'))
-    vi.stubGlobal('fetch', fetch)
-    const content = {
-      title: 'Refund policy', question: 'What should the Agent check?',
-      guidance: 'Check the applicable return policy.', version: 'sha256:current',
-    }
-    await createHttpApis().knowledgeReviewApi.editDraft!('manager', 'draft/1', content)
-    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('/api/manager/knowledge/drafts/draft%2F1/content')
-    expect(init.method).toBe('PUT')
-    expect(init.headers).toMatchObject({ 'X-Dev-User': 'manager' })
-    expect(JSON.parse(init.body as string)).toEqual(content)
-  })
-
-  it('never ships a development identity header in production', async () => {
-    vi.stubEnv('DEV', false)
-    const fetch = vi.fn(async () => new Response('{}'))
-    vi.stubGlobal('fetch', fetch)
-    await createHttpApis('/').viewerApi.getViewer('test-agent')
-    expect(
-      (fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers,
-    ).toEqual({})
-  })
-
-  it('sends the chosen demo profile in a production build with demo login on', async () => {
-    vi.stubEnv('DEV', false)
-    vi.stubEnv('VITE_DEMO_LOGIN', 'true')
-    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test')
-    const fetch = vi.fn(async () => new Response(JSON.stringify([])))
-    vi.stubGlobal('fetch', fetch)
-    const deps = createDependencies()
-    await deps.profilesApi!.listProfiles()
-    await deps.conversationsApi!.listForAgent('demo-agent-01')
-    const calls = fetch.mock.calls as unknown as [string, RequestInit][]
-    expect(calls[0][0]).toBe('https://api.example.test/api/demo/profiles')
-    expect(calls[1][0]).toBe('https://api.example.test/api/agent/conversations')
-    expect(calls[1][1].headers).toEqual({ 'X-Dev-User': 'demo-agent-01' })
-  })
-
-  it.each([undefined, 'false', '1'])(
-    'keeps demo login off in production unless VITE_DEMO_LOGIN is exactly true (%s)',
-    async (value) => {
-      vi.stubEnv('DEV', false)
-      if (value !== undefined) vi.stubEnv('VITE_DEMO_LOGIN', value)
-      vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test')
-      const fetch = vi.fn(async () => new Response('{}'))
-      vi.stubGlobal('fetch', fetch)
-      const deps = createDependencies()
-      expect(deps.profilesApi).toBeNull()
-      await deps.viewerApi!.getViewer('demo-agent-01')
-      expect(
-        (fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers,
-      ).toEqual({})
-    },
-  )
-
-  it('encodes path identifiers and sends only the existing write contracts', async () => {
-    const fetch = vi.fn(async () => new Response('{}'))
-    vi.stubGlobal('fetch', fetch)
-    const apis = createHttpApis('/')
-    await apis.callApi.saveContext('agent', 'call /1', 'Observed context')
-    await apis.callApi.requestReview(
-      'agent',
-      'call /1',
-      'finding',
-      'Please check',
-    )
-    await apis.teamReviewApi.saveDecision('manager', 'call /1', 'f/2', {
-      outcome: 'cannot-assess',
-      reason: 'Record missing',
-      feedback: 'No fault established',
-    })
-    const calls = fetch.mock.calls as unknown as [string, RequestInit][]
-    expect(calls[0][0]).toBe('/api/agent/conversations/call%20%2F1/context')
-    expect(calls[0][1].method).toBe('PUT')
-    expect(JSON.parse(calls[0][1].body as string)).toEqual({
-      text: 'Observed context',
-    })
-    expect(JSON.parse(calls[1][1].body as string)).toEqual({
-      findingId: 'finding',
-      reason: 'Please check',
-    })
-    expect(calls[2][0]).toBe(
-      '/api/manager/conversations/call%20%2F1/findings/f%2F2/decision',
-    )
-    expect(calls[2][1].method).toBe('POST')
-  })
-
-  it('distinguishes absent records and identity from errors; never exposes server diagnostics', async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(new Response('', { status: 401 }))
-      .mockResolvedValueOnce(new Response('', { status: 404 }))
-      .mockResolvedValueOnce(
-        new Response('private SQL details', { status: 503 }),
-      )
-      .mockRejectedValueOnce(new DOMException('timed out', 'TimeoutError'))
-    vi.stubGlobal('fetch', fetch)
-    const apis = createHttpApis('/')
-    expect(await apis.viewerApi.getViewer('test-agent')).toBeNull()
-    expect(await apis.callApi.getCallForAgent('agent', 'absent')).toBeNull()
-    await expect(apis.conversationsApi.listForAgent('agent')).rejects.toThrow(
-      'The request could not be completed.',
-    )
-    await expect(apis.conversationsApi.listForAgent('agent')).rejects.toThrow(
-      'timed out',
-    )
-  })
-})
-
-function mockResponse(value: unknown, status = 200) {
-  const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(JSON.stringify(value), { status }))
+function mockFetch(response: () => Response = () => Response.json({})) {
+  const fetch = vi.fn<typeof globalThis.fetch>(async () => response())
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
 
-describe('database profile HTTP integration', () => {
-  it('selects HTTP for every workspace API and never falls back to fixtures', async () => {
-    vi.stubEnv('VITE_API_BASE_URL', '/backend/')
-    const fetch = mockResponse([])
-    const apis = createDependencies()
-    await apis.conversationsApi!.listForAgent('chosen-agent')
-    await apis.knowledgeApi!.listForAgent('chosen-agent')
-    await apis.teamReviewApi!.listForManager('chosen-manager')
-    await apis.knowledgeReviewApi!.listForManager('chosen-manager')
-    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
-      '/backend/api/agent/conversations', '/backend/api/agent/knowledge',
-      '/backend/api/manager/conversations', '/backend/api/manager/knowledge/drafts',
-    ])
-    expect(fetch.mock.calls.map(([, init]) => init?.headers)).toEqual([
-      { 'X-Dev-User': 'chosen-agent' }, { 'X-Dev-User': 'chosen-agent' },
-      { 'X-Dev-User': 'chosen-manager' }, { 'X-Dev-User': 'chosen-manager' },
-    ])
-    expect(fetch.mock.calls[0][1]?.credentials).toBe('include')
-    expect(fetch.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
-  })
-
-  it('binds every request to its supplied viewer, even when storage is unavailable or a different profile is selected', async () => {
-    vi.stubGlobal('localStorage', { getItem() { throw new Error('blocked') } })
-    const fetch = mockResponse([])
-    const apis = createHttpApis()
-    await Promise.all([
-      apis.conversationsApi.listForAgent('first-agent'),
-      apis.conversationsApi.listForAgent('second-agent'),
-      apis.conversationsApi.listForAgent('first-agent'),
-    ])
-    expect(fetch.mock.calls.map(([, init]) => init?.headers)).toEqual([
-      { 'X-Dev-User': 'first-agent' }, { 'X-Dev-User': 'second-agent' }, { 'X-Dev-User': 'first-agent' },
-    ])
-  })
-
-  it('sends no default identity before a profile is chosen', async () => {
-    const fetch = mockResponse([])
-    const apis = createHttpApis()
-    expect(await apis.viewerApi.getViewer()).toBeNull()
-    await expect(apis.conversationsApi.listForAgent('')).rejects.toThrow('Choose a profile')
-    expect(fetch).not.toHaveBeenCalled()
-    await apis.profilesApi.listProfiles()
-    expect(fetch.mock.calls[0][1]?.headers).toEqual({})
-  })
-
-  it('preserves server-owned profile names, IDs, scores and exact evidence', async () => {
-    const call = await callFixture({ agentId: 'demo-abcd-alex', agentName: 'Alex (demo)' })
-    const fetch = mockResponse(call)
-    const actual = await createHttpApis().callApi.getCallForAgent('demo-abcd-alex', call.id)
-    expect(actual).toEqual(call)
-    expect(fetch.mock.calls[0][1]?.headers).toEqual({ 'X-Dev-User': 'demo-abcd-alex' })
-    mockResponse({ ...call, agentId: 'unrelated-user' })
-    expect((await createHttpApis().callApi.getCallForAgent('unrelated-user', call.id))?.agentName).toBe('Alex (demo)')
-  })
-
-  it('uses the selected profile for viewer lookup and preserves database conversation counts', async () => {
-    const profile = { id: 'demo-abcd-alex', displayName: 'Alex', role: 'agent', conversationCount: 2 }
-    mockResponse([profile])
-    expect(await createHttpApis().profilesApi.listProfiles()).toEqual([profile])
-    const fetch = mockResponse(profile)
-    expect(await createHttpApis().viewerApi.getViewer(profile.id)).toEqual(profile)
-    expect(fetch.mock.calls[0][1]?.headers).toEqual({ 'X-Dev-User': profile.id })
-  })
-
-  it('never ships development identity headers in production', async () => {
-    vi.stubEnv('DEV', false)
-    const fetch = mockResponse([])
-    await createHttpApis().conversationsApi.listForAgent('selected-agent')
-    expect(fetch.mock.calls[0][1]?.headers).toEqual({})
-  })
-
-  it('keeps ownership and missing records distinct from server or network failures', async () => {
-    mockResponse({}, 404)
-    expect(await createHttpApis().callApi.getCallForAgent('agent', 'someone-elses-call')).toBeNull()
-    mockResponse({}, 401)
-    expect(await createHttpApis().viewerApi.getViewer('deleted-profile')).toBeNull()
-    mockResponse('private SQL details', 503)
-    await expect(createHttpApis().conversationsApi.listForAgent('agent')).rejects.toThrow('The request could not be completed.')
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    await expect(createHttpApis().conversationsApi.listForAgent('agent')).rejects.toThrow('Failed to fetch')
-  })
-
-  it('encodes call IDs and sends existing write contracts with the correct actor', async () => {
-    const fetch = mockResponse({})
-    const apis = createHttpApis()
-    await apis.callApi.saveContext('agent-a', 'call /1', 'Context')
-    await apis.callApi.requestReview('agent-a', 'call /1', 'finding', 'Check this')
-    await apis.teamReviewApi.saveDecision('manager-a', 'call /1', 'f/2', { outcome: 'cannot-assess', reason: 'Unknown', feedback: 'Record missing' })
-    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
-      '/api/agent/conversations/call%20%2F1/context',
-      '/api/agent/conversations/call%20%2F1/review-requests',
-      '/api/manager/conversations/call%20%2F1/findings/f%2F2/decision',
-    ])
-    expect(fetch.mock.calls[0][1]?.method).toBe('PUT')
-    expect(JSON.parse(fetch.mock.calls[0][1]?.body as string)).toEqual({ text: 'Context' })
-    expect(fetch.mock.calls[2][1]?.headers).toEqual({ 'Content-Type': 'application/json', 'X-Dev-User': 'manager-a' })
-  })
-
+it('uses the configured backend for both roles and keeps request credentials', async () => {
+  vi.stubEnv('VITE_API_BASE_URL', '/backend/')
+  const fetch = mockFetch(() => Response.json([]))
+  const api = createDependencies()
+  expect(await api.conversationsApi!.listForAgent('agent')).toEqual([])
+  await api.knowledgeApi!.listForAgent('agent')
+  await api.teamReviewApi!.listForManager('manager')
+  await api.knowledgeReviewApi!.listForManager('manager')
+  expect(fetch.mock.calls.map(([url, init]) => [url, init?.headers])).toEqual([
+    ['/backend/api/agent/conversations', { 'X-Dev-User': 'agent' }],
+    ['/backend/api/agent/knowledge', { 'X-Dev-User': 'agent' }],
+    ['/backend/api/manager/conversations', { 'X-Dev-User': 'manager' }],
+    ['/backend/api/manager/knowledge/drafts', { 'X-Dev-User': 'manager' }],
+  ])
+  expect(fetch.mock.calls[0][1]).toMatchObject({ credentials: 'include', signal: expect.any(AbortSignal) })
 })
 
+it('uses the local profile API in development and supplies no default identity', async () => {
+  vi.stubEnv('MODE', 'development')
+  vi.stubEnv('DEV', true)
+  const profiles = [{ id: 'abc', displayName: 'Alex', role: 'agent', conversationCount: 2 }]
+  const fetch = mockFetch(() => Response.json(profiles))
+  const api = createDependencies()
+  expect(await api.viewerApi!.getViewer()).toBeNull()
+  await expect(api.conversationsApi!.listForAgent('')).rejects.toThrow('Choose a profile')
+  expect(fetch).not.toHaveBeenCalled()
+  expect(await api.profilesApi!.listProfiles()).toEqual(profiles)
+  expect(fetch.mock.calls[0]).toEqual(['/api/demo/profiles', expect.objectContaining({ headers: {} })])
+})
 
-describe('private generated narration', () => {
-  const turn = { number: 7, speaker: 'Agent' as const, text: 'Café — [PERSON_1]', time: null }
-  it.each(['agent', 'manager'] as const)('binds %s audio to exact text and the current viewer', async role => {
-    vi.stubGlobal('crypto', webcrypto)
-    const fetch = vi.fn(async () => new Response('audio bytes', { headers: { 'Content-Type': 'audio/mpeg' } }))
-    vi.stubGlobal('fetch', fetch)
-    const apis = createHttpApis('/backend')
-    const api = role === 'agent' ? apis.callApi : apis.teamReviewApi
-    const controller = new AbortController()
-    const audio = await api.getNarration!('viewer-1', 'call/1', turn, 'am_michael', controller.signal)
-    expect(audio.type).toBe('audio/mpeg')
-    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toContain(`/api/${role}/conversations/call%2F1/turns/7/narration`)
-    expect(url).toContain(createHash('sha256').update(turn.text).digest('hex'))
-    expect(url).not.toContain(turn.text)
-    expect(init.headers).toEqual({ 'X-Dev-User': 'viewer-1' })
-    expect(init.signal).toBe(controller.signal)
-    expect(init.credentials).toBe('include')
-  })
-  it.each([409, 503, 404, 500])('fails closed for status %s', async status => {
-    vi.stubGlobal('crypto', webcrypto)
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status })))
-    await expect(createHttpApis().callApi.getNarration!('viewer', '1', turn, 'am_michael', new AbortController().signal)).rejects.toThrow()
-  })
-  it('does not send development identity headers for production audio', async () => {
-    vi.stubGlobal('crypto', webcrypto)
-    vi.stubEnv('DEV', false)
-    const fetch = vi.fn(async () => new Response('audio', { headers: { 'Content-Type': 'audio/mpeg' } }))
-    vi.stubGlobal('fetch', fetch)
-    await createHttpApis().callApi.getNarration!('viewer', '1', turn, 'am_michael', new AbortController().signal)
-    expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers).toEqual({})
-  })
+it.each([undefined, 'false', '1', 'true'])('enables production demo login only for true (%s)', async (value) => {
+  vi.stubEnv('DEV', false)
+  vi.stubEnv('VITE_DEMO_LOGIN', value)
+  vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.test')
+  const fetch = mockFetch()
+  const api = createDependencies()
+  expect(Boolean(api.profilesApi)).toBe(value === 'true')
+  await api.viewerApi!.getViewer('profile')
+  expect(String(fetch.mock.calls[0][0])).toMatch(/^https:\/\/api\.example\.test\//)
+  expect(fetch.mock.calls[0][1]?.headers).toEqual(value === 'true' ? { 'X-Dev-User': 'profile' } : {})
+})
+
+it('uses the actor supplied to each request when storage is unavailable', async () => {
+  vi.stubGlobal('localStorage', { getItem() { throw new Error('blocked') } })
+  const fetch = mockFetch(() => Response.json([]))
+  await Promise.all(['first', 'second', 'first'].map(createHttpApis().conversationsApi.listForAgent))
+  expect(fetch.mock.calls.map(([, init]) => init?.headers)).toEqual(
+    ['first', 'second', 'first'].map((id) => ({ 'X-Dev-User': id })),
+  )
+})
+
+it('keeps exact call data and suppresses server diagnostics', async () => {
+  const call = await callFixture({ agentId: 'abc', agentName: 'Alex (demo)' })
+  const fetch = mockFetch(() => Response.json(call))
+  const api = createHttpApis()
+  expect(await api.callApi.getCallForAgent('abc', call.id)).toEqual(call)
+  expect(fetch.mock.calls[0][1]?.headers).toEqual({ 'X-Dev-User': 'abc' })
+  fetch.mockResolvedValueOnce(new Response(null, { status: 404 }))
+  expect(await api.callApi.getCallForAgent('abc', 'absent')).toBeNull()
+  fetch.mockResolvedValueOnce(new Response(null, { status: 401 }))
+  expect(await api.viewerApi.getViewer('deleted-profile')).toBeNull()
+  fetch.mockResolvedValueOnce(new Response('private SQL details', { status: 503 }))
+  await expect(api.conversationsApi.listForAgent('abc')).rejects.toThrow('The request could not be completed.')
+  fetch.mockRejectedValueOnce(new DOMException('timed out', 'TimeoutError'))
+  await expect(api.conversationsApi.listForAgent('abc')).rejects.toThrow('timed out')
+})
+
+it('encodes call IDs and sends context and decisions with the correct actor', async () => {
+  const fetch = mockFetch()
+  const { callApi, teamReviewApi } = createHttpApis()
+  const decision = { outcome: 'cannot-assess', reason: 'Unknown', feedback: 'Record missing' } as const
+  await callApi.saveContext('agent', 'call /1', 'Context')
+  await callApi.requestReview('agent', 'call /1', 'finding', 'Check this')
+  await teamReviewApi.saveDecision('manager', 'call /1', 'f/2', decision)
+  expect(fetch.mock.calls.map(([url, init]) => [url, init?.method, init?.headers, JSON.parse(String(init?.body))])).toEqual([
+    ['/api/agent/conversations/call%20%2F1/context', 'PUT', headers('agent'), { text: 'Context' }],
+    ['/api/agent/conversations/call%20%2F1/review-requests', 'POST', headers('agent'), { findingId: 'finding', reason: 'Check this' }],
+    ['/api/manager/conversations/call%20%2F1/findings/f%2F2/decision', 'POST', headers('manager'), decision],
+  ])
+})
+
+function headers(id: string) {
+  return { 'Content-Type': 'application/json', 'X-Dev-User': id }
+}
+
+it('binds knowledge changes to the reviewed version and reference', async () => {
+  const fetch = mockFetch()
+  const api = createHttpApis().knowledgeReviewApi
+  const version = 'sha256:reviewed'
+  const verifiedReferenceUrl = 'https://example.test/policy'
+  const content = { title: 'Refund policy', question: 'What should the Agent check?', guidance: 'Check the policy.', version }
+  await api.editDraft!('manager', 'draft/1', content)
+  await api.approve('manager', 'draft/1', verifiedReferenceUrl, version)
+  await api.reject('manager', 'draft/1', 'Missing evidence', version)
+  await api.unapprove('manager', 'draft/1', version)
+  const prefix = '/api/manager/knowledge/drafts/draft%2F1/'
+  expect(fetch.mock.calls.map(([url, init]) => [url, init?.method, init?.headers, JSON.parse(String(init?.body))])).toEqual([
+    [prefix + 'content', 'PUT', headers('manager'), content],
+    [prefix + 'approve', 'POST', headers('manager'), { verifiedReferenceUrl, version }],
+    [prefix + 'reject', 'POST', headers('manager'), { reason: 'Missing evidence', version }],
+    [prefix + 'unapprove', 'POST', headers('manager'), { version }],
+  ])
+})
+
+const turn = { number: 7, speaker: 'Agent' as const, text: 'Café — [PERSON_1]', time: null }
+it.each(['agent', 'manager', 'production'] as const)('binds %s narration to the displayed text and viewer', async (role) => {
+  vi.stubGlobal('crypto', webcrypto)
+  if (role === 'production') vi.stubEnv('DEV', false)
+  const fetch = mockFetch(() => new Response('audio', { headers: { 'Content-Type': 'audio/mpeg' } }))
+  const { callApi, teamReviewApi } = createHttpApis('/backend')
+  const api = role === 'manager' ? teamReviewApi : callApi
+  const { signal } = new AbortController()
+  const audio = await api.getNarration!('viewer', 'call/1', turn, 'am_michael', signal)
+  const [url, init] = fetch.mock.calls[0]
+  expect(audio.type).toBe('audio/mpeg')
+  expect(url).toContain(`/api/${role === 'manager' ? role : 'agent'}/conversations/call%2F1/turns/7/narration`)
+  expect(url).toContain(createHash('sha256').update(turn.text).digest('hex'))
+  expect(url).not.toContain(turn.text)
+  expect(init).toMatchObject({ signal, credentials: 'include', headers: role === 'production' ? {} : { 'X-Dev-User': 'viewer' } })
+})
+
+it.each([409, 503, 404, 500])('fails closed for narration status %s', async (status) => {
+  vi.stubGlobal('crypto', webcrypto)
+  mockFetch(() => new Response('{}', { status }))
+  await expect(createHttpApis().callApi.getNarration!('viewer', '1', turn, 'am_michael', new AbortController().signal)).rejects.toThrow()
 })

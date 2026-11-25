@@ -3,7 +3,8 @@ import { Card } from '../../components/ui/card'
 import { Icon } from '../../components/Icon'
 import {
   Coaching,
-  ScoreCard,
+  CoachingNotice,
+  AssessmentDashboard,
   AssessmentSummary,
   MaterialLimits,
   EvidenceLink,
@@ -30,11 +31,7 @@ export function CommunicationScreen({
   ) : undefined
   return (
     <>
-      <section
-        className="dashboard-top dashboard-top--three communication-top"
-        aria-label="Communication wording checks"
-      >
-        <ScoreCard data={data} label="Clarity & respect" visual="wording" />
+      <AssessmentDashboard data={data} category="communication-style">
         <Card className="dashboard-card action-area">
           <h2>Agent actions</h2>
           <div className="wording-list">
@@ -67,7 +64,7 @@ export function CommunicationScreen({
                     />
                   </span>
                   <span className="wording-caption">
-                    <span className={`card-badge${check.outcome === 'supported' ? '' : ' card-badge--attention'}`}>
+                    <span className={`card-badge inline-center${check.outcome === 'supported' ? '' : ' card-badge--attention'}`}>
                       {checkLabels[check.outcome]}
                     </span>
                     {quote && <q>{quote.quote}</q>}
@@ -86,7 +83,7 @@ export function CommunicationScreen({
             ))}
         </Card>
         <Card className="dashboard-card phrase-card">
-          <div className="card-eyebrow">
+          <div className="card-eyebrow flex-center">
             Phrases
             <Icon name="conversations" size={19} />
           </div>
@@ -112,7 +109,7 @@ export function CommunicationScreen({
             <p className="card-subtitle">No assessed phrases available.</p>
           )}
         </Card>
-      </section>
+      </AssessmentDashboard>
       <section ref={evidence} className="evidence-section evidence-section--plain" aria-labelledby="communication-evidence-title">
         <TranscriptWaveform
           key={`${data.call.id}-${data.call.assessmentVersion?.transcript ?? ''}`}
@@ -127,22 +124,12 @@ export function CommunicationScreen({
         <MaterialLimits data={data} />
       </section>
       {feedback && (
-        <section className="coaching" aria-label="Wording feedback">
-          <div className="coaching-summary">
-            <span className="coaching-icon"><Icon name="info" size={23} /></span>
-            <div>
-              <h2>{checkTitle(feedback)}</h2>
-              <p>{feedback.explanation}</p>
-              <EvidenceLink
-                turns={linkedCheckTurns(data, feedback).map((turn) => turn.number)}
-                checkId={feedback.id}
-                onOpen={onOpen}
-              >
-                View wording evidence
-              </EvidenceLink>
-            </div>
-          </div>
-        </section>
+        <CoachingNotice title={checkTitle(feedback)} label="Wording feedback">
+          <p>{feedback.explanation}</p>
+          <EvidenceLink turns={linkedCheckTurns(data, feedback).map((turn) => turn.number)} checkId={feedback.id} onOpen={onOpen}>
+            View wording evidence
+          </EvidenceLink>
+        </CoachingNotice>
       )}
       <Coaching data={data} />
     </>

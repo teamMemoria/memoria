@@ -30,18 +30,19 @@ export function Button({
   )
 }
 
-type TextFieldProps = ComponentProps<'input'> & { id: string; label: string }
+type TextFieldProps = ComponentProps<'input'> & { id: string; label: string; hideLabel?: boolean }
 
 export function TextField({
   id,
   label,
   type = 'text',
+  hideLabel,
   className = '',
   ...props
 }: TextFieldProps) {
   return (
     <label className="field" htmlFor={id}>
-      <span>{label}</span>
+      <span className={hideLabel ? 'sr-only' : undefined}>{label}</span>
       <span
         className={`field-input ${type === 'search' ? 'field-input--search' : ''}`}
       >
@@ -193,18 +194,19 @@ export function Tabs({
 
 export function Panel({
   title,
+  hideTitle,
   className = '',
   children,
   ...props
-}: ComponentProps<'section'> & { title: string }) {
+}: ComponentProps<'section'> & { title: string; hideTitle?: boolean }) {
   const headingId = useId()
   return (
     <section
       {...props}
-      className={`panel ${className}`}
+      className={`panel panel-frame ${className}`}
       aria-labelledby={headingId}
     >
-      <h2 id={headingId}>{title}</h2>
+      <h2 id={headingId} className={hideTitle ? 'sr-only' : undefined}>{title}</h2>
       {children}
     </section>
   )
@@ -218,7 +220,7 @@ export function StatusLabel({
   children: ReactNode
 }) {
   return (
-    <span className={`status-label status-label--${tone}`}>
+    <span className={`status-label inline-center status-label--${tone}`}>
       <span className="status-dot" aria-hidden="true" />
       {children}
     </span>

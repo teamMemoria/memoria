@@ -14,6 +14,11 @@ export default defineConfig(({ command, mode }) => {
       ...(simulation ? [simulationWorkspace(env.MEMORIA_SIMULATION_FILE, target, narrationDirectory)] : []),
     ],
     server: { proxy: { '/api': target } },
-    test: { environment: 'jsdom' },
+    test: {
+      environment: 'happy-dom',
+      environmentOptions: {
+        happyDOM: { settings: { navigation: { disableChildPageNavigation: true } } },
+      },
+    },
   }
 })

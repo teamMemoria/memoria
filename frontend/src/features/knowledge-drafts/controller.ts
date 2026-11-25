@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useSubmission } from '../../lib/useSubmission'
 import { canDecideKnowledge, type KnowledgeDraft, type KnowledgeReviewApi } from '../../types/knowledge'
 
 type Decision = 'approve' | 'reject' | 'unapprove'
@@ -8,8 +9,7 @@ export function useKnowledgeDecision(api: KnowledgeReviewApi, managerId: string,
   const [referenceOpened, setReferenceOpened] = useState(false)
   const [verified, setVerified] = useState(false)
   const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState<Decision | null>(null)
-  const [failed, setFailed] = useState<Decision | null>(null)
+  const { submit, saving, failed } = useSubmission<Decision>()
   const decisionAllowed = canDecide && api.decisionsAvailable !== false
   const needsDecision = canDecideKnowledge(entry)
   const readyToApprove = entry.authoredPolicyVersion
@@ -22,30 +22,14 @@ export function useKnowledgeDecision(api: KnowledgeReviewApi, managerId: string,
     if (outcome === 'unapprove' ? entry.status !== 'approved' : !needsDecision) return
     if (outcome === 'approve' && !canApprove) return
     if (outcome === 'reject' && !reason.trim()) return
-    setSaving(outcome)
-    setFailed(null)
-    try {
-      switch (outcome) {
-        case 'approve':
-          onDecided(await api.approve(
-            managerId,
-            entry.id,
-            reference?.url ?? null,
-            entry.version,
-            entry.authoredPolicyVersion ?? undefined,
-          ))
-          break
-        case 'reject':
-          onDecided(await api.reject(managerId, entry.id, reason, entry.version))
-          break
-        case 'unapprove':
-          onDecided(await api.unapprove(managerId, entry.id, entry.version))
-          break
-      }
-    } catch {
-      setFailed(outcome)
-      setSaving(null)
-    }
+    await submit(outcome, async () => {
+      const updated = outcome === 'approve'
+        ? await api.approve(managerId, entry.id, reference?.url ?? null, entry.version, entry.authoredPolicyVersion ?? undefined)
+        : outcome === 'reject'
+          ? await api.reject(managerId, entry.id, reason, entry.version)
+          : await api.unapprove(managerId, entry.id, entry.version)
+      onDecided(updated)
+    })
   }
 
   function reject(event: FormEvent) {

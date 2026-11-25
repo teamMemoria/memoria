@@ -1,16 +1,15 @@
 import { useAnswer } from './controller'
 import { answerEvidencePreview, answerTableCheckTitle } from './presenter'
 import type { ScoringCheck } from '../../types/callReview'
-import { Icon } from '../../components/Icon'
 import { Card } from '../../components/ui/card'
 import {
   Coaching,
-  ScoreCard,
+  AssessmentDashboard,
   AssessmentSummary,
   EvidenceLink,
-  MaterialLimits,
   EvidenceRows,
-  EvidenceNotes,
+  EvidenceSection,
+  MoreChecks,
 } from '../assessment-shared/AssessmentElements'
 import {
   checkLabels,
@@ -80,18 +79,14 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
   let offset = 0
   return (
     <>
-      <section
-        className="dashboard-top dashboard-top--wide"
-        aria-label="Answer support checks"
-      >
-        <ScoreCard data={data} label="Answer support" visual="number" />
+      <AssessmentDashboard data={data} category="answer-support">
         <Card className="dashboard-card action-area">
           <h2>Answer checks</h2>
           {!data.criterion?.scoring && (
             <AssessmentSummary data={data} onOpen={onOpen} />
           )}
           <div className="answer-visuals">
-            <div className="claim-chart-layout">
+            <div className="claim-chart-layout flex-center">
               <div
                 className="claim-donut"
                 role="img"
@@ -128,7 +123,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
                     )
                   })}
                 </svg>
-                <div className="donut-center">
+                <div className="donut-center flex-center">
                   <strong>{data.checks.length || '—'}</strong>
                   <span>{data.checks.length === 1 ? 'check' : 'checks'}</span>
                 </div>
@@ -149,7 +144,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
               <div className="answer-selected-check">
                 <div className="source-scope">
                   <h3>{answerTableCheckTitle(featured)}</h3>
-                  <span className={`card-badge answer-status--${featured.outcome}`}>
+                  <span className={`card-badge inline-center answer-status--${featured.outcome}`}>
                     {checkLabels[featured.outcome]}
                   </span>
                 </div>
@@ -179,39 +174,29 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
             )}
           </div>
         </Card>
-      </section>
-      <section className="evidence-section evidence-section--plain" aria-labelledby="answer-evidence-title">
-        <div className="section-heading">
-          <h2 id="answer-evidence-title">Evidence</h2>
-          <span className="reference-tag">Recorded factual checks</span>
-        </div>
+      </AssessmentDashboard>
+      <EvidenceSection
+        titleId="answer-evidence-title"
+        data={data}
+        action={<span className="reference-tag inline-center">Recorded factual checks</span>}
+        afterNotes={!data.checks.length && <p className="quiet-note flex-center">Individual factual checks unavailable.</p>}
+      >
         {primary.length ? (
           evidenceTable(primary)
         ) : (
-          <p className="quiet-note">No resolved factual checks supplied.</p>
+          <p className="quiet-note flex-center">No resolved factual checks supplied.</p>
         )}
         {remaining.length > 0 && (
-          <details className="remaining-checks more-checks">
-            <summary className="more-checks-toggle" aria-label="Additional checks" title="Additional checks">
-              <Icon name="chevronDown" size={20} />
-            </summary>
+          <MoreChecks className="remaining-checks">
             <p>
               Retained checks outside the assessed score. Open a row to inspect
               its evidence and limitations.
             </p>
             {evidenceTable(remaining)}
-          </details>
+          </MoreChecks>
         )}
-        {!data.criterion?.scoring ? (
-          <EvidenceRows data={data} onOpen={onOpen} />
-        ) : (
-          <EvidenceNotes data={data} />
-        )}
-        {!data.checks.length && (
-          <p className="quiet-note">Individual factual checks unavailable.</p>
-        )}
-        <MaterialLimits data={data} />
-      </section>
+        {!data.criterion?.scoring && <EvidenceRows data={data} onOpen={onOpen} />}
+      </EvidenceSection>
       <Coaching data={data} />
     </>
   )

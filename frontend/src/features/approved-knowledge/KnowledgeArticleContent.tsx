@@ -1,6 +1,6 @@
+import { formatDate } from '../../lib/dates'
 import { StatusLabel } from '../../components/controls'
 import type { KnowledgeEntry } from '../../types/knowledge'
-import { formatKnowledgeDate } from './knowledge'
 
 const refundStepHeadings: Record<number, string> = {
   1: 'Identify the customer.',
@@ -14,8 +14,8 @@ export function KnowledgeArticleContent({ entry }: { entry: KnowledgeEntry }) {
     entry.kind === 'procedure' && entry.id === 'RP-01' && entry.version === 'v1'
   const details = [
     { label: 'Reference', value: `${entry.id} ${entry.version}` },
-    { label: 'Approved', value: formatKnowledgeDate(entry.approvedAt) },
-    { label: 'Effective', value: formatKnowledgeDate(entry.effectiveAt) },
+    { label: 'Approved', value: formatDate(entry.approvedAt) },
+    { label: 'Effective', value: formatDate(entry.effectiveAt) },
     { label: 'Policy owner', value: entry.owner ?? 'Not supplied' },
     {
       label: 'Source',
@@ -28,17 +28,17 @@ export function KnowledgeArticleContent({ entry }: { entry: KnowledgeEntry }) {
     { label: 'Approved by', value: entry.approvedBy ?? 'Not supplied' },
     {
       label: 'Last confirmed',
-      value: formatKnowledgeDate(entry.lastConfirmedAt),
+      value: formatDate(entry.lastConfirmedAt),
     },
   ]
 
   return (
     <section
-      className="knowledge-article"
+      className="knowledge-article grid-layout"
       aria-labelledby="knowledge-article-title"
     >
-      <header className="knowledge-article-header">
-        <div className="knowledge-article-title-row">
+      <header className="knowledge-article-header grid-layout">
+        <div className="knowledge-article-title-row flex-center">
           <h1 id="knowledge-article-title">{entry.title}</h1>
           <StatusLabel tone="positive">Approved</StatusLabel>
         </div>
@@ -50,7 +50,7 @@ export function KnowledgeArticleContent({ entry }: { entry: KnowledgeEntry }) {
         </div>
       </header>
       <div
-        className="knowledge-article-body"
+        className="knowledge-article-body grid-layout"
         role="region"
         aria-label="Approved guidance content"
       >
@@ -78,10 +78,10 @@ export function KnowledgeArticleContent({ entry }: { entry: KnowledgeEntry }) {
                   value={step.number}
                   className={`knowledge-procedure-step${emphasisIndex >= 0 ? ' knowledge-procedure-step--emphasis' : ''}`}
                 >
-                  <span className="knowledge-step-number" aria-hidden="true">
+                  <span className="knowledge-step-number grid-center" aria-hidden="true">
                     {String(step.number).padStart(2, '0')}
                   </span>
-                  <div className="knowledge-step-content">
+                  <div className="knowledge-step-content grid-layout">
                     {heading && <h2>{heading}</h2>}
                     {step.text !== heading && (
                       <p>

@@ -1,6 +1,6 @@
 .waveform-heading, .waveform-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .waveform-tools { gap: 18px; }
-.waveform-voice { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 8px 12px; border: 1px solid #dce4f0; border-radius: 8px; background: white; color: var(--color-muted); font-size: 14px; font-weight: 550; }
+.waveform-voice { gap: 7px; min-height: 40px; padding: 8px 12px; border: 1px solid #dce4f0; border-radius: 8px; background: white; color: var(--color-muted); font-size: 14px; font-weight: 550; }
 .waveform-voice:hover { color: var(--color-heading); background: #f5f8fd; }
 .waveform-voice[aria-pressed='true'] { color: var(--color-heading); background: #edf3ff; border-color: #a8bde8; }
 .waveform-voice:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
@@ -8,8 +8,8 @@
 .waveform-voice-error { margin: 0 0 12px; color: var(--color-muted); font-size: 14px; }
 .waveform-scroll { position: relative; overflow-x: auto; padding: 12px 8px; scrollbar-width: thin; }
 .transcript-waveform { display: flex; gap: clamp(4px, .6vw, 10px); min-width: 100%; width: max-content; background: linear-gradient(#e8edf5,#e8edf5) left 104px / 100% 1px no-repeat; }
-.waveform-turn { --wave-color: #365eaa; --wave-tint: #edf3ff; position: relative; display: flex; flex: calc(var(--turn-weight,1) * var(--wave-grow,1)) 0 var(--turn-width,34px); flex-direction: column; align-items: center; gap: 10px; min-width: var(--turn-width,34px); padding: 20px 3px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--color-muted); cursor: pointer; transition: background 160ms, color 160ms; }
-.waveform-bars { display: flex; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 120px; margin: 24px 0; pointer-events: none; transform: scaleY(var(--wave-scale,1)); }
+.waveform-turn { --wave-color: #365eaa; --wave-tint: #edf3ff; position: relative; flex: calc(var(--turn-weight,1) * var(--wave-grow,1)) 0 var(--turn-width,34px); flex-direction: column; gap: 10px; min-width: var(--turn-width,34px); padding: 20px 3px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--color-muted); cursor: pointer; transition: background 160ms, color 160ms; }
+.waveform-bars { justify-content: center; gap: 2px; width: 100%; height: 120px; margin: 24px 0; pointer-events: none; transform: scaleY(var(--wave-scale,1)); }
 .waveform-bars i { display: block; flex: 1; min-width: 1px; max-width: calc(6px * var(--wave-scale,1)); border-radius: 4px; background: var(--wave-color); transition: background 160ms; }
 .waveform-turn-label { position: relative; font-size: 13px; font-variant-numeric: tabular-nums; }
 .waveform-turn-label > svg { position: absolute; top: 3px; left: calc(100% + 4px); }
@@ -33,21 +33,10 @@
   .waveform-heading { gap: 8px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .waveform-scroll:not([data-voice-enabled='true']) .waveform-bars--selected i { animation: waveform-select 600ms ease-out var(--wave-delay,0ms); }
   .waveform-turn[data-speaking='true'] .waveform-bars i { animation: waveform-speaking 420ms ease-in-out calc(var(--voice-delay,0ms) * -1) infinite alternate; }
 }
 @media (prefers-reduced-motion: reduce) {
   .waveform-playhead { display: none; }
 }
-@keyframes waveform-select { 0%,100% { transform: scaleY(1); } 35% { transform: scaleY(1.24); background: var(--color-accent); } }
 @keyframes waveform-speaking { 0% { transform: scaleY(.62); } 45% { transform: scaleY(1); } 100% { transform: scaleY(.82); } }
-
-.waveform-voices { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 18px; margin: 12px 0; }
-.waveform-voices label { display: grid; gap: 5px; color: var(--color-muted); font-size: 14px; }
-.waveform-voices select { max-width: 100%; padding: 8px 10px; border: 1px solid #dce4f0; border-radius: 8px; background: white; color: var(--color-text); font: inherit; }
-.waveform-voices select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-.waveform-voices > span { flex-basis: 100%; }
-
-.waveform-voice-settings { color: var(--color-muted); font-size: 14px; margin: 8px 0; }
-.waveform-voice-settings > summary { cursor: pointer; width: fit-content; }
 .waveform-turn-label > .codicon { position: absolute; top: 2px; left: calc(100% + 4px); font-size: 12px; }

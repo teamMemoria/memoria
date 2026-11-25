@@ -151,7 +151,7 @@ export function Sidebar({ viewer, onSwitchProfile }: { viewer: Viewer; onSwitchP
         {navigation.map(({ page, label }) => (
           <NavLink
             key={page}
-            className="sidebar-item"
+            className="sidebar-item flex-center"
             to={`${base}/${page}`}
             aria-label={label}
             title={label}
@@ -171,7 +171,7 @@ export function Sidebar({ viewer, onSwitchProfile }: { viewer: Viewer; onSwitchP
               if (isOpen) open()
               else scheduleClose()
             }}>
-            <button className="sidebar-item profile-trigger" type="button"
+            <button className="sidebar-item flex-center profile-trigger" type="button"
               aria-label={`Open profile menu for ${viewer.displayName}`}>
               <Icon name="account" size={25} />
               <span className="sidebar-label" aria-hidden="true">{viewer.displayName}</span>
@@ -179,7 +179,7 @@ export function Sidebar({ viewer, onSwitchProfile }: { viewer: Viewer; onSwitchP
           </ProfileMenu>
         ) : (
         <span
-          className="sidebar-item"
+          className="sidebar-item flex-center"
           role="img"
           aria-label={viewer.displayName}
           title={viewer.displayName}

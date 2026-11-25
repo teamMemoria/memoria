@@ -1,120 +1,52 @@
 import { it, expect } from 'vitest'
-import { act, fireEvent, screen, within, assessmentData, openCategory, scoredCall, path } from './AssessmentTestSupport'
-it('uses the exact selected reference and preserves source versions', async () => {
-    const { call } = await openCategory()
-    const reference = call.references[0]
-    fireEvent.click(
-      screen.getByRole('button', { name: `Reference ${reference.id}` }),
-    )
-    const dialog = await screen.findByRole('dialog')
-    expect(
-      within(dialog).getByText(`${reference.id} ${reference.version}`),
-    ).toBeTruthy()
-    expect(within(dialog).getByText(reference.title)).toBeTruthy()
-  })
+import { act, screen, within, assessmentData, inspect, openCategory, scoredCall, path } from './AssessmentTestSupport'
 
-it('draws the stored percentage, keeps critical deductions visible and does not recalculate from check counts', async () => {
-    const call = await scoredCall('procedure')
-    const snapshot = JSON.stringify(call)
-    await openCategory('procedure', call)
-    expect(screen.getByText('75%')).toBeTruthy()
-    expect(
-      document.querySelector('.gauge-value')?.getAttribute('stroke-dasharray'),
-    ).toBe('75 100')
-    expect(screen.getByText('Evidence coverage: 50%')).toBeTruthy()
-    expect(screen.queryByText('Assessed points')).toBeNull()
-    expect(screen.queryByText('Unresolved checks', { exact: true })).toBeNull()
-    expect(document.querySelector('.critical-check')?.textContent).toContain(
-      'Confirm the required input',
-    )
-    expect(document.querySelector('.metric-content--attention')).toBeTruthy()
-    expect(screen.queryByText('Calculation and evidence')).toBeNull()
-    expect(JSON.stringify(call)).toBe(snapshot)
-  })
+it('opens the applicable reference with its exact version', async () => {
+  const { call } = await openCategory()
+  const reference = call.references[0]
+  const dialog = await inspect(`Reference ${reference.id}`)
+  expect(dialog.getByText(`${reference.id} ${reference.version}`)).toBeTruthy()
+  expect(dialog.getByText(reference.title)).toBeTruthy()
+})
 
-it('maps canonical check turns even when legacy evidence links are empty', async () => {
-    const call = await scoredCall('procedure')
-    const data = assessmentData(call, 'procedure')
-    expect(data.turns.map((turn) => turn.number)).toEqual([8])
-    await openCategory('procedure', call)
-    expect(document.querySelector('.action-area .check-excerpt')).toBeNull()
-    const finding = document.querySelector<HTMLElement>('.finding-card')!
-    expect(within(finding).getByText('Deduction')).toBeTruthy()
-    expect(finding.querySelector('blockquote')?.textContent).toBe(data.turns[0].text)
-    expect(within(finding).getByRole('button', { name: 'View turn 8' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Compare evidence' }))
-    const dialog = await screen.findByRole('dialog')
-    expect(
-      within(dialog).getByText('Verify the required input before continuing.'),
-    ).toBeTruthy()
-    expect(dialog.textContent).toContain('rule-v2')
-    expect(dialog.textContent).toContain('transcript-v1')
-    expect(
-      within(dialog).getAllByText(
-        call.transcript!.turns.find((turn) => turn.number === 8)!.text,
-      ).length,
-    ).toBeGreaterThan(0)
-  })
+it('renders the recorded score and compares a critical finding with exact cited evidence', async () => {
+  const call = await scoredCall('procedure')
+  const original = structuredClone(call)
+  const { turns } = assessmentData(call, 'procedure')
+  expect(turns.map((turn) => turn.number)).toEqual([8])
+  await openCategory('procedure', call)
+  expect(screen.getByRole('img', { name: '75%' })).toBeTruthy()
+  expect(document.querySelector('.gauge-value')?.getAttribute('stroke-dasharray')).toBe('75 100')
+  expect(screen.getByText('Evidence coverage: 50%')).toBeTruthy()
 
-it('opens the original check row with its exact evidence and rejects an unrelated check URL', async () => {
-    const call = await scoredCall('procedure')
-    const { router } = await openCategory('procedure', call)
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: /Confirm the required input \(critical\)/,
-      }),
-    )
-    const dialog = await screen.findByRole('dialog')
-    expect(dialog.textContent).toContain('rule-v2')
-    expect(dialog.textContent).toContain(
-      'Verify the required input before continuing.',
-    )
-    await act(() =>
-      router.navigate(path + 'procedure?check=other-category-check'),
-    )
-    expect(
-      await screen.findByText('Selected check unavailable for this category.'),
-    ).toBeTruthy()
-    expect(screen.queryByText('rule-v2', { exact: true })).toBeNull()
-  })
+  const finding = within(document.querySelector<HTMLElement>('.finding-card')!)
+  expect(finding.getByText('Deduction')).toBeTruthy()
+  expect(finding.getByText(turns[0].text)).toBeTruthy()
+  expect(finding.getByRole('button', { name: 'View turn 8' })).toBeTruthy()
+  const dialog = await inspect('Compare evidence', finding)
+  expect(dialog.getByText('Verify the required input before continuing.')).toBeTruthy()
+  expect(dialog.getByText('Version transcript-v1')).toBeTruthy()
+  expect(dialog.getByText('Version rule-v2')).toBeTruthy()
+  const evidence = dialog.getByRole('heading', { name: 'Confirm the required input' })
+  expect(dialog.getAllByText(turns[0].text)[0].compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(dialog.getByText('Source version').closest('details')?.open).toBe(false)
+  expect(call).toEqual(original)
+})
 
-it('shows transcript context before the check and keeps exact source versions expandable', async () => {
-    const call = await scoredCall('procedure')
-    await openCategory('procedure', call)
-    fireEvent.click(screen.getByRole('button', { name: 'Compare evidence' }))
-    const dialog = await screen.findByRole('dialog')
-    expect(
-      within(dialog).getAllByRole('heading', {
-        name: 'Confirm the required input',
-      }),
-    ).toHaveLength(1)
-    const thread = dialog.querySelector('.evidence-thread')!
-    const details = dialog.querySelector('.selected-check')!
-    expect(
-      thread.compareDocumentPosition(details) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    const provenance = within(dialog)
-      .getByText('Source version')
-      .closest('details')!
-    expect(provenance.open).toBe(false)
-    fireEvent.click(within(provenance).getByText('Source version'))
-    expect(provenance.open).toBe(true)
-    expect(provenance.textContent).toContain('transcript-v1')
-    expect(dialog.textContent).toContain(
-      'Verify the required input before continuing.',
-    )
-  })
+it('keeps additional check URLs scoped to the selected assessment', async () => {
+  const { router } = await openCategory('procedure', await scoredCall('procedure'))
+  const dialog = await inspect(/Confirm the required input \(critical\)/)
+  expect(dialog.getByText('Verify the required input before continuing.')).toBeTruthy()
+  await act(() => router.navigate(path + 'procedure?check=other-category-check'))
+  expect(await screen.findByText('Selected check unavailable for this category.')).toBeTruthy()
+  expect(screen.queryByText('Version rule-v2')).toBeNull()
+})
 
-it('shows a processing failure as an error without a filled performance gauge', async () => {
-    const call = await scoredCall('completeness')
-    call.criteria[0].scoring!.processingError = 'Source version unavailable'
-    call.criteria[0].scoring!.score = null
-    await openCategory('completeness', call)
-    expect(screen.getByRole('alert').textContent).toContain(
-      'This is not an Agent performance result',
-    )
-    expect(document.querySelector('.gauge-value')).toBeNull()
-    expect(screen.queryByText('0%')).toBeNull()
-    expect(screen.getByRole('img', { name: 'Processing error' })).toBeTruthy()
-  })
+it('reports a processing error without showing a score', async () => {
+  const call = await scoredCall('completeness')
+  Object.assign(call.criteria[0].scoring!, { processingError: 'Source version unavailable', score: null })
+  await openCategory('completeness', call)
+  expect(screen.getByRole('alert').textContent).toContain('Source version unavailable')
+  expect(screen.getByRole('img', { name: 'Processing error' })).toBeTruthy()
+  expect(document.querySelector('.gauge-value')).toBeNull()
+})

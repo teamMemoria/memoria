@@ -36,11 +36,11 @@ export function EntryScreen({
   const headingId = useId()
   const roleName = useId()
   const profileName = useId()
-  const { state, setState, setAttempt, role, setRole, setSelectedId, profiles, selected } = useEntry(api)
+  const { state, role, setRole, setSelectedId, profiles, selected } = useEntry(api)
 
   return (
     <div className="entry">
-      <main className="entry-panel" aria-labelledby={headingId}>
+      <main className="entry-panel grid-center grid-layout" aria-labelledby={headingId}>
         <div className="entry-panel-content">
           <header className="entry-welcome">
             <h1 id={headingId} aria-label="Welcome to Memoria">
@@ -62,7 +62,7 @@ export function EntryScreen({
             }}
           >
             <fieldset className="entry-roles">
-              <legend className="entry-sr-only">Sign in as</legend>
+              <legend className="sr-only entry-sr-only">Sign in as</legend>
               {roles.map((item) => (
                 <label key={item.value} className="entry-choice">
                   <input
@@ -100,10 +100,7 @@ export function EntryScreen({
                 <p role="alert">We couldn't load the demo profiles.</p>
                 <Button
                   variant="secondary"
-                  onClick={() => {
-                    setState({ status: 'loading' })
-                    setAttempt((value) => value + 1)
-                  }}
+                  onClick={state.retry}
                 >
                   Try again
                 </Button>
@@ -123,7 +120,7 @@ export function EntryScreen({
                     className="entry-profile-trigger"
                     aria-describedby={selected ? `${profileName}-detail` : undefined}
                   >
-                    <span className="entry-avatar" aria-hidden="true">
+                    <span className="entry-avatar grid-center" aria-hidden="true">
                       {selected ? selected.displayName.slice(0, 2).toUpperCase() : '—'}
                     </span>
                     <SelectValue placeholder="Select a profile" />
@@ -134,7 +131,7 @@ export function EntryScreen({
                         key={profile.id}
                         value={profile.id}
                         textValue={profile.displayName}
-                        leading={<span className="entry-avatar entry-avatar-small">{profile.displayName.slice(0, 2).toUpperCase()}</span>}
+                        leading={<span className="entry-avatar grid-center entry-avatar-small">{profile.displayName.slice(0, 2).toUpperCase()}</span>}
                         description={profile.conversationCount === null ? undefined :
                           `${profile.conversationCount} ${profile.conversationCount === 1 ? 'conversation' : 'conversations'}`}
                       >
@@ -144,7 +141,7 @@ export function EntryScreen({
                   </SelectContent>
                 </Select>
                 {selected && (
-                  <span id={`${profileName}-detail`} className="entry-sr-only">
+                  <span id={`${profileName}-detail`} className="sr-only entry-sr-only">
                     Demo profile{selected.conversationCount !== null &&
                       ` (${selected.conversationCount} ${selected.conversationCount === 1 ? 'conversation' : 'conversations'})`}
                   </span>
@@ -159,7 +156,7 @@ export function EntryScreen({
         </div>
       </main>
 
-      <aside className="entry-brand" aria-label="Memoria">
+      <aside className="entry-brand grid-center" aria-label="Memoria">
         {reducedMotion ? (
           <img src="/brand/login-wordmark-white.svg" alt="Memoria" />
         ) : (

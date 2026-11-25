@@ -15,7 +15,7 @@ export function SelectTrigger({
   className = '', children, ...props
 }: ComponentProps<typeof SelectPrimitive.Trigger>) {
   return (
-    <SelectPrimitive.Trigger className={`memoria-select-trigger ${className}`} {...props}>
+    <SelectPrimitive.Trigger className={`memoria-select-trigger flex-center ${className}`} {...props}>
       {children}
       <SelectPrimitive.Icon className="memoria-select-chevron">
         <Icon name="chevronDown" size={20} />
@@ -36,13 +36,13 @@ export function SelectContent({
         collisionPadding={12}
         {...props}
       >
-        <SelectPrimitive.ScrollUpButton className="memoria-select-scroll memoria-select-scroll-up">
+        <SelectPrimitive.ScrollUpButton className="memoria-select-scroll flex-center memoria-select-scroll-up">
           <Icon name="chevronDown" />
         </SelectPrimitive.ScrollUpButton>
         <SelectPrimitive.Viewport className="memoria-select-viewport">
           {children}
         </SelectPrimitive.Viewport>
-        <SelectPrimitive.ScrollDownButton className="memoria-select-scroll">
+        <SelectPrimitive.ScrollDownButton className="memoria-select-scroll flex-center">
           <Icon name="chevronDown" />
         </SelectPrimitive.ScrollDownButton>
       </SelectPrimitive.Content>
@@ -57,7 +57,7 @@ export function SelectItem({
   description?: string
 }) {
   return (
-    <SelectPrimitive.Item className={`memoria-select-item ${className}`} {...props}>
+    <SelectPrimitive.Item className={`memoria-select-item flex-center ${className}`} {...props}>
       {leading && <span className="memoria-select-leading" aria-hidden="true">{leading}</span>}
       <span className="memoria-select-copy">
         <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
@@ -80,7 +80,7 @@ export function MemoriaSelectField({ id, label, value, onValueChange, options, d
 }) {
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className="sr-only">{label}</label>
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger id={id} aria-label={label}><SelectValue /></SelectTrigger>
         <SelectContent>

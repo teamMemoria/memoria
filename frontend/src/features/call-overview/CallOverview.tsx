@@ -1,3 +1,9 @@
+import { conversationFilters } from '../../lib/workspaceSearch'
+import type { ReactNode } from 'react'
+import { AssessmentState } from '../../components/AssessmentState'
+import { formatDate } from '../../lib/dates'
+import { ResourceNotice } from '../../components/ResourceNotice'
+import { ConversationMetadata } from '../../components/ConversationMetadata'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
@@ -5,7 +11,7 @@ import { Button, Panel, StatusLabel } from '../../components/controls'
 import { useCallReview } from '../../lib/useCallReview'
 import { assessmentData, categories, checkTitle, linkedCheckTurns } from '../assessment-shared/assessment'
 import { scoreTone } from '../conversations/scoreBands'
-import { assessmentPercentage, pilotLabel, percentage, auditResults as results } from '../../types/callReview'
+import { assessmentPercentage, decisionOutcomes, pilotLabel, percentage, auditResults as results } from '../../types/callReview'
 import type {
   AuditCriterion,
   CallApi,
@@ -14,23 +20,6 @@ import type {
 } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import './call-overview.css'
-
-const decisionLabels = {
-  confirmed: 'Confirmed',
-  corrected: 'Corrected',
-  dismissed: 'Dismissed',
-  'cannot-assess': 'Cannot assess',
-} as const
-
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeZone: 'UTC',
-})
-
-function formatDate(value: string | null) {
-  if (!value) return 'Date not recorded'
-  return dateFormatter.format(new Date(`${value.slice(0, 10)}T00:00:00Z`))
-}
 
 export function CallOverview({
   viewer,
@@ -49,17 +38,14 @@ export function CallOverview({
     conversationId,
     viewer.role === 'manager' ? managerApi : null,
   )
-  const backParams = new URLSearchParams()
-  for (const key of ['q', 'status']) {
-    if (params.has(key)) backParams.set(key, params.get(key)!)
-  }
+  const backParams = conversationFilters(params)
   const search = backParams.size ? `?${backParams}` : ''
   const startAnalysis = viewer.role === 'manager' ? managerApi?.startAnalysis : undefined
 
   return (
     <div className="call-overview">
       <Link
-        className="call-overview-back"
+        className="call-overview-back inline-center"
         to={`/${viewer.role}/conversations${search}`}
       >
         Conversations
@@ -83,26 +69,10 @@ export function CallOverview({
       ) : (
         <div className="call-overview-state">
           <h1>Call overview</h1>
-          {state.status === 'loading' && (
-            <p role="status">Loading conversation…</p>
-          )}
-          {state.status === 'error' && (
-            <Panel title="Unable to load conversation">
-              <p role="alert">
-                Your conversation could not be loaded. Please try again.
-              </p>
-              <Button onClick={state.retry}>Try again</Button>
-            </Panel>
-          )}
-          {state.status === 'unavailable' && (
-            <Panel title="Conversation unavailable">
-              <p>
-                {api
-                  ? 'This conversation is not available in your workspace.'
-                  : 'Conversation data is not connected.'}
-              </p>
-            </Panel>
-          )}
+          <ResourceNotice state={state} loading="Loading conversation…" errorTitle="Unable to load conversation"
+            error="Your conversation could not be loaded. Please try again."
+            unavailableTitle="Conversation unavailable"
+            unavailable={api ? 'This conversation is not available in your workspace.' : 'Conversation data is not connected.'} />
         </div>
       )}
     </div>
@@ -183,176 +153,136 @@ function CallContent({
   return (
     <>
       <h1>{call.topic}</h1>
-      <ul className="call-overview-metadata" aria-label="Call details">
-        <li>{simulation ? `ABCD ${call.sourceId}` : `Call ${call.id}${call.sourceId ? ` (ABCD ${call.sourceId})` : ''}`}</li>
-        <li>{call.agentName}</li>
-        <li>
-          {call.transcript
-            ? `${call.transcript.turns.length} ${call.transcript.complete ? '' : 'recorded '}${call.transcript.turns.length === 1 ? 'turn' : 'turns'}`
-            : 'Turns unavailable'}
-        </li>
-      </ul>
+      <ConversationMetadata call={call} sourceId={call.sourceId} />
       {!simulation && pilotLabel(call) && <p className="metadata-line">{pilotLabel(call)}</p>}
       {!simulation && <p className="call-overview-summary">{call.summary}</p>}
-      {call.status === 'unavailable' ? (
-        <Panel title="Assessment unavailable">
-          <p>No assessment is stored for this conversation. This is not an Agent performance result.</p>
-          {call.transcript && <Link to={transcript}>Transcript</Link>}
-        </Panel>
-      ) : call.status === 'processing' ? (
-        <Panel title="Feedback is processing">
-          <p role="status">Automatic feedback is not ready for this call.</p>
-          <Link to={transcript}>Transcript</Link>
-        </Panel>
-      ) : (
-        <>
-          {call.status === 'partial' && (
-            <Panel title="Assessment incomplete">
-              <p role="status">Processing failed for part of this assessment. Available checks are shown below; feedback is not ready.</p>
-            </Panel>
-          )}
-          <section className={simulation ? 'call-audit call-audit--simulation' : 'call-audit'} aria-label={simulation ? 'Assessment scores' : 'Automatic feedback'}>
-            <div className="call-audit-diagram">
-              <div className="call-audit-root" data-score-tone={simulation ? scoreTone(call.overallScoring?.score) : undefined}>
-                <span className="call-audit-phone">
-                  <Icon name="phone" size={24} />
-                </span>
-                {simulation ? (
-                  <span className="call-audit-overall">
-                    <span>Overall score</span>
-                    <strong>{percentage(call.overallScoring?.score)}</strong>
-                  </span>
-                ) : (
-                  <span>{call.overallScoring
-                    ? `Overall ${call.criteria.some(({ scoring }) => scoring?.coverage === 0)
-                      ? 'Cannot assess'
-                      : assessmentPercentage(call.overallScoring)}`
-                    : call.id}</span>
-                )}
-              </div>
-              <div className="call-criteria">
-                {criteria.map((criterion) => {
-                  const result = simulation ? null : results[criterion.result]
-                  const outcome = simulation
-                    ? percentage(criterion.scoring?.score)
-                    : criterion.scoring ? assessmentPercentage(criterion.scoring) : result?.label
-                  const cardContent = (
-                    <>
-                      <span className="call-criterion-marker">
-                        <Icon
-                          name={
-                            criterion.id === 'procedure' ? 'document' : 'people'
-                          }
-                          size={24}
-                        />
-                      </span>
-                      <span className="call-criterion-title">
-                        {criterion.title}
-                      </span>
-                      <span className="call-criterion-result">
-                        {outcome}
-                      </span>
-                      {criterion.scoring && <span className="call-criterion-qualification">Coverage: {percentage(criterion.scoring.coverage, 'Unknown')}</span>}
-                    </>
-                  )
-                  const connectionTone =
-                    result?.tone === 'attention'
-                      ? 'attention'
-                      : result?.tone === 'positive' &&
-                          criterion.id === 'communication-style'
-                        ? 'positive'
-                        : 'neutral'
-                  return (
-                    <div
-                      className={`call-criterion-column call-criterion-column--${connectionTone}`}
-                      data-score-tone={simulation ? scoreTone(criterion.scoring?.score) : undefined}
-                      key={criterion.id}
-                    >
-                      <Link
-                        className={`call-criterion call-criterion--${result?.tone ?? 'neutral'}`}
-                        to={evidenceLink(criterion)}
-                        aria-label={`${criterion.title}: ${outcome}`}
-                      >
-                        {cardContent}
-                      </Link>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </section>
-          {highlight ? (
-            <section className="call-finding-strip" aria-label="Key evidence">
-              <span className="call-finding-marker"><Icon name="info" size={24} /></span>
-              <div className="call-finding-copy">
-                <h2>Key evidence</h2>
-                <p>{checkTitle(highlight.check)}</p>
-              </div>
-              <div className="call-finding-actions">
-                <Link
-                  className="button button--primary"
-                  to={`${base}/assessments/${highlight.criterion.id}?${highlightParams}`}
-                >
-                  View evidence
-                </Link>
-                <Link className="button button--secondary" to={transcript}>Transcript</Link>
-              </div>
-            </section>
-          ) : simulation && <Link className="button button--secondary" to={transcript}>Transcript</Link>}
-          {call.findings.length > 0 ? (
-            <section
-              className="call-finding-strip"
-              aria-label="Automated findings"
-            >
-              <span className="call-finding-marker">
-                <Icon name="info" size={24} />
+      <AssessmentState call={call} transcript={transcript}>
+        <section className={simulation ? 'call-audit call-audit--simulation' : 'call-audit'} aria-label={simulation ? 'Assessment scores' : 'Automatic feedback'}>
+          <div className="call-audit-diagram">
+            <div className="call-audit-root flex-center panel-frame" data-score-tone={simulation ? scoreTone(call.overallScoring?.score) : undefined}>
+              <span className="call-audit-phone">
+                <Icon name="phone" size={24} />
               </span>
-              <div className="call-finding-copy">
-                <h2>
-                  {call.findings.length} automated{' '}
-                  {call.findings.length === 1 ? 'finding' : 'findings'}
-                </h2>
-                {call.findings.map((finding) => (
-                  <p key={finding.id}>{finding.title}</p>
-                ))}
-              </div>
-              <div className="call-finding-actions">
-                <Link
-                  className="button button--primary"
-                  to={`${base}/findings/${encodeURIComponent(call.findings[0].id)}${search}`}
-                >
-                  View feedback
-                </Link>
-                <Link className="button button--secondary" to={transcript}>
-                  Transcript
-                </Link>
-              </div>
-            </section>
-          ) : null}
-          {call.decision && (
-            <Panel className="call-manager-decision" title="Manager decision">
-              <StatusLabel
-                tone={
-                  call.decision.outcome === 'cannot-assess'
-                    ? 'neutral'
-                    : 'positive'
-                }
-              >
-                {decisionLabels[call.decision.outcome]}
-              </StatusLabel>
-              <p>{call.decision.reason}</p>
-              <h3>Feedback</h3>
-              <p>{call.decision.feedback}</p>
-              <p className="call-overview-decision-meta metadata-line">
-                <span>{call.decision.managerName}</span>
-                <time dateTime={call.decision.decidedAt}>
-                  {formatDate(call.decision.decidedAt)}
-                </time>
-              </p>
-            </Panel>
-          )}
-        </>
-      )}
+              {simulation ? (
+                <span className="call-audit-overall">
+                  <span>Overall score</span>
+                  <strong>{percentage(call.overallScoring?.score)}</strong>
+                </span>
+              ) : (
+                <span>{call.overallScoring
+                  ? `Overall ${call.criteria.some(({ scoring }) => scoring?.coverage === 0)
+                    ? 'Cannot assess'
+                    : assessmentPercentage(call.overallScoring)}`
+                  : call.id}</span>
+              )}
+            </div>
+            <div className="call-criteria">
+              {criteria.map((criterion) => {
+                const result = simulation ? null : results[criterion.result]
+                const outcome = simulation
+                  ? percentage(criterion.scoring?.score)
+                  : criterion.scoring ? assessmentPercentage(criterion.scoring) : result?.label
+                const cardContent = (
+                  <>
+                    <span className="call-criterion-marker">
+                      <Icon
+                        name={
+                          criterion.id === 'procedure' ? 'document' : 'people'
+                        }
+                        size={24}
+                      />
+                    </span>
+                    <span className="call-criterion-title">
+                      {criterion.title}
+                    </span>
+                    <span className="call-criterion-result">
+                      {outcome}
+                    </span>
+                    {criterion.scoring && <span className="call-criterion-qualification">Coverage: {percentage(criterion.scoring.coverage, 'Unknown')}</span>}
+                  </>
+                )
+                const connectionTone =
+                  result?.tone === 'attention'
+                    ? 'attention'
+                    : result?.tone === 'positive' &&
+                        criterion.id === 'communication-style'
+                      ? 'positive'
+                      : 'neutral'
+                return (
+                  <div
+                    className={`call-criterion-column call-criterion-column--${connectionTone}`}
+                    data-score-tone={simulation ? scoreTone(criterion.scoring?.score) : undefined}
+                    key={criterion.id}
+                  >
+                    <Link
+                      className={`call-criterion flex-center panel-frame call-criterion--${result?.tone ?? 'neutral'}`}
+                      to={evidenceLink(criterion)}
+                      aria-label={`${criterion.title}: ${outcome}`}
+                    >
+                      {cardContent}
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+        {highlight ? (
+          <FindingStrip label="Key evidence" title="Key evidence" transcript={transcript}
+            action="View evidence" to={`${base}/assessments/${highlight.criterion.id}?${highlightParams}`}>
+            <p>{checkTitle(highlight.check)}</p>
+          </FindingStrip>
+        ) : simulation && <Link className="button button--secondary" to={transcript}>Transcript</Link>}
+        {call.findings.length > 0 && (
+          <FindingStrip label="Automated findings" transcript={transcript} action="View feedback"
+            title={`${call.findings.length} automated ${call.findings.length === 1 ? 'finding' : 'findings'}`}
+            to={`${base}/findings/${encodeURIComponent(call.findings[0].id)}${search}`}>
+            {call.findings.map((finding) => <p key={finding.id}>{finding.title}</p>)}
+          </FindingStrip>
+        )}
+        {call.decision && (
+          <Panel className="call-manager-decision" title="Manager decision">
+            <StatusLabel
+              tone={
+                call.decision.outcome === 'cannot-assess'
+                  ? 'neutral'
+                  : 'positive'
+              }
+            >
+              {decisionOutcomes[call.decision.outcome].label}
+            </StatusLabel>
+            <p>{call.decision.reason}</p>
+            <h3>Feedback</h3>
+            <p>{call.decision.feedback}</p>
+            <p className="call-overview-decision-meta metadata-line">
+              <span>{call.decision.managerName}</span>
+              <time dateTime={call.decision.decidedAt}>
+                {formatDate(call.decision.decidedAt, 'Date not recorded')}
+              </time>
+            </p>
+          </Panel>
+        )}
+      </AssessmentState>
     </>
+  )
+}
+
+function FindingStrip({ label, title, transcript, action, to, children }: {
+  label: string
+  title: string
+  transcript: string
+  action: string
+  to: string
+  children: ReactNode
+}) {
+  return (
+    <section className="call-finding-strip flex-center panel-frame" aria-label={label}>
+      <span className="call-finding-marker"><Icon name="info" size={24} /></span>
+      <div className="call-finding-copy grid-layout"><h2>{title}</h2>{children}</div>
+      <div className="call-finding-actions flex-center">
+        <Link className="button button--primary" to={to}>{action}</Link>
+        <Link className="button button--secondary" to={transcript}>Transcript</Link>
+      </div>
+    </section>
   )
 }
