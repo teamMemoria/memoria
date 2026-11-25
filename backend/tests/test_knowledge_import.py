@@ -403,14 +403,14 @@ async def test_import_route_runs_the_pipeline(session, data):
         ([7] * 10, True, False, None),
         ([7] * 7 + [30] * 3, False, False, None),  # 70%, with an unresolved conflict.
         ([7] * 6 + [30] * 4, False, False, None),
-        ([7] * 9, False, False, None),
-        ([30] * 10, False, False, None),  # No matching policy, even at 100%.
+        ([7] * 9, True, False, None),  # Enough calls for the configured threshold.
+        ([30] * 10, True, False, None),  # No publisher policy needed.
         pytest.param([7] * 10, False, True, None, id="external-adapter"),
         pytest.param([7] * 10, False, False, "edit", id="manager-edited"),
         pytest.param([7] * 10, False, False, "unapprove", id="manager-unapproved"),
     ],
 )
-async def test_pilot_only_auto_approves_source_verified_facts(
+async def test_pilot_auto_approves_facts_most_calls_agree_on(
     session, data, values, approved, external, manager_change
 ):
     settings = Settings(app_env="test", knowledge_draft_threshold=2)
@@ -510,8 +510,10 @@ async def test_pilot_only_auto_approves_source_verified_facts(
         == approved
     )
     if approved:
-        assert "Automatically approved: 10/10" in reviews[0].note
-        assert reviews[0].verified_reference_url == draft.verification_reference["url"]
+        calls = len(values)
+        assert f"Automatically approved: {calls}/{calls}" in reviews[0].note
+        source = draft.verification_reference
+        assert reviews[0].verified_reference_url == (source and source["url"])
         assert any(row["id"] == str(draft.id) for row in rows)
 
 

@@ -24,4 +24,5 @@ def pilot_knowledge_import(sessions, settings):
         sessions,
         generate=partial(draft_candidates, settings=limits, questions=questions),
         source_prefix=SOURCE_PREFIX,
+        auto_approval=limits,
     )
