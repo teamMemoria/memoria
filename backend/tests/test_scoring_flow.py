@@ -7,7 +7,7 @@ from ml.abcd import _source_metadata, prepare_dataset
 from backend.core.config import Settings
 from backend.entities.assessments import ReportRejectedError
 from backend.entities.extension import extension_refusal
-from backend.entities.policies import _VERIFICATION_SOURCES
+from backend.entities.policies import _VERIFICATION_SOURCES, PROMO_PREFIX
 from backend.entities.score_policy import overall_for_form, overall_for_profile
 from backend.frameworks.data_access.assessment_storage import import_prepared
 from backend.frameworks.data_access.scoring_setup import pilot_services
@@ -184,11 +184,11 @@ async def analyse(client, call_id):
     ).json()["call"]
 
 
-async def test_layer2_draft_approval_and_persisted_template_assessment(
+async def test_layer2_manual_approval_and_persisted_template_assessment(
     session, monkeypatch
 ):
     data = await scoring_data(session)
-    sources = [await add_call(session, data, i, 7) for i in range(200, 210)]
+    sources = [await add_call(session, data, i, 14) for i in range(200, 210)]
     sessions = sessions_for(session)
     settings = Settings(app_env="test", layer2_template_pilot=True)
     analysis, knowledge_import = pilot_services(sessions, settings)
@@ -218,7 +218,7 @@ async def test_layer2_draft_approval_and_persisted_template_assessment(
         reference = {
             "title": "Northwind sample promotion policy",
             "url": "https://example.test/promo-policy",
-            "quote": "Standard promo codes expire after 7 days.",
+            "quote": "Standard promo codes expire after 14 days.",
             "version": draft["version"],
         }
         decision = {
@@ -239,7 +239,7 @@ async def test_layer2_draft_approval_and_persisted_template_assessment(
         response = await approve()
         assert response.status_code == 409
 
-        early_call = await add_call(session, data, 211, 7)
+        early_call = await add_call(session, data, 211, 14)
         early = await analyse(client, early_call)
         assert answer_support(early)["score"] is None
         assert answer_support(early)["coverage"] == answer_support(early)["earned"] == 0
@@ -250,7 +250,7 @@ async def test_layer2_draft_approval_and_persisted_template_assessment(
         # Register an independent source for this fixture only.
         monkeypatch.setitem(
             _VERIFICATION_SOURCES,
-            "layer2-promo-days-7",
+            PROMO_PREFIX + "14",
             (reference["quote"], reference["quote"], reference["url"]),
         )
         for invalid in (
@@ -267,7 +267,7 @@ async def test_layer2_draft_approval_and_persisted_template_assessment(
         assert approved.status_code == 200, approved.text
         assert approved.json()["status"] == "approved"
 
-        target = await add_call(session, data, 212, 14)
+        target = await add_call(session, data, 212, 7)
         manager = await analyse(client, target)
         route = f"/api/agent/conversations/{target}"
         owner = await client.get(route, headers=headers(ALEX))
