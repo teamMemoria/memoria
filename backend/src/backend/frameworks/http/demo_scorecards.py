@@ -36,6 +36,7 @@ class DemoScorecards:
         ):
             raise ValueError("Expected 25 distinct archived simulation scorecards")
         self.counts = Counter(card.agent_name for card in cards)
+        self.narration_directory = source.parent / "narration"
 
     def profiles(self, profiles: list[DemoProfile]) -> list[DemoProfile]:
         return [

@@ -1,5 +1,6 @@
 """Serve generated clips only after the normal conversation access checks."""
 
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response
@@ -22,7 +23,9 @@ router = APIRouter()
 TextDigest = Annotated[str, Query(pattern=r"^[a-f0-9]{64}$")]
 
 
-async def narration_response(call: CallReview, number: int, voice: str, digest: str):
+async def narration_response(
+    call: CallReview, number: int, voice: str, digest: str, cache: Path
+):
     turn = (
         next((item for item in call.transcript.turns if item.number == number), None)
         if call.transcript
@@ -38,7 +41,7 @@ async def narration_response(call: CallReview, number: int, voice: str, digest: 
         identity = clip_identity(turn.text, turn.speaker, voice)
     except ValueError:
         raise HTTPException(422, "Voice does not match participant role") from None
-    content = await run_in_threadpool(read_clip, DEFAULT_CACHE, identity)
+    content = await run_in_threadpool(read_clip, cache, identity)
     if content is None:
         raise HTTPException(
             503, "Generated narration is not prepared for this passage."
@@ -65,7 +68,8 @@ async def agent_narration(
     scorecards: DemoScorecardsDep,
 ):
     call = await get_call(conversation_id, user, providers, scorecards)
-    return await narration_response(call, number, voice, text_sha256)
+    cache = scorecards.narration_directory if scorecards else DEFAULT_CACHE
+    return await narration_response(call, number, voice, text_sha256, cache)
 
 
 @router.get("/api/manager/conversations/{conversation_id}/turns/{number}/narration")
@@ -79,4 +83,5 @@ async def manager_narration(
     scorecards: DemoScorecardsDep,
 ):
     detail = await get_team_call(conversation_id, user, providers, scorecards)
-    return await narration_response(detail.call, number, voice, text_sha256)
+    cache = scorecards.narration_directory if scorecards else DEFAULT_CACHE
+    return await narration_response(detail.call, number, voice, text_sha256, cache)
