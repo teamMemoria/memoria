@@ -96,6 +96,18 @@ export function checkTurns(check: ScoringCheck) {
   ]
 }
 
+export function linkedCheckTurns(data: AssessmentData, check: ScoringCheck) {
+  return data.turns.filter((turn) =>
+    check.citations.some((citation) =>
+      citation.kind === 'conversation' &&
+      citation.turn_id === turn.number &&
+      citation.event_kind === (turn.speaker === 'System action' ? 'action' : 'message') &&
+      citation.quote.trim() &&
+      turn.text.includes(citation.quote),
+    ),
+  )
+}
+
 export function featuredChecks(checks: ScoringCheck[]) {
   const rank = (check: ScoringCheck) =>
     check.critical
@@ -109,6 +121,7 @@ export function featuredChecks(checks: ScoringCheck[]) {
 }
 
 export const checkLabels = {
+  partial: 'Partial credit',
   supported: 'Supported',
   breach: 'Deduction',
   unresolved: 'Unresolved',
@@ -118,6 +131,9 @@ export const checkLabels = {
 // Short card headings; the full recorded requirement remains in check details.
 export function checkTitle(check: ScoringCheck) {
   const labels: Record<string, string> = {
+    'Open search the faq for the website search issue': 'Search the FAQ',
+    'Give an applicable troubleshooting instruction': 'Suggest a troubleshooting step',
+    'Tell the customer to try the search bar again after a troubleshooting step': 'Ask the customer to retry the search',
     'Give a specific understandable instruction': 'Clear instruction',
     'Express a respectful courtesy': 'Respectful courtesy',
     'Assess wording within supported patterns': 'Wording interpretation',

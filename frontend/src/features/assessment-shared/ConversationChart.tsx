@@ -72,7 +72,7 @@ export function ConversationChart({
   const active = data.find((point) => point.turn.number === hover)
   return (
     <div ref={container} className="conversation-graph source-chart">
-      <div className="chart-axis-label">{label} · retained turn order</div>
+      <div className="chart-axis-label">{label} by retained turn order</div>
       {points.length ? (
         <>
           <svg

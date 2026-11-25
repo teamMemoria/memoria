@@ -32,6 +32,35 @@ function openReview(
 }
 
 describe('Manager knowledge verification and approval', () => {
+  it('previews changes below Sources and saves them with the displayed draft version', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const { entry } = (await api.getForManager(manager.id, 'KD-103'))!
+    const draft = { ...entry, layer: 'layer2' as const, question: 'When do card refunds arrive?' }
+    const updated = {
+      ...draft, title: 'Card refund timing', version: 'new-version',
+      paragraphs: ['Check the payment record.'], verificationReference: null,
+    }
+    const editDraft = vi.fn().mockResolvedValue(updated)
+    openReview(draft.id, {
+      ...api, editDraft,
+      getForManager: async () => ({ entry: draft, canDecide: true, canEdit: true }),
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit draft' }))
+    const form = screen.getByRole('form', { name: 'Edit draft' })
+    fireEvent.change(within(form).getByRole('textbox', { name: 'Title' }), { target: { value: updated.title } })
+    fireEvent.change(within(form).getByRole('textbox', { name: 'Guidance' }), { target: { value: updated.paragraphs[0] } })
+    const viewer = screen.getByRole('region', { name: 'Draft document viewer' })
+    expect(within(viewer).getByText(updated.title)).toBeTruthy()
+    expect(approve().disabled).toBe(true)
+    fireEvent.click(within(form).getByRole('button', { name: 'Save draft' }))
+    expect(editDraft).toHaveBeenCalledWith(manager.id, draft.id, {
+      title: updated.title, question: draft.question, guidance: updated.paragraphs[0], version: draft.version,
+    })
+    await screen.findByRole('heading', { name: updated.title, level: 1 })
+    expect(screen.queryByRole('form', { name: 'Edit draft' })).toBeNull()
+    expect(approve().disabled).toBe(true)
+  })
+
   it('keeps a readable draft read-only when the backend has no decision endpoints', async () => {
     const api = createDevKnowledgeReviewApi()
     const approve = vi.fn(api.approve)
@@ -40,6 +69,7 @@ describe('Manager knowledge verification and approval', () => {
     await screen.findByText(/Knowledge drafts are read-only in this demo/)
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull()
     expect(screen.getByRole('link', { name: /Knowledge drafts/ })).toBeTruthy()
     expect(approve).not.toHaveBeenCalled()
     expect(reject).not.toHaveBeenCalled()
@@ -118,9 +148,7 @@ describe('Manager knowledge verification and approval', () => {
     expect(approve().disabled).toBe(true)
     fireEvent.click(checkbox())
     fireEvent.click(approve())
-    await within(screen.getByRole('region', { name: 'Decision' })).findByText(
-      'Approved',
-    )
+    await screen.findByRole('dialog', { name: 'Approved' })
     expect((await api.getForManager(manager.id, 'KD-102'))?.entry.status).toBe(
       'approved',
     )
@@ -132,34 +160,59 @@ describe('Manager knowledge verification and approval', () => {
   it('does not treat repeated answers as verification when no reference exists', async () => {
     const reviewApi = createDevKnowledgeReviewApi()
     openReview('KD-104', { ...reviewApi, attachVerification: vi.fn() })
-    await screen.findByText(/Found in 3 conversations/)
-    expect(
-      screen.getByText(/No authoritative reference is available/),
-    ).toBeTruthy()
+    const sources = await screen.findByRole('region', { name: 'Sources' })
+    expect(within(sources).getAllByRole('button', { name: /^View source call / })).toHaveLength(3)
+    const decision = screen.getByRole('region', { name: 'Decision' })
+    expect(within(decision).getByText('Approval requires an authoritative reference.')).toBeTruthy()
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Attach reference' })).toBeNull()
     expect(approve().disabled).toBe(true)
     await expect(reviewApi.approve(manager.id, 'KD-104', '')).rejects.toThrow()
   })
 
-  it('publishes the exact Memoria-authored version after explicit acknowledgement', async () => {
+  it('publishes the exact Memoria-authored version when the Manager clicks Approve', async () => {
     const api = createDevKnowledgeReviewApi()
     const draft = (await api.getForManager(manager.id, 'KD-104'))!.entry
-    const entry = { ...draft, authoredPolicyVersion: 'sha256:memoria' }
+    const entry = { ...draft, layer: 'layer1' as const, authoredPolicyVersion: 'sha256:memoria' }
     const publish = vi.fn().mockResolvedValue({ ...entry, status: 'approved' })
     openReview('KD-104', {
       ...api,
       getForManager: async () => ({ entry, canDecide: true }),
       approve: publish,
     })
-    const acknowledge = await screen.findByRole('checkbox', { name: /for future calls/ })
-    expect(approve().disabled).toBe(true)
-    fireEvent.click(acknowledge)
+    await screen.findByRole('button', { name: 'Approve' })
+    expect(screen.queryByText(/authoritative reference|current policy version/i)).toBeNull()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(publish).not.toHaveBeenCalled()
     expect(approve().disabled).toBe(false)
     fireEvent.click(approve())
     await waitFor(() => expect(publish).toHaveBeenCalledWith(
       manager.id, entry.id, null, entry.version, entry.authoredPolicyVersion,
     ))
+  })
+
+  it('uses the supplied publisher reference for direct Layer 2 approval', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const draft = (await api.getForManager(manager.id, 'KD-104'))!.entry
+    const reference = { title: 'Publisher guideline', url: 'https://example.test/guideline' }
+    const entry = {
+      ...draft, layer: 'layer2' as const, canAttachVerification: true,
+      approvalReference: reference, verificationReference: null,
+    }
+    const publish = vi.fn().mockResolvedValue({ ...entry, status: 'approved' })
+    openReview(entry.id, {
+      ...api, attachVerification: vi.fn(),
+      getForManager: async () => ({ entry, canDecide: true }),
+      approve: publish,
+    })
+    await screen.findByRole('link', { name: 'Open verification reference: Publisher guideline' })
+    expect(screen.queryByRole('heading', { name: 'Attach a verification source' })).toBeNull()
+    expect(screen.queryByText('Verification source needed.')).toBeNull()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(approve().disabled).toBe(false)
+    expect(publish).not.toHaveBeenCalled()
+    fireEvent.click(approve())
+    expect(publish).toHaveBeenCalledWith(manager.id, entry.id, reference.url, entry.version, undefined)
   })
 
   it('requires Manager verification after attaching a pilot source', async () => {
@@ -233,14 +286,12 @@ describe('Manager knowledge verification and approval', () => {
     openReference()
     fireEvent.click(checkbox())
     fireEvent.click(approve())
-    const decision = screen.getByRole('region', { name: 'Decision' })
-    await within(decision).findByText('Approved')
-    expect(within(decision).getByText('Maya Chen')).toBeTruthy()
-    expect(
-      within(decision).getByText(
-        'This entry is available on Agent knowledge pages.',
-      ),
-    ).toBeTruthy()
+    const notice = await screen.findByRole('dialog', { name: 'Approved' })
+    expect(within(notice).getByText('Agents can now see this in their Knowledge Base.')).toBeTruthy()
+    fireEvent.click(within(notice).getByRole('button', { name: 'Done' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Decision' })).toBeNull()
+    expect(screen.getByText('Approved', { selector: '.status-label' })).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge drafts' }))
     await screen.findByRole('tab', { name: 'Approved (2)' })
     expect(screen.getByRole('tab', { name: 'Pending review (2)' })).toBeTruthy()
@@ -252,6 +303,36 @@ describe('Manager knowledge verification and approval', () => {
     expect(
       screen.getByRole('link', { name: 'Refund timing for card payments' }),
     ).toBeTruthy()
+    fireEvent.click(screen.getByRole('link', { name: 'Refund timing for card payments' }))
+    await screen.findByRole('heading', { name: 'Refund timing for card payments', level: 1 })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Decision' })).toBeNull()
+  })
+
+  it('returns an approved draft to review and removes it from Agent knowledge', async () => {
+    const reviewApi = createDevKnowledgeReviewApi()
+    const knowledgeApi = createDevApprovedKnowledgeApi(reviewApi)
+    const id = 'KD-103'
+    const draft = await reviewApi.getForManager(manager.id, id)
+    await reviewApi.approve(manager.id, id, draft?.entry.verificationReference?.url ?? null)
+    expect(await knowledgeApi.getForAgent(agent.id, id)).not.toBeNull()
+
+    openReview(id, reviewApi)
+    const unapprove = { name: 'Unapprove' }
+    fireEvent.click(await screen.findByRole('button', unapprove))
+    const dialog = () => screen.getByRole('dialog', { name: 'Unapprove this draft?' })
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }))
+    expect(await knowledgeApi.getForAgent(agent.id, id)).not.toBeNull()
+
+    fireEvent.click(screen.getByRole('button', unapprove))
+    fireEvent.click(within(dialog()).getByRole('button', unapprove))
+    await screen.findByText('Pending review', { selector: '.status-label' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('button', unapprove)).toBeNull()
+    expect(approve()).toBeTruthy()
+    expect(await knowledgeApi.getForAgent(agent.id, id)).toBeNull()
+    const updated = await reviewApi.getForManager(manager.id, id)
+    expect(updated?.entry).toMatchObject({ status: 'draft', paragraphs: draft?.entry.paragraphs })
   })
 
   it('requires a reason to reject and moves the entry to the Rejected queue', async () => {
@@ -298,9 +379,7 @@ describe('Manager knowledge verification and approval', () => {
     )
     expect(checkbox().checked).toBe(true)
     expect(approve().disabled).toBe(false)
-    expect(
-      screen.queryByText('This entry is available on Agent knowledge pages.'),
-    ).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Approved' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(
       screen.getByLabelText<HTMLTextAreaElement>('Reason for rejection').value,

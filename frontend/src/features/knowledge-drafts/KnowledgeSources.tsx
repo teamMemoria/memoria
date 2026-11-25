@@ -8,6 +8,7 @@ import {
   DialogTrigger,
 } from '../../components/ui/dialog'
 import type { KnowledgeDraft } from '../../types/knowledge'
+import { draftPresentation } from './draftPresentation'
 import { queueTabFor, queueTabs } from './draftsQueue'
 
 export function KnowledgeSources({ entry }: { entry: KnowledgeDraft }) {
@@ -15,13 +16,6 @@ export function KnowledgeSources({ entry }: { entry: KnowledgeDraft }) {
 
   return (
     <Panel title="Sources" className="knowledge-sources">
-      <p className="metadata-line">
-        Found in {entry.sourceConversationIds.length}{' '}
-        {entry.sourceConversationIds.length === 1
-          ? 'conversation'
-          : 'conversations'}
-        . Source calls show examples; they do not verify the policy.
-      </p>
       <div className="knowledge-flow">
         <div className="knowledge-source-list">
           {entry.sourceConversationIds.map((id) => {
@@ -103,7 +97,7 @@ export function KnowledgeSources({ entry }: { entry: KnowledgeDraft }) {
           <Icon name="document" size={24} />
           <span>
             <strong>Draft</strong>
-            <span>{entry.title}</span>
+            <span>{draftPresentation(entry.title, entry.layer).title}</span>
           </span>
         </div>
         <span className="knowledge-flow-arrow" aria-hidden="true">

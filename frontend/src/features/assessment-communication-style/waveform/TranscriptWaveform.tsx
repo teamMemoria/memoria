@@ -11,6 +11,7 @@ export function TranscriptWaveform({
   turns,
   agentName,
   loadNarration,
+  voiceOnByDefault = false,
   selected,
   onSelect,
   onOpen,
@@ -18,6 +19,7 @@ export function TranscriptWaveform({
   turns: TranscriptTurn[]
   agentName: string
   loadNarration?: NarrationLoader
+  voiceOnByDefault?: boolean
   selected: number | undefined
   onSelect: (turn: number) => void
   onOpen: EvidenceHandler
@@ -30,6 +32,7 @@ export function TranscriptWaveform({
     agentVoice,
     'feminine',
     loadNarration,
+    voiceOnByDefault,
   )
   const dock = useWaveformDock(turns)
   useEffect(() => {
@@ -73,7 +76,7 @@ export function TranscriptWaveform({
   return (
     <>
       <div className="section-heading waveform-heading">
-        <h2>Evidence</h2>
+        <h2 id="communication-evidence-title">Evidence</h2>
         <div className="waveform-tools">
           <span className="chart-legend">
             <i />
@@ -83,7 +86,7 @@ export function TranscriptWaveform({
             <span className="legend-action" />
             Action
           </span>
-          <button
+          {!voiceOnByDefault && <button
             className="waveform-voice"
             aria-pressed={audio.enabled}
             aria-label={audio.enabled ? 'Mute demo voice' : 'Enable demo voice'}
@@ -96,7 +99,7 @@ export function TranscriptWaveform({
               className={`codicon codicon-${audio.enabled ? 'unmute' : 'mute'}`}
             />
             Demo voice
-          </button>
+          </button>}
         </div>
       </div>
       {(audio.unavailable || audio.error) && (
@@ -107,7 +110,7 @@ export function TranscriptWaveform({
       <div
         className="waveform-scroll"
         role="group"
-        aria-label="Transcript turns"
+        aria-label={voiceOnByDefault ? 'Transcript turns with generated narration' : 'Transcript turns'}
         data-voice-enabled={audio.enabled}
         onMouseLeave={() => {
           setPreview(null)
@@ -179,9 +182,10 @@ export function TranscriptWaveform({
           aria-label="Selected transcript turn"
           aria-live={audio.enabled ? 'off' : 'polite'}
         >
-          <span>
-            {active.speaker} · Turn {active.number}
-            {active.time ? ` · ${active.time}` : ''}
+          <span className="assessment-metadata">
+            <span>{active.speaker}</span>
+            <span>Turn {active.number}</span>
+            {active.time && <span>{active.time}</span>}
           </span>
           <blockquote>{active.text}</blockquote>
           <EvidenceLink turns={[active.number]} onOpen={onOpen}>
@@ -191,18 +195,6 @@ export function TranscriptWaveform({
       ) : (
         <p className="quiet-note">Transcript unavailable.</p>
       )}
-      <details className="chart-data">
-        <summary>View transcript data</summary>
-        <div className="chart-data-list">
-          {data.map((turn) => (
-            <button key={turn.number} onClick={() => selectTurn(turn)}>
-              Turn {turn.number}
-              <span>{turn.speaker}</span>
-              <strong>{turn.words.length} words</strong>
-            </button>
-          ))}
-        </div>
-      </details>
     </>
   )
 }

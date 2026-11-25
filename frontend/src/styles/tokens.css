@@ -14,6 +14,9 @@
   --color-accent-hover: #e94717;
   --color-positive: #18794e;
   --color-attention: #c63d16;
+  --color-negative: #ad2231;
+  --color-positive-fill: #3db372;
+  --color-negative-fill: #d6303b;
   --color-evidence: #fdeee9;
   --color-disabled: #d8dbe6;
   --font-family: 'Inter', system-ui, sans-serif;

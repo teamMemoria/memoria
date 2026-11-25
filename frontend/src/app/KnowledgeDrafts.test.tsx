@@ -13,6 +13,68 @@ const rows = () =>
     .map((row) => within(row).getAllByRole('link')[0].textContent)
 
 describe('Manager knowledge drafts', () => {
+  it('groups demo drafts by source layer and searches their short titles', async () => {
+    vi.stubEnv('MODE', 'simulation')
+    const api = createDevKnowledgeReviewApi()
+    const pending = (await api.listForManager(manager.id))
+      .filter((entry) => entry.status === 'draft' && !entry.possibleConflicts?.length)
+    const policyQuestion = 'How should an agent answer whether a specific size is in stock or coming back?'
+    const draftQuestion = 'What troubleshooting options can the Agent suggest when site search fails?'
+    const guidance = 'Check the site version. Version 2.4 uses the new search. Ask the customer to try again.'
+    const entries = [
+      { ...pending[0], title: policyQuestion, topic: 'Stock and restock answers' },
+      { ...pending[1], title: draftQuestion, topic: 'Site search troubleshooting', paragraphs: [guidance] },
+      pending[2],
+    ]
+    const { router } = openApp({
+      path,
+      viewerApi: asManager,
+      knowledgeReviewApi: {
+        ...api,
+        listForManager: async () => entries,
+        getForManager: async (_managerId, id) => {
+          const entry = entries.find((record) => record.id === id)
+          return entry ? { entry, canDecide: false } : null
+        },
+      },
+    })
+
+    const policy = await screen.findByRole('table', { name: 'Layer 1 policies' })
+    const policyLink = within(policy).getByRole('link', { name: 'Stock and restocks' })
+    const policyPath = policyLink.getAttribute('href')!
+    expect(within(policy).getByRole('cell', { name: 'Stock' })).toBeTruthy()
+    expect(within(policy).queryByRole('columnheader', { name: 'Sources' })).toBeNull()
+    expect(within(policy).getAllByRole('cell')).toHaveLength(4)
+    const draft = screen.getByRole('table', { name: 'Layer 2 drafts' })
+    expect(within(draft).getByRole('link', { name: 'Fixing site search' })).toBeTruthy()
+    expect(within(draft).getByRole('cell', { name: 'Website' })).toBeTruthy()
+    expect(within(draft).getByRole('columnheader', { name: 'Sources' })).toBeTruthy()
+    expect(screen.getByRole('table', { name: 'Other drafts' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Pending review (3)' })).toBeTruthy()
+
+    const search = screen.getByRole('searchbox')
+    for (const value of ['website', 'site search troubleshooting', 'fixing site search']) {
+      fireEvent.change(search, { target: { value } })
+      expect(screen.getAllByRole('table')).toEqual([draft])
+    }
+    fireEvent.click(within(draft).getByRole('link', { name: 'Fixing site search' }))
+    await screen.findByRole('heading', { name: 'Fixing site search', level: 1 })
+    const sources = screen.getByRole('region', { name: 'Sources' })
+    const viewer = screen.getByRole('region', { name: 'Draft document viewer' })
+    expect(sources.nextElementSibling).toBe(viewer)
+    const entry = within(viewer).getByRole('article', { name: draftQuestion })
+    expect(within(entry).getByRole('heading', { name: draftQuestion, level: 2 })).toBeTruthy()
+    expect(within(entry).getAllByRole('paragraph').map((paragraph) => paragraph.textContent)).toEqual([
+      'Check the site version. Version 2.4 uses the new search.',
+      'Ask the customer to try again.',
+    ])
+
+    await act(() => router.navigate(policyPath))
+    await screen.findByRole('heading', { name: 'Stock and restocks', level: 1 })
+    expect(screen.queryByRole('region', { name: 'Sources' })).toBeNull()
+    expect(screen.getByRole('region', { name: 'Draft document viewer' })).toBeTruthy()
+  })
+
   it('shows each tab with the right entries and counts that match the API', async () => {
     openApp({ path, viewerApi: asManager })
     await screen.findByRole('table')
@@ -38,11 +100,12 @@ describe('Manager knowledge drafts', () => {
         .getByRole('link', { name: 'Review Exchanges for damaged items' })
         .getAttribute('href'),
     ).toBe('/manager/knowledge/KD-104')
-    expect(
-      screen.getByRole('figure', { name: 'Knowledge draft counts' })
-        .textContent,
-    ).toContain('Pending review: 3. Approved: 1. Flagged: 1')
-    fireEvent.click(screen.getByRole('tab', { name: 'Approved (1)' }))
+    const counts = within(screen.getByRole('figure', { name: 'Knowledge draft counts' }))
+    expect(counts.getByText('Pending review (3)')).toBeTruthy()
+    expect(counts.getByText('Approved (1)')).toBeTruthy()
+    expect(counts.getByText('Flagged (1)')).toBeTruthy()
+    fireEvent.click(counts.getByRole('button', { name: 'Approved (1)' }))
+    expect(screen.getByRole('tab', { name: 'Approved (1)' }).getAttribute('aria-selected')).toBe('true')
     expect(rows()).toEqual(['Refund handling'])
     fireEvent.click(screen.getByRole('tab', { name: 'Flagged (1)' }))
     expect(rows()).toEqual(['Store credit expiry'])
@@ -111,10 +174,10 @@ describe('Manager knowledge drafts', () => {
     expect(screen.getByRole('tab', { name: 'Approved (2)' })).toBeTruthy()
     expect(rows()).not.toContain('Refund timing for card payments')
     expect(listForManager).toHaveBeenCalledTimes(2)
-    expect(
-      screen.getByRole('figure', { name: 'Knowledge draft counts' })
-        .textContent,
-    ).toContain('Pending review: 2. Approved: 2. Flagged: 1')
+    const counts = within(screen.getByRole('figure', { name: 'Knowledge draft counts' }))
+    expect(counts.getByText('Pending review (2)')).toBeTruthy()
+    expect(counts.getByText('Approved (2)')).toBeTruthy()
+    expect(counts.getByText('Flagged (1)')).toBeTruthy()
   })
 
   it('shows loading, error with retry, and empty states', async () => {
@@ -134,6 +197,7 @@ describe('Manager knowledge drafts', () => {
     expect(screen.queryByText('Internal details')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await screen.findByRole('heading', { name: 'No pending review entries' })
+    expect(screen.queryByRole('figure', { name: 'Knowledge draft counts' })).toBeNull()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'Pending review (0)',
       'Approved (0)',

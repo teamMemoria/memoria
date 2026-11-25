@@ -1,4 +1,5 @@
 import { useAnswer } from './controller'
+import { answerEvidencePreview, answerTableCheckTitle } from './presenter'
 import type { ScoringCheck } from '../../types/callReview'
 import { Icon } from '../../components/Icon'
 import { Card } from '../../components/ui/card'
@@ -13,14 +14,13 @@ import {
 } from '../assessment-shared/AssessmentElements'
 import {
   checkLabels,
-  checkTitle,
   checkTurns,
   type ScreenProps,
 } from '../assessment-shared/assessment'
 import './answer-support.css'
 
 export function AnswerScreen({ data, onOpen }: ScreenProps) {
-  const { featured, primary, remaining, sources, setSelectedId } = useAnswer(data)
+  const { featured, primary, remaining, sources, summary, setSelectedId } = useAnswer(data)
   function evidenceTable(checks: ScoringCheck[]) {
     return (
       <div
@@ -41,23 +41,13 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
         {checks.map((check) => (
           <div role="row" key={check.id}>
             <span role="cell">
-              {check.critical && 'Critical · '}
-              {check.requirement ===
-              'Support the factual assertion and its qualifications'
-                ? check.outcome === 'unresolved'
-                  ? 'Unresolved factual check'
-                  : 'Factual support'
-                : checkTitle(check)}
-              <small>
-                {checkTurns(check).length
-                  ? `Turn ${checkTurns(check).join(', ')}`
-                  : 'No linked turn'}
-              </small>
+              <span className="check-excerpt">
+                {answerTableCheckTitle(check)}
+                {check.critical && ' (critical)'}
+              </span>
             </span>
             <p role="cell" className="check-excerpt">
-              {check.citations.find(
-                (citation) => citation.kind === 'conversation',
-              )?.quote ?? check.explanation}
+              {answerEvidencePreview(check)}
             </p>
             <span role="cell" className={`check-status--${check.outcome}`}>
               {checkLabels[check.outcome]}
@@ -85,8 +75,8 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
       label: checkLabels[outcome],
       count: data.checks.filter((check) => check.outcome === outcome).length,
     }),
-  )
-  const colours = ['#16815c', '#e56c42', '#bfcbdf', '#e8ecf3']
+  ).filter((group) => group.outcome !== 'partial' || group.count > 0)
+  const colours = { supported: '#16815c', partial: '#4569b5', breach: '#e56c42', unresolved: '#bfcbdf', 'not-applicable': '#e8ecf3' }
   let offset = 0
   return (
     <>
@@ -95,8 +85,8 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
         aria-label="Answer support checks"
       >
         <ScoreCard data={data} label="Answer support" visual="number" />
-        <Card className="dashboard-card action-area source-coverage">
-          <h2>Agent actions</h2>
+        <Card className="dashboard-card action-area">
+          <h2>Answer checks</h2>
           {!data.criterion?.scoring && (
             <AssessmentSummary data={data} onOpen={onOpen} />
           )}
@@ -114,7 +104,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
                     cy="100"
                     r="83"
                   />
-                  {groups.map((group, index) => {
+                  {groups.map((group) => {
                     // Distribution of stored check outcomes, never a score or claim estimate.
                     const length = data.checks.length
                       ? (100 * group.count) / data.checks.length
@@ -130,7 +120,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
                           cy="100"
                           r="83"
                           pathLength="100"
-                          stroke={colours[index]}
+                          stroke={colours[group.outcome]}
                           strokeDasharray={`${length} ${100 - length}`}
                           strokeDashoffset={-start}
                         />
@@ -140,7 +130,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
                 </svg>
                 <div className="donut-center">
                   <strong>{data.checks.length || '—'}</strong>
-                  <span>recorded checks</span>
+                  <span>{data.checks.length === 1 ? 'check' : 'checks'}</span>
                 </div>
               </div>
               <ul className="check-legend">
@@ -148,71 +138,51 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
                   .filter((g) => g.count)
                   .map((g) => (
                     <li key={g.outcome}>
-                      <i style={{ background: colours[groups.indexOf(g)] }} />
+                      <i style={{ background: colours[g.outcome] }} />
                       <span>{g.label}</span>
                       <strong>{g.count}</strong>
                     </li>
                   ))}
               </ul>
             </div>
-            <div className="coverage-rows">
-              <p className="source-scope">
-                Sources for selected check
-                <br />
-                <strong>
-                  {featured
-                    ? `${checkTitle(featured)}${checkTurns(featured).length ? ` · Turn ${checkTurns(featured).join(', ')}` : ''}`
-                    : 'No check selected'}
-                </strong>
-              </p>
-              {sources.map((source) => (
-                <button
-                  key={source.title}
-                  className={`coverage-row coverage-row--${source.tone}`}
-                  onClick={(event) => {
-                    event.currentTarget.focus()
-                    onOpen(
-                      checkTurns(featured!),
-                      undefined,
-                      undefined,
-                      featured!.id,
-                    )
-                  }}
-                >
-                  <span className="coverage-label">
-                    <strong>{source.title}</strong>
-                    <span>
-                      {source.count ? `${source.count} cited` : 'Unavailable'}
-                    </span>
+            {featured && (
+              <div className="answer-selected-check">
+                <div className="source-scope">
+                  <h3>{answerTableCheckTitle(featured)}</h3>
+                  <span className={`card-badge answer-status--${featured.outcome}`}>
+                    {checkLabels[featured.outcome]}
                   </span>
-                  <span className="coverage-track" aria-hidden="true">
-                    <i style={{ width: source.count ? '100%' : '0%' }} />
-                  </span>
-                  <span className="coverage-detail">
-                    <span className="check-excerpt">{source.detail}</span>
-                    <Icon name="arrowRight" size={14} />
-                  </span>
-                </button>
-              ))}
-            </div>
+                </div>
+                {summary && <p className="answer-check-summary">{summary}</p>}
+                <div className="answer-sources">
+                  {sources.map((source) => (
+                    <button
+                      key={source.title}
+                      className="answer-source"
+                      onClick={(event) => {
+                        event.currentTarget.focus()
+                        onOpen(checkTurns(featured), undefined, undefined, featured.id)
+                      }}
+                    >
+                      <span className="answer-source-heading">
+                        <strong>{source.title}</strong>
+                        <span>{source.count ? `${source.count} cited` : 'Unavailable'}</span>
+                      </span>
+                      <span className="check-excerpt">{source.detail}</span>
+                    </button>
+                  ))}
+                </div>
+                <EvidenceLink turns={checkTurns(featured)} checkId={featured.id} onOpen={onOpen}>
+                  Compare with source
+                </EvidenceLink>
+              </div>
+            )}
           </div>
-          {featured && (
-            <>
-              <p className="quiet-note">{featured.explanation}</p>
-              <EvidenceLink
-                turns={checkTurns(featured)}
-                checkId={featured.id}
-                onOpen={onOpen}
-              >
-                Compare with source
-              </EvidenceLink>
-            </>
-          )}
         </Card>
       </section>
-      <Card className="dashboard-card evidence-section">
+      <section className="evidence-section evidence-section--plain" aria-labelledby="answer-evidence-title">
         <div className="section-heading">
-          <h2>Evidence</h2>
+          <h2 id="answer-evidence-title">Evidence</h2>
           <span className="reference-tag">Recorded factual checks</span>
         </div>
         {primary.length ? (
@@ -221,18 +191,9 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
           <p className="quiet-note">No resolved factual checks supplied.</p>
         )}
         {remaining.length > 0 && (
-          <details className="remaining-checks">
-            <summary>
-              {
-                remaining.filter((check) => check.outcome === 'unresolved')
-                  .length
-              }{' '}
-              unresolved ·{' '}
-              {
-                remaining.filter((check) => check.outcome === 'not-applicable')
-                  .length
-              }{' '}
-              not applicable
+          <details className="remaining-checks more-checks">
+            <summary className="more-checks-toggle" aria-label="Additional checks" title="Additional checks">
+              <Icon name="chevronDown" size={20} />
             </summary>
             <p>
               Retained checks outside the assessed score. Open a row to inspect
@@ -250,7 +211,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
           <p className="quiet-note">Individual factual checks unavailable.</p>
         )}
         <MaterialLimits data={data} />
-      </Card>
+      </section>
       <Coaching data={data} />
     </>
   )

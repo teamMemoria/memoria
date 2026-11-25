@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { Icon } from '../../components/Icon'
+import { CountBar } from '../../components/CountBar'
+import { WorkspaceTable } from '../../components/WorkspaceTable'
 import { Button, Panel, Tabs, TextField } from '../../components/controls'
 import type { KnowledgeDraft, KnowledgeReviewApi } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
 import { formatKnowledgeDate } from '../approved-knowledge/knowledge'
+import { draftLayers, draftPresentation, draftTopic, type DraftLayer } from './draftPresentation'
 import {
   countQueueTabs,
   filterQueue,
@@ -20,40 +22,48 @@ type LoadState =
   | { status: 'error' }
   | { status: 'ready'; entries: KnowledgeDraft[] }
 
-function KnowledgeCounts({ counts }: { counts: Record<QueueTab, number> }) {
-  const maximum = Math.max(
-    10,
-    Math.ceil(Math.max(...Object.values(counts)) / 10) * 10,
-  )
-  const statuses = ['pending', 'approved', 'flagged'] as const
+function DraftTable({ entries, caption, search, showSources = true }: {
+  entries: KnowledgeDraft[]
+  caption: string
+  search: string
+  showSources?: boolean
+}) {
+  const columns = [
+    { label: 'Title', width: showSources ? 30 : 49 },
+    { label: 'Topic', width: 19 },
+    ...(showSources ? [{ label: 'Sources', width: 19 }] : []),
+    { label: 'Updated', width: 18, sort: 'descending' },
+    { label: 'Action', width: 14, hideLabel: true },
+  ] as const
 
   return (
-    <figure className="knowledge-counts" aria-label="Knowledge draft counts">
-      <figcaption className="knowledge-drafts-sr-only">
-        {statuses
-          .map((status) => `${queueTabs[status]}: ${counts[status]}`)
-          .join('. ')}
-      </figcaption>
-      <div className="knowledge-counts-bars" aria-hidden="true">
-        {statuses.map((status) => (
-          <div className="knowledge-counts-row" key={status}>
-            <span>{queueTabs[status]}</span>
-            <div className="knowledge-counts-track">
-              <span
-                className={`knowledge-counts-bar knowledge-counts-bar--${status}`}
-                style={{ width: `${(counts[status] / maximum) * 100}%` }}
-              />
-              <strong>{counts[status]}</strong>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="knowledge-counts-axis" aria-hidden="true">
-        {Array.from({ length: 11 }, (_, index) => (
-          <span key={index}>{(index * maximum) / 10}</span>
-        ))}
-      </div>
-    </figure>
+    <WorkspaceTable label={caption} caption={caption} columns={columns}>
+      {entries.map((entry) => {
+        const path = `/manager/knowledge/${encodeURIComponent(entry.id)}${search}`
+        const { title } = draftPresentation(entry.title, entry.layer)
+        return (
+          <tr key={entry.id}>
+            <td>
+              <Link to={path}>{title}</Link>
+              <span className="knowledge-drafts-sr-only">{entry.id}</span>
+            </td>
+            <td>{draftTopic(entry.topic)}</td>
+            {showSources && (
+              <td>
+                {entry.sourceConversationIds.length}{' '}
+                {entry.sourceConversationIds.length === 1 ? 'source' : 'sources'}
+              </td>
+            )}
+            <td>{formatKnowledgeDate(entry.updatedAt)}</td>
+            <td>
+              <Link to={path} aria-label={`Review ${title}`}>
+                Review
+              </Link>
+            </td>
+          </tr>
+        )
+      })}
+    </WorkspaceTable>
   )
 }
 
@@ -91,6 +101,7 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
   const { state, retry } = useKnowledgeQueue(api, viewer)
   const [generating, setGenerating] = useState(false)
   const [generationMessage, setGenerationMessage] = useState('')
+  const [previewTab, setPreviewTab] = useState<QueueTab | null>(null)
 
   async function generateDrafts() {
     if (!api?.generateDrafts || generating) return
@@ -107,7 +118,8 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
     }
   }
   const requestedTab = params.get('tab')
-  const tab: QueueTab = isQueueTab(requestedTab) ? requestedTab : 'pending'
+  const selectedTab: QueueTab = isQueueTab(requestedTab) ? requestedTab : 'pending'
+  const tab = previewTab ?? selectedTab
   const query = params.get('q') ?? ''
   const search = params.size ? `?${params}` : ''
 
@@ -135,62 +147,35 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
   const entries = state.status === 'ready' ? state.entries : []
   const counts = countQueueTabs(entries)
   const visible = filterQueue(entries, { tab, query })
+  const groups = (Object.keys(draftLayers) as DraftLayer[])
+    .map((layer) => ({
+      layer,
+      entries: visible.filter((entry) => draftPresentation(entry.title, entry.layer).layer === layer),
+    }))
+    .filter((group) => group.entries.length > 0)
+  const showLayers = entries.some((entry) => draftPresentation(entry.title, entry.layer).layer !== 'other')
 
   const list = visible.length ? (
-    <table className="knowledge-drafts-table">
-      <caption className="knowledge-drafts-sr-only">
-        {queueTabs[tab]} knowledge entries
-      </caption>
-      <colgroup>
-        {[30, 19, 19, 18, 14].map((width, index) => (
-          <col key={index} style={{ width: `${width}%` }} />
-        ))}
-      </colgroup>
-      <thead>
-        <tr>
-          <th scope="col">Title</th>
-          <th scope="col">Topic</th>
-          <th scope="col">Sources</th>
-          <th scope="col">Updated</th>
-          <th scope="col">
-            <span className="knowledge-drafts-sr-only">Action</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {visible.map((entry) => (
-          <tr key={entry.id}>
-            <td>
-              <span className="knowledge-drafts-title">
-                <Link
-                  to={`/manager/knowledge/${encodeURIComponent(entry.id)}${search}`}
-                >
-                  {entry.title}
-                </Link>
-                <span className="knowledge-drafts-sr-only">
-                  <span>{entry.id}</span>
-                </span>
+    showLayers ? (
+      <div className="knowledge-draft-groups">
+        {groups.map(({ layer, entries: groupEntries }) => (
+          <section className="knowledge-draft-group" key={layer} aria-labelledby={`draft-group-${layer}`}>
+            <header>
+              <h2 id={`draft-group-${layer}`}>{draftLayers[layer]}</h2>
+              <span className="metadata-line">
+                {groupEntries.length} {groupEntries.length === 1 ? 'entry' : 'entries'}
               </span>
-            </td>
-            <td>{entry.topic}</td>
-            <td>
-              {entry.sourceConversationIds.length}{' '}
-              {entry.sourceConversationIds.length === 1 ? 'source' : 'sources'}
-            </td>
-            <td>{formatKnowledgeDate(entry.updatedAt)}</td>
-            <td>
-              <Link
-                className="knowledge-drafts-action"
-                to={`/manager/knowledge/${encodeURIComponent(entry.id)}${search}`}
-                aria-label={`Review ${entry.title}`}
-              >
-                Review <Icon name="arrowRight" />
-              </Link>
-            </td>
-          </tr>
+            </header>
+            <DraftTable
+              entries={groupEntries}
+              caption={draftLayers[layer]}
+              search={search}
+              showSources={layer !== 'layer1'}
+            />
+          </section>
         ))}
-      </tbody>
-    </table>
+      </div>
+    ) : <DraftTable entries={visible} caption={`${queueTabs[tab]} knowledge entries`} search={search} />
   ) : query.trim() ? (
     <Panel title="No matching entries">
       <p>Try another search in {queueTabs[tab].toLowerCase()} entries.</p>
@@ -228,11 +213,27 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
         </Panel>
       ) : (
         <>
-          <KnowledgeCounts counts={counts} />
+          <CountBar
+            label="Knowledge draft counts"
+            segments={[
+              { value: 'approved', label: queueTabs.approved, count: counts.approved, tone: 'positive' },
+              { value: 'pending', label: queueTabs.pending, count: counts.pending, tone: 'attention' },
+              { value: 'flagged', label: queueTabs.flagged, count: counts.flagged, tone: 'neutral' },
+            ]}
+            selected={selectedTab}
+            onPreview={setPreviewTab}
+            onSelect={(value) => {
+              setPreviewTab(null)
+              setParam('tab', value)
+            }}
+          />
           <Tabs
             label="Review status"
             value={tab}
-            onChange={(value) => setParam('tab', value)}
+            onChange={(value) => {
+              setPreviewTab(null)
+              setParam('tab', value)
+            }}
             items={(Object.keys(queueTabs) as QueueTab[]).map((value) => ({
               value,
               label: `${queueTabs[value]} (${counts[value]})`,

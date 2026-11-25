@@ -134,18 +134,9 @@
 }
 
 .entry-role-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
   font-size: clamp(20px, 1.76vw, 28px);
   font-weight: 700;
   line-height: 1.2;
-}
-
-.entry-role-title img {
-  width: 24px;
-  height: 24px;
 }
 
 .entry-role-detail {
@@ -211,12 +202,6 @@
 .entry .entry-continue:active:not(:disabled) {
   background: var(--color-heading);
   filter: brightness(1.15);
-}
-
-.entry-continue img {
-  width: 24px;
-  height: 24px;
-  filter: brightness(0) invert(1);
 }
 
 .entry-error {

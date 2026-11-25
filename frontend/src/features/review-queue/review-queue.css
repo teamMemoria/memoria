@@ -6,17 +6,18 @@
 .review-queue-summary {
   margin: 0;
 }
+.review-queue--simulation {
+  gap: 20px;
+}
+.review-queue--simulation > .conversation-filters {
+  margin-bottom: 0;
+}
 .review-queue-flag {
   display: grid;
   gap: 4px;
 }
 .review-queue-muted {
   color: var(--color-muted);
-}
-.review-queue-table td {
-  height: auto;
-  padding-block: 16px;
-  vertical-align: middle;
 }
 .review-queue-back {
   display: inline-flex;

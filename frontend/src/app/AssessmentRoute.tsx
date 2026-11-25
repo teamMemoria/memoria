@@ -1,3 +1,4 @@
+import { pilotLabel } from '../types/callReview'
 import { screens } from '../features/assessment-shared/screens'
 import { DefaultAssessmentScreen } from '../features/assessment-shared/DefaultAssessmentScreen'
 import { decisionOutcomes } from '../features/review-queue/teamQueue'
@@ -92,7 +93,9 @@ function AssessmentContent({
   const [params, setParams] = useSearchParams()
   const trigger = useRef<HTMLElement | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
+  const simulation = call.assessmentSource === 'simulation'
   const base = `/${role}/conversations/${encodeURIComponent(call.id)}`
+  const sourceId = call.sourceId ?? call.assessmentVersion?.sourceId
   const backParams = new URLSearchParams()
   for (const key of ['q', 'status'])
     if (params.has(key)) backParams.set(key, params.get(key)!)
@@ -143,11 +146,12 @@ function AssessmentContent({
     setParams(next)
   }
   const data = assessmentData(call, category)
+  const hasBreach = data.checks.some((check) => check.outcome === 'breach')
+  const attention = hasBreach || (!simulation && data.criterion?.result === 'needs-review')
   const Screen = screens[category] ?? DefaultAssessmentScreen
   return (
     <div className="assessment-page">
       <Link className="detail-back" to={`${base}${search}`}>
-        <Icon name="arrowLeft" />
         {call.topic && call.topic !== 'Unassigned' ? call.topic : 'Back to conversation'}
       </Link>
       <header className="assessment-heading">
@@ -155,8 +159,9 @@ function AssessmentContent({
           <h1 ref={heading} tabIndex={-1}>
             {categories.find((item) => item.id === category)!.title}
           </h1>
+          {!simulation && pilotLabel(call) && <p className="metadata-line">{pilotLabel(call)}</p>}
           <ul className="call-overview-metadata" aria-label="Call details">
-            <li>Call {call.id}{(call.sourceId ?? call.assessmentVersion?.sourceId) && ` · ABCD ${call.sourceId ?? call.assessmentVersion?.sourceId}`}</li>
+            <li>{simulation ? `ABCD ${sourceId}` : `Call ${call.id}${sourceId ? ` (ABCD ${sourceId})` : ''}`}</li>
             <li>{call.agentName}</li>
             <li>
               {call.transcript
@@ -198,13 +203,13 @@ function AssessmentContent({
             </Panel>
           )}
           <div
-            className={`metric-content ${(data.criterion?.result === 'needs-review' || data.checks.some((check) => check.outcome === 'breach')) ? 'metric-content--attention' : ''}`}
+            className={`metric-content ${simulation ? 'metric-content--simulation' : ''} ${attention ? 'metric-content--attention' : ''}`}
           >
             <Screen data={data} onOpen={openEvidence} loadNarration={loadNarration} />
           </div>
         </>
       )}
-      <section className="assessment-actions" aria-label="Review actions">
+      {!simulation && <section className="assessment-actions" aria-label="Review actions">
         {data.findings.map((finding) => (
           <Link
             className="source-link"
@@ -215,7 +220,6 @@ function AssessmentContent({
               ? 'Review decision'
               : 'Add context or request review'}
             : {finding.title}
-            <Icon name="arrowRight" />
           </Link>
         ))}
         {role === 'agent' && !data.findings.length && (
@@ -239,14 +243,15 @@ function AssessmentContent({
             <p>{call.decision.reason}</p>
             <p>{call.decision.feedback}</p>
             <p className="metadata-line">
-              {call.decision.managerName} · {call.decision.decidedAt}
+              <span>{call.decision.managerName}</span>
+              <span>{call.decision.decidedAt}</span>
             </p>
             <p>
               The Manager decision is separate from this automatic assessment.
             </p>
           </Panel>
         )}
-      </section>
+      </section>}
       <EvidenceSheet
         call={call}
         referenceIds={data.referenceIds}

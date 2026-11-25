@@ -62,6 +62,21 @@ describe('HTTP dependency boundary', () => {
     })
   })
 
+  it('sends the editable draft content and its version to the Manager API', async () => {
+    const fetch = vi.fn(async () => new Response('{}'))
+    vi.stubGlobal('fetch', fetch)
+    const content = {
+      title: 'Refund policy', question: 'What should the Agent check?',
+      guidance: 'Check the applicable return policy.', version: 'sha256:current',
+    }
+    await createHttpApis().knowledgeReviewApi.editDraft!('manager', 'draft/1', content)
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/manager/knowledge/drafts/draft%2F1/content')
+    expect(init.method).toBe('PUT')
+    expect(init.headers).toMatchObject({ 'X-Dev-User': 'manager' })
+    expect(JSON.parse(init.body as string)).toEqual(content)
+  })
+
   it('never ships a development identity header in production', async () => {
     vi.stubEnv('DEV', false)
     const fetch = vi.fn(async () => new Response('{}'))

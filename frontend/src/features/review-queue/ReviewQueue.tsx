@@ -1,13 +1,17 @@
 import { MemoriaSelectField } from '../../components/ui/select'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { WorkspaceTable } from '../../components/WorkspaceTable'
 import {
   Button,
   Panel,
   StatusLabel,
   TextField,
 } from '../../components/controls'
+import { percentage } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
+import { ConversationScoreBar } from '../conversations/ConversationScoreBar'
+import { rankByScore, scoreBandFrom, scoreColumns, scoreOptions, type ScoreBand } from '../conversations/scoreBands'
 import {
   conversationStatusLabels,
   formatConversationDate,
@@ -36,18 +40,31 @@ const statusTones = {
   'feedback-ready': 'neutral',
 } as const satisfies Record<ReviewStatus, 'neutral' | 'positive' | 'attention'>
 
+const reviewColumns = [
+  { label: 'Call', width: 9 },
+  { label: 'Agent', width: 13 },
+  { label: 'Topic', width: 15 },
+  { label: 'Flag reason', width: 33 },
+  { label: 'Date', width: 12 },
+  { label: 'Status', width: 18 },
+] as const
+
 export function ReviewQueue({
   viewer,
   api,
+  simulation = false,
 }: {
   viewer: Viewer
   api: TeamReviewApi | null
+  simulation?: boolean
 }) {
   const [params, setParams] = useSearchParams()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const [previewBand, setPreviewBand] = useState<ScoreBand | null>(null)
   const query = params.get('q') ?? ''
-  const status = queueStatusFrom(params.get('status'))
+  const status = simulation ? 'all' : queueStatusFrom(params.get('status'))
+  const selectedBand = simulation ? scoreBandFrom(params.get('status')) : null
   const search = params.size ? `?${params}` : ''
 
   // Reloads on every visit so the queue reflects decisions made elsewhere.
@@ -79,6 +96,11 @@ export function ReviewQueue({
     )
   }
 
+  function selectScoreBand(value: string) {
+    setPreviewBand(null)
+    setParam('status', value === 'all' ? '' : value)
+  }
+
   if (viewer.role !== 'manager') {
     return (
       <Panel title="Page unavailable for your role">
@@ -88,15 +110,24 @@ export function ReviewQueue({
   }
 
   const records = state.status === 'ready' ? state.records : []
-  const visible = filterTeamConversations(records, { query, status })
+  const matches = filterTeamConversations(records, { query, status })
+  const visible = simulation ? rankByScore(matches, previewBand ?? selectedBand) : matches
   const flaggedCount = records.filter(
     (record) => record.reviewStatus === 'review-requested',
   ).length
 
   return (
-    <div className="review-queue">
+    <div className={`review-queue${simulation ? ' review-queue--simulation' : ''}`}>
       <h1>Team conversations</h1>
-      {state.status === 'ready' && (
+      {simulation && records.length > 0 && (
+        <ConversationScoreBar
+          records={records}
+          selected={selectedBand}
+          onPreview={setPreviewBand}
+          onSelect={selectScoreBand}
+        />
+      )}
+      {!simulation && state.status === 'ready' && (
         <p className="review-queue-summary">
           <StatusLabel tone={flaggedCount ? 'attention' : 'positive'}>
             {flaggedCount} flagged for review
@@ -112,19 +143,28 @@ export function ReviewQueue({
           id="review-queue-search"
           label="Search team calls"
           type="search"
-          placeholder="Search by call, agent, topic or reason"
+          placeholder={simulation ? 'Search by call, agent or topic' : 'Search by call, agent, topic or reason'}
           value={query}
           onChange={(event) => setParam('q', event.target.value)}
           disabled={state.status !== 'ready'}
         />
-        <MemoriaSelectField
+        {simulation ? (
+          <MemoriaSelectField
+            id="review-queue-score"
+            label="Overall score"
+            value={selectedBand ?? 'all'}
+            onValueChange={selectScoreBand}
+            disabled={state.status !== 'ready'}
+            options={scoreOptions}
+          />
+        ) : <MemoriaSelectField
           id="review-queue-status"
           label="Review status"
           value={status}
           onValueChange={(value) => setParam('status', value)}
           disabled={state.status !== 'ready'}
           options={Object.entries(conversationStatusLabels).map(([value, label]) => [value, value === defaultQueueStatus ? `${label} (flagged)` : label] as const)}
-        />
+        />}
       </div>
       {!api ? (
         <Panel title="Team review unavailable">
@@ -151,7 +191,7 @@ export function ReviewQueue({
       ) : visible.length === 0 ? (
         query.trim() || status !== defaultQueueStatus ? (
           <Panel title="No matching conversations">
-            <p>Try another search or review status.</p>
+            <p>{simulation ? 'Try another search or score range.' : 'Try another search or review status.'}</p>
             <Button variant="secondary" onClick={() => setParams({})}>
               Clear filters
             </Button>
@@ -169,57 +209,34 @@ export function ReviewQueue({
           <p className="conversation-sr-only" role="status">
             {visible.length} {visible.length === 1 ? 'conversation' : 'conversations'} shown
           </p>
-          <div
-            className="conversation-table-scroll"
-            role="region"
-            aria-label="Team conversations table"
-            tabIndex={0}
+          <WorkspaceTable
+            label="Team conversations table"
+            caption={simulation ? 'Team conversations.' : 'Team conversations, flagged feedback newest first.'}
+            columns={simulation ? scoreColumns : reviewColumns}
           >
-            <table className="conversation-table review-queue-table">
-              <caption className="conversation-sr-only">
-                Team conversations, flagged feedback newest first.
-              </caption>
-              <colgroup>
-                {[9, 13, 15, 33, 12, 18].map((width, index) => (
-                  <col key={index} style={{ width: `${width}%` }} />
-                ))}
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Call</th>
-                  <th scope="col">Agent</th>
-                  <th scope="col">Topic</th>
-                  <th scope="col">Flag reason</th>
-                  <th scope="col">Date</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((conversation) => {
-                  const path = findingReviewPath(conversation, search) ?? `/manager/conversations/${encodeURIComponent(conversation.id)}${search}`
-                  return (
-                    <tr key={conversation.id}>
-                      <td>
-                        {path ? (
-                          <Link
-                            to={path}
-                            aria-label={`Review ${conversation.id}: ${conversation.flag?.findingTitle ?? conversation.topic}`}
-                          >
-                            {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
-                          </Link>
-                        ) : (
-                          conversation.id
-                        )}
-                      </td>
-                      <td>{conversation.agentName}</td>
-                      <td>{conversation.topic}</td>
+            {visible.map((conversation) => {
+              const path = findingReviewPath(conversation, search) ?? `/manager/conversations/${encodeURIComponent(conversation.id)}${search}`
+              return (
+                <tr key={conversation.id}>
+                  <td>
+                    <Link
+                      to={path}
+                      aria-label={simulation ? `Open ABCD ${conversation.sourceId}` : `Review ${conversation.id}: ${conversation.flag?.findingTitle ?? conversation.topic}`}
+                    >
+                      {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
+                    </Link>
+                  </td>
+                  <td>{conversation.agentName}</td>
+                  <td>{conversation.topic}</td>
+                  {simulation ? (
+                    <td>{percentage(conversation.simulationScore)}</td>
+                  ) : (
+                    <>
                       <td>
                         {conversation.flag ? (
                           <span className="review-queue-flag">
                             <span>{conversation.flag.reason}</span>
-                            <span className="metadata-line">
-                              {conversation.flag.findingTitle}
-                            </span>
+                            <span className="metadata-line">{conversation.flag.findingTitle}</span>
                           </span>
                         ) : (
                           <span className="review-queue-muted">Not flagged</span>
@@ -231,8 +248,7 @@ export function ReviewQueue({
                         </time>
                       </td>
                       <td>
-                        {conversation.automatedResult === 'processing' ||
-                        !conversation.reviewStatus ? (
+                        {conversation.automatedResult === 'processing' || !conversation.reviewStatus ? (
                           <StatusLabel>{conversation.automatedResult === 'unavailable' ? 'Assessment unavailable' : 'Processing'}</StatusLabel>
                         ) : (
                           <StatusLabel tone={statusTones[conversation.reviewStatus]}>
@@ -240,12 +256,12 @@ export function ReviewQueue({
                           </StatusLabel>
                         )}
                       </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                    </>
+                  )}
+                </tr>
+              )
+            })}
+          </WorkspaceTable>
         </>
       )}
     </div>

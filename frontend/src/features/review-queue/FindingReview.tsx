@@ -1,7 +1,6 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ApprovedReference } from '../../components/ApprovedReference'
-import { Icon } from '../../components/Icon'
 import {
   Button,
   Panel,
@@ -255,7 +254,6 @@ export function FindingReview({
 
   const back = (
     <Link className="review-queue-back" to={`/manager/conversations${search}`}>
-      <Icon name="arrowLeft" />
       Team conversations
     </Link>
   )

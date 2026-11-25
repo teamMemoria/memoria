@@ -67,6 +67,7 @@ export function filterTeamConversations(
     .filter((conversation) =>
       [
         conversation.id,
+        conversation.sourceId,
         conversation.topic,
         conversation.agentName,
         conversation.flag?.reason,

@@ -22,26 +22,15 @@
 .waveform-turn:hover, .waveform-turn:focus-visible { background: var(--wave-tint); }
 .waveform-turn:hover .waveform-turn-label, .waveform-turn:focus-visible .waveform-turn-label { color: var(--wave-color); font-weight: 700; }
 .waveform-turn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-.waveform-preview { min-height: 96px; margin-top: 10px; padding: 14px 18px; border-left: 2px solid var(--color-accent); border-radius: 0 8px 8px 0; background: #f7f9fd; }
-.waveform-preview > span { color: var(--color-muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.waveform-preview blockquote { margin: 5px 0 0; color: var(--color-text); font-size: 18px; line-height: 28px; }
+.waveform-preview { min-height: 96px; margin-top: 10px; padding: 16px 20px; border-left: 2px solid var(--color-accent); border-radius: 0 8px 8px 0; background: #f7f9fd; }
+.waveform-preview > span { color: var(--color-muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.waveform-preview blockquote { margin: 5px 0 0; color: var(--color-text); font-size: 19px; line-height: 28px; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce), (hover: none) {
   .waveform-turn { --wave-grow: 1 !important; --wave-scale: 1 !important; }
   .waveform-bars { transform: none; }
 }
-.chart-data { margin-top: 10px; color: var(--color-muted); font-size: 16px; }
-.chart-data summary { cursor: pointer; width: fit-content; padding: 5px 0; }
-.chart-data-list { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-top: 10px; }
-.chart-data-list button { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 10px; border: 1px solid #e5eaf1; border-radius: 6px; background: #fafcff; color: var(--color-muted); font-size: 14px; }
-.chart-data-list strong { color: var(--color-text); }
-
 @media (max-width: 800px) {
   .waveform-heading { gap: 8px; }
-  .chart-data-list { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 500px) {
-  .chart-data-list { grid-template-columns: minmax(0,1fr); }
-  .chart-data-list button { overflow-wrap: anywhere; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .waveform-scroll:not([data-voice-enabled='true']) .waveform-bars--selected i { animation: waveform-select 600ms ease-out var(--wave-delay,0ms); }

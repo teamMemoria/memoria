@@ -1,13 +1,15 @@
 import { useConversations } from './controller'
 import { MemoriaSelectField } from '../../components/ui/select'
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
+import { WorkspaceTable } from '../../components/WorkspaceTable'
 import {
   Button,
   Panel,
   StatusLabel,
   TextField,
 } from '../../components/controls'
+import { percentage } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import {
   automatedResultLabels,
@@ -17,10 +19,18 @@ import {
   reviewStatusLabels,
   type ConversationsApi,
 } from './conversations'
-import { Icon } from '../../components/Icon'
+import { ConversationScoreBar } from './ConversationScoreBar'
+import { rankByScore, scoreBandFrom, scoreColumns, scoreOptions, type ScoreBand } from './scoreBands'
 import './conversations.css'
 
 const filters = Object.entries(conversationStatusLabels)
+const reviewColumns = [
+  { label: 'Call', width: 10 },
+  { label: 'Topic', width: 27 },
+  { label: 'Agent', width: 18 },
+  { label: 'Automated result', width: 23 },
+  { label: 'Review status', width: 22 },
+] as const
 const resultTones = {
   'needs-review': 'attention',
   'meets-criteria': 'positive',
@@ -32,11 +42,20 @@ const resultTones = {
 export function AgentConversations({
   viewer,
   api,
+  simulation = false,
 }: {
   viewer: Viewer
   api: ConversationsApi | null
+  simulation?: boolean
 }) {
-  const { state, setLoaded, setAttempt, previewStatus, setPreviewStatus, query, status, search, changeFilter, setParams } = useConversations(viewer, api)
+  const { state, setLoaded, setAttempt, previewStatus, setPreviewStatus, query, status, requestedStatus, search, changeFilter, setParams } = useConversations(viewer, api)
+  const [previewBand, setPreviewBand] = useState<ScoreBand | null>(null)
+  const selectedBand = simulation ? scoreBandFrom(requestedStatus) : null
+
+  function selectScoreBand(value: string) {
+    setPreviewBand(null)
+    changeFilter('status', value)
+  }
 
   const error = (
     <Panel title="Unable to load conversations">
@@ -59,10 +78,11 @@ export function AgentConversations({
   )
 
   const records = state.status === 'ready' ? state.records : []
-  const visible = filterConversations(records, {
+  const matches = filterConversations(records, {
     query,
-    status: previewStatus ?? status,
+    status: simulation ? 'all' : previewStatus ?? status,
   })
+  const visible = simulation ? rankByScore(matches, previewBand ?? selectedBand) : matches
   const counts = countConversationStatuses(records)
   const groups = (
     [
@@ -93,9 +113,17 @@ export function AgentConversations({
     .join(' ')
 
   return (
-    <div className="agent-conversations">
+    <div className={simulation ? 'agent-conversations agent-conversations--scored' : 'agent-conversations'}>
       <h1>My conversations</h1>
-      {state.status === 'ready' && groups.length > 0 && (
+      {simulation && records.length > 0 && (
+        <ConversationScoreBar
+          records={records}
+          selected={selectedBand}
+          onPreview={setPreviewBand}
+          onSelect={selectScoreBand}
+        />
+      )}
+      {!simulation && state.status === 'ready' && groups.length > 0 && (
         <section
           className="conversation-summary"
           aria-label="Conversation counts"
@@ -148,19 +176,30 @@ export function AgentConversations({
           id="conversation-search"
           label="Search calls"
           type="search"
-          placeholder="Search calls"
+          placeholder={simulation ? 'Search by call, agent or topic' : 'Search calls'}
           value={query}
           onChange={(event) => changeFilter('q', event.target.value, true)}
           disabled={state.status !== 'ready'}
         />
-        <MemoriaSelectField
-          id="conversation-status"
-          label="Review status"
-          value={status}
-          onValueChange={(value) => changeFilter('status', value)}
-          disabled={state.status !== 'ready'}
-          options={filters}
-        />
+        {simulation ? (
+          <MemoriaSelectField
+            id="conversation-score"
+            label="Overall score"
+            value={selectedBand ?? 'all'}
+            onValueChange={selectScoreBand}
+            disabled={state.status !== 'ready'}
+            options={scoreOptions}
+          />
+        ) : (
+          <MemoriaSelectField
+            id="conversation-status"
+            label="Review status"
+            value={status}
+            onValueChange={(value) => changeFilter('status', value)}
+            disabled={state.status !== 'ready'}
+            options={filters}
+          />
+        )}
       </div>
       {state.status === 'loading' && (
         <p role="status">Loading your conversations…</p>
@@ -169,7 +208,7 @@ export function AgentConversations({
       {state.status === 'ready' &&
         (records.length === 0 ? (
           <Panel title="No conversations yet">
-            <p>Your completed calls will appear here.</p>
+            <p>{simulation ? 'No conversations are assigned to this profile.' : 'Your completed calls will appear here.'}</p>
           </Panel>
         ) : (
           <>
@@ -177,55 +216,34 @@ export function AgentConversations({
               {visible.length}{' '}
               {visible.length === 1 ? 'conversation' : 'conversations'} shown
             </p>
-            <div
-              className="conversation-table-scroll"
-              role="region"
-              aria-label="Conversations table"
-              tabIndex={0}
+            <WorkspaceTable
+              label="Conversations table"
+              caption={simulation ? 'Your conversations.' : 'Your conversations, newest first. Needs review is an automated assessment, not a submitted Manager review request.'}
+              columns={simulation ? scoreColumns : reviewColumns}
             >
-              <table className="conversation-table">
-                <caption className="conversation-sr-only">
-                  Your conversations, newest first. Needs review is an automated
-                  assessment, not a submitted Manager review request.
-                </caption>
-                <colgroup>
-                  {[116, 260, 210, 278, 268, 56].map((width, index) => (
-                    <col
-                      key={index}
-                      style={{ width: `${(width / 1188) * 100}%` }}
-                    />
-                  ))}
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th scope="col">Call</th>
-                    <th scope="col">Topic</th>
-                    <th scope="col">Agent</th>
-                    <th scope="col">Automated result</th>
-                    <th scope="col">Review status</th>
-                    <th scope="col">
-                      <span className="conversation-sr-only">Open</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((conversation) => (
-                    <tr key={conversation.id}>
-                      <td>
-                        <Link
-                          className="conversation-open"
-                          to={`/agent/conversations/${encodeURIComponent(conversation.id)}${search}`}
-                          aria-label={`Open conversation ${conversation.id}: ${conversation.topic}`}
-                        >
-                          {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
-                        </Link>
-                      </td>
+              {visible.map((conversation) => (
+                <tr key={conversation.id}>
+                  <td>
+                    <Link
+                      className="conversation-open"
+                      to={`/agent/conversations/${encodeURIComponent(conversation.id)}${search}`}
+                      aria-label={simulation ? `Open ABCD ${conversation.sourceId}` : `Open conversation ${conversation.id}: ${conversation.topic}`}
+                    >
+                      {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
+                    </Link>
+                  </td>
+                  {simulation ? (
+                    <>
+                      <td>{conversation.agentName}</td>
+                      <td>{conversation.topic}</td>
+                      <td>{percentage(conversation.simulationScore)}</td>
+                    </>
+                  ) : (
+                    <>
                       <td>{conversation.topic}</td>
                       <td>{conversation.agentName}</td>
                       <td>
-                        <StatusLabel
-                          tone={resultTones[conversation.automatedResult]}
-                        >
+                        <StatusLabel tone={resultTones[conversation.automatedResult]}>
                           {automatedResultLabels[conversation.automatedResult]}
                         </StatusLabel>
                       </td>
@@ -234,21 +252,19 @@ export function AgentConversations({
                           ? reviewStatusLabels[conversation.reviewStatus]
                           : 'Not ready'}
                       </td>
-                      <td>
-                        <Icon name="arrowRight" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </WorkspaceTable>
             {visible.length === 0 && (
               <Panel title="No matching conversations">
-                <p>Try another search or review status.</p>
+                <p>{simulation ? 'Try another search or score range.' : 'Try another search or review status.'}</p>
                 <Button
                   variant="secondary"
                   onClick={() => {
                     setPreviewStatus(null)
+                    setPreviewBand(null)
                     setParams({})
                   }}
                 >

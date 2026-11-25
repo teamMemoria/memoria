@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { Icon } from '../../components/Icon'
+import { WorkspaceTable } from '../../components/WorkspaceTable'
 import { Button, Panel, TextField } from '../../components/controls'
 import {
   canReadKnowledge,
@@ -13,6 +13,13 @@ import { KnowledgeArticleContent } from './KnowledgeArticleContent'
 import './approved-knowledge.css'
 
 type Props = { viewer: Viewer; api: ApprovedKnowledgeApi | null }
+const columns = [
+  { label: 'Title', width: 44 },
+  { label: 'Topic', width: 20 },
+  { label: 'Type', width: 18 },
+  { label: 'Approved', width: 18 },
+] as const
+
 type LoadState = {
   api: ApprovedKnowledgeApi | null
   agentId: string
@@ -103,12 +110,11 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
       {entryId && (
         <nav className="approved-knowledge-breadcrumb" aria-label="Breadcrumb">
           <Link className="approved-knowledge-back" to={`/agent/knowledge${search}`}>
-            <Icon name="arrowLeft" />
             Approved knowledge
           </Link>
           {articleEntry && (
             <>
-              <span aria-hidden="true">›</span>
+              <span aria-hidden="true">/</span>
               <span aria-current="page">{articleEntry.title}</span>
             </>
           )}
@@ -143,18 +149,6 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
         )
       ) : (
         <>
-          <section
-            className="approved-knowledge-intro"
-            aria-labelledby="approved-guidance-title"
-          >
-            <h2 id="approved-guidance-title">Approved guidance</h2>
-            <p>
-              Approved procedures are available now. New articles appear after approval.
-            </p>
-            <p className="approved-knowledge-note">
-              Read-only guidance. Only approved entries are used for feedback.
-            </p>
-          </section>
           {available.length > 0 ? (
             <>
               <div
@@ -177,44 +171,34 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
                 />
               </div>
               {visible.length > 0 ? (
-                <ul
-                  className="approved-knowledge-list"
-                  aria-label="Approved entries"
+                <WorkspaceTable
+                  label="Approved entries"
+                  caption="Approved entries"
+                  columns={columns}
                 >
-                  {visible.map((item) => (
-                    <li key={item.id}>
-                      <Link
-                        className="approved-knowledge-row"
-                        to={`/agent/knowledge/${encodeURIComponent(item.id)}${search}`}
-                        aria-label={`Open ${item.title}, ${item.id} version ${item.version.replace(/^v(?=\d)/i, '')}`}
-                      >
-                        <span className="approved-knowledge-row-title">
-                          <span>{item.title}</span>
+                  {visible.map((item) => {
+                    const version = item.version.replace(/^v(?=\d)/i, '')
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          <Link
+                            to={`/agent/knowledge/${encodeURIComponent(item.id)}${search}`}
+                            aria-label={`Open ${item.title}, ${item.id} version ${version}`}
+                          >
+                            {item.title}
+                          </Link>
                           <span className="metadata-line">
                             <span>{item.id}</span>
-                            <span>Version {item.version.replace(/^v(?=\d)/i, '')}</span>
+                            <span>Version {version}</span>
                           </span>
-                        </span>
-                        <span>{item.topic}</span>
-                        <span>
-                          Approved {item.kind === 'procedure' ? 'procedure' : 'knowledge'}
-                        </span>
-                        <span className="approved-knowledge-date">
-                          <span className="approved-knowledge-sr-only">
-                            Approved{' '}
-                          </span>
-                          {formatKnowledgeDate(item.approvedAt)}
-                        </span>
-                        <span
-                          className="approved-knowledge-open"
-                          aria-hidden="true"
-                        >
-                          Open <Icon name="arrowRight" />
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                        </td>
+                        <td>{item.topic}</td>
+                        <td>{item.kind === 'procedure' ? 'Procedure' : 'Knowledge'}</td>
+                        <td className="approved-knowledge-date">{formatKnowledgeDate(item.approvedAt)}</td>
+                      </tr>
+                    )
+                  })}
+                </WorkspaceTable>
               ) : (
                 <Panel
                   title="No matching guidance"

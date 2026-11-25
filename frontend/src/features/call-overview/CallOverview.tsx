@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import { Button, Panel, StatusLabel } from '../../components/controls'
 import { useCallReview } from '../../lib/useCallReview'
-import { percentage, auditResults as results } from '../../types/callReview'
+import { assessmentData, categories, checkTitle, linkedCheckTurns } from '../assessment-shared/assessment'
+import { scoreTone } from '../conversations/scoreBands'
+import { assessmentPercentage, pilotLabel, percentage, auditResults as results } from '../../types/callReview'
 import type {
   AuditCriterion,
   CallApi,
@@ -51,6 +54,7 @@ export function CallOverview({
     if (params.has(key)) backParams.set(key, params.get(key)!)
   }
   const search = backParams.size ? `?${backParams}` : ''
+  const startAnalysis = viewer.role === 'manager' ? managerApi?.startAnalysis : undefined
 
   return (
     <div className="call-overview">
@@ -58,15 +62,24 @@ export function CallOverview({
         className="call-overview-back"
         to={`/${viewer.role}/conversations${search}`}
       >
-        <Icon name="arrowLeft" /> Conversations
+        Conversations
       </Link>
       {state.status === 'ready' ? (
-        <CallContent
-          key={state.call.id}
-          call={state.call}
-          search={search}
-          role={viewer.role}
-        />
+        <>
+          <CallContent
+            key={state.call.id}
+            call={state.call}
+            search={search}
+            role={viewer.role}
+          />
+          {startAnalysis && !state.call.assessmentVersion && (
+            <PilotAnalysis
+              key={state.call.id}
+              start={() => startAnalysis(viewer.id, state.call.id)}
+              refresh={state.retry}
+            />
+          )}
+        </>
       ) : (
         <div className="call-overview-state">
           <h1>Call overview</h1>
@@ -96,6 +109,33 @@ export function CallOverview({
   )
 }
 
+function PilotAnalysis({ start, refresh }: { start: () => Promise<unknown>; refresh: () => void }) {
+  const [state, setState] = useState<'idle' | 'starting' | 'queued' | 'failed'>('idle')
+
+  async function run() {
+    setState('starting')
+    try {
+      await start()
+      setState('queued')
+    } catch {
+      setState('failed')
+    }
+  }
+
+  return (
+    <Panel title="Pilot assessment">
+      {state === 'queued' ? (
+        <Button variant="secondary" onClick={refresh}>Refresh assessment</Button>
+      ) : (
+        <Button variant="secondary" onClick={() => void run()} disabled={state === 'starting'}>
+          {state === 'starting' ? 'Starting…' : 'Run pilot assessment'}
+        </Button>
+      )}
+      {state === 'failed' && <p role="alert">The assessment could not be started.</p>}
+    </Panel>
+  )
+}
+
 function CallContent({
   call,
   search,
@@ -105,13 +145,36 @@ function CallContent({
   search: string
   role: Viewer['role']
 }) {
+  const simulation = call.assessmentSource === 'simulation'
+  const criteria = simulation
+    ? categories.flatMap(({ id, title }) => {
+        const criterion = call.criteria.find((item) => item.id === id)
+        return criterion ? [{ ...criterion, title }] : []
+      })
+    : call.criteria
   const base = `/${role}/conversations/${encodeURIComponent(call.id)}`
   const transcriptParams = new URLSearchParams(search)
   transcriptParams.set('transcript', 'full')
   const transcript =
-    role === 'agent'
+    role === 'agent' && !simulation
       ? `${base}/transcript${search}`
       : `${base}/assessments/procedure?${transcriptParams}`
+  const highlights = simulation ? criteria.flatMap((criterion) => {
+    const data = assessmentData(call, criterion.id)
+    return data.checks.flatMap((check) => {
+      if (!check.critical && check.outcome !== 'breach' && check.outcome !== 'partial') return []
+      const turns = linkedCheckTurns(data, check)
+      return turns.length ? [{ criterion, check, turns }] : []
+    })
+  }) : []
+  const highlight = highlights.find(({ check }) => check.critical)
+    ?? highlights.find(({ check }) => check.outcome === 'breach')
+    ?? highlights[0]
+  const highlightParams = new URLSearchParams(search)
+  if (highlight) {
+    highlightParams.set('evidence', highlight.turns.map((turn) => turn.number).join(','))
+    highlightParams.set('check', highlight.check.id)
+  }
 
   function evidenceLink(criterion: AuditCriterion) {
     return `${base}/assessments/${criterion.id}${search}`
@@ -121,7 +184,7 @@ function CallContent({
     <>
       <h1>{call.topic}</h1>
       <ul className="call-overview-metadata" aria-label="Call details">
-        <li>Call {call.id}{call.sourceId && ` · ABCD ${call.sourceId}`}</li>
+        <li>{simulation ? `ABCD ${call.sourceId}` : `Call ${call.id}${call.sourceId ? ` (ABCD ${call.sourceId})` : ''}`}</li>
         <li>{call.agentName}</li>
         <li>
           {call.transcript
@@ -129,7 +192,8 @@ function CallContent({
             : 'Turns unavailable'}
         </li>
       </ul>
-      <p className="call-overview-summary">{call.summary}</p>
+      {!simulation && pilotLabel(call) && <p className="metadata-line">{pilotLabel(call)}</p>}
+      {!simulation && <p className="call-overview-summary">{call.summary}</p>}
       {call.status === 'unavailable' ? (
         <Panel title="Assessment unavailable">
           <p>No assessment is stored for this conversation. This is not an Agent performance result.</p>
@@ -147,17 +211,31 @@ function CallContent({
               <p role="status">Processing failed for part of this assessment. Available checks are shown below; feedback is not ready.</p>
             </Panel>
           )}
-          <section className="call-audit" aria-label="Automatic feedback">
+          <section className={simulation ? 'call-audit call-audit--simulation' : 'call-audit'} aria-label={simulation ? 'Assessment scores' : 'Automatic feedback'}>
             <div className="call-audit-diagram">
-              <div className="call-audit-root">
+              <div className="call-audit-root" data-score-tone={simulation ? scoreTone(call.overallScoring?.score) : undefined}>
                 <span className="call-audit-phone">
                   <Icon name="phone" size={24} />
                 </span>
-                <span>{call.id}</span>
+                {simulation ? (
+                  <span className="call-audit-overall">
+                    <span>Overall score</span>
+                    <strong>{percentage(call.overallScoring?.score)}</strong>
+                  </span>
+                ) : (
+                  <span>{call.overallScoring
+                    ? `Overall ${call.criteria.some(({ scoring }) => scoring?.coverage === 0)
+                      ? 'Cannot assess'
+                      : assessmentPercentage(call.overallScoring)}`
+                    : call.id}</span>
+                )}
               </div>
               <div className="call-criteria">
-                {call.criteria.map((criterion) => {
-                  const result = results[criterion.result]
+                {criteria.map((criterion) => {
+                  const result = simulation ? null : results[criterion.result]
+                  const outcome = simulation
+                    ? percentage(criterion.scoring?.score)
+                    : criterion.scoring ? assessmentPercentage(criterion.scoring) : result?.label
                   const cardContent = (
                     <>
                       <span className="call-criterion-marker">
@@ -172,32 +250,28 @@ function CallContent({
                         {criterion.title}
                       </span>
                       <span className="call-criterion-result">
-                        {criterion.scoring ? percentage(criterion.scoring.score) : result.label}
+                        {outcome}
                       </span>
                       {criterion.scoring && <span className="call-criterion-qualification">Coverage: {percentage(criterion.scoring.coverage, 'Unknown')}</span>}
-                      {criterion.id === 'communication-style' && (
-                        <span className="call-criterion-qualification">
-                          Text only
-                        </span>
-                      )}
                     </>
                   )
                   const connectionTone =
-                    criterion.result === 'needs-review'
+                    result?.tone === 'attention'
                       ? 'attention'
-                      : criterion.result === 'meets-criteria' &&
+                      : result?.tone === 'positive' &&
                           criterion.id === 'communication-style'
                         ? 'positive'
                         : 'neutral'
                   return (
                     <div
                       className={`call-criterion-column call-criterion-column--${connectionTone}`}
+                      data-score-tone={simulation ? scoreTone(criterion.scoring?.score) : undefined}
                       key={criterion.id}
                     >
                       <Link
-                        className={`call-criterion call-criterion--${result.tone}`}
+                        className={`call-criterion call-criterion--${result?.tone ?? 'neutral'}`}
                         to={evidenceLink(criterion)}
-                        aria-label={`${criterion.title}: ${criterion.scoring ? percentage(criterion.scoring.score) : result.label}`}
+                        aria-label={`${criterion.title}: ${outcome}`}
                       >
                         {cardContent}
                       </Link>
@@ -207,6 +281,24 @@ function CallContent({
               </div>
             </div>
           </section>
+          {highlight ? (
+            <section className="call-finding-strip" aria-label="Key evidence">
+              <span className="call-finding-marker"><Icon name="info" size={24} /></span>
+              <div className="call-finding-copy">
+                <h2>Key evidence</h2>
+                <p>{checkTitle(highlight.check)}</p>
+              </div>
+              <div className="call-finding-actions">
+                <Link
+                  className="button button--primary"
+                  to={`${base}/assessments/${highlight.criterion.id}?${highlightParams}`}
+                >
+                  View evidence
+                </Link>
+                <Link className="button button--secondary" to={transcript}>Transcript</Link>
+              </div>
+            </section>
+          ) : simulation && <Link className="button button--secondary" to={transcript}>Transcript</Link>}
           {call.findings.length > 0 ? (
             <section
               className="call-finding-strip"

@@ -1,4 +1,4 @@
-import type { KnowledgeEntry } from './knowledge'
+import type { KnowledgeEntry } from './knowledge.js'
 
 export type AuditResult = 'needs-review' | 'meets-criteria' | 'cannot-assess'
 export const auditResults = {
@@ -46,7 +46,20 @@ export type CallFinding = {
   }[]
 }
 
+export function pilotLabel(call: CallReview) {
+  const rules = call.assessmentVersion?.rules ?? ''
+  const review = rules.includes('+luna:') ? ' Luna reviewed the transcript checks.' : ''
+  if (rules.startsWith('luna-transcript-pilot-')) return 'Luna pilot (transcript checks only)'
+  if (rules.startsWith('subscription-refusal-pilot-')) return 'Subscription pilot (extension refusal only)'
+  if (rules.startsWith('subscription-gold-pilot-')) return 'Subscription pilot (Gold extension request only)'
+  if (rules.startsWith('observed-pilot-')) return 'Conversation pilot (recorded evidence).' + review
+  if (rules.startsWith('product-faq-pilot-')) return 'Product care pilot (procedure score covers FAQ search only).' + review
+  if (rules.startsWith('pricing-pilot-')) return 'Pricing pilot (draft scoring criteria)'
+  return null
+}
+
 export type CallReview = {
+  assessmentSource?: 'simulation'
   sourceId?: string | null
   id: string
   agentId: string
@@ -61,6 +74,7 @@ export type CallReview = {
     sourceId?: string
     asOf: string
     rules: string
+    scoringMethod?: string | null
     transcript: string
   } | null
   requestLinks?: RequestLink[]
@@ -136,6 +150,7 @@ export type FindingReviewDetail = {
 }
 
 export interface ManagerCallApi extends NarrationApi {
+  startAnalysis?(managerId: string, conversationId: string): Promise<unknown>
   getCallForManager(
     managerId: string,
     conversationId: string,
@@ -153,6 +168,7 @@ export type CanonicalCitation =
     }
   | {
       kind: 'reference'
+      origin?: string
       reference_id: string
       reference_version: string
       section_id: string
@@ -163,7 +179,7 @@ export type ScoringCheck = {
   id: string
   ruleId: string
   requirement: string
-  outcome: 'supported' | 'breach' | 'unresolved' | 'not-applicable'
+  outcome: 'supported' | 'partial' | 'breach' | 'unresolved' | 'not-applicable'
   earned: number | null
   maximum: number
   explanation: string
@@ -198,6 +214,20 @@ export function percentage(
   unavailable = 'Not scored',
 ) {
   return value == null ? unavailable : `${Math.round(value)}%`
+}
+
+export function hasMidpointScoring(method: string | null | undefined) {
+  return method === 'calibrated-simulation-midpoint-v1' ||
+    (method?.startsWith('applicable-points-midpoint-') ?? false)
+}
+
+export function assessmentPercentage(scoring: {
+  score: number | null
+  coverage: number | null
+}) {
+  return scoring.coverage === 0
+    ? 'Cannot assess'
+    : percentage(scoring.score, 'Cannot assess')
 }
 
 export type RequestLink = {

@@ -162,7 +162,7 @@ describe('sidebar within the workspace', () => {
     act(() => knowledge.focus())
     expect(home.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(knowledge)
-    await screen.findByRole('list', { name: 'Approved entries' })
+    await screen.findByRole('table', { name: 'Approved entries' })
     expect(document.activeElement).toBe(knowledge)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(document.activeElement).toBe(home)

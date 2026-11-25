@@ -85,7 +85,9 @@ export function EvidenceSheet({
             {selection.full ? 'Full transcript' : 'Evidence'}
           </SheetTitle>
           <SheetDescription>
-            Recorded conversation passages and applicable approved reference.
+            {call.assessmentSource === 'simulation'
+              ? 'Archived ABCD passages and assessment sources.'
+              : 'Recorded conversation passages and applicable approved reference.'}
           </SheetDescription>
         </SheetHeader>
         <div className="sheet-body">
@@ -135,7 +137,7 @@ export function EvidenceSheet({
                   <strong>{turn.speaker}</strong>
                   <span>
                     Turn {turn.number}
-                    {turn.time ? ` · ${turn.time}` : ''}
+                    {turn.time ? ` (${turn.time})` : ''}
                   </span>
                 </figcaption>
                 <blockquote>{turn.text}</blockquote>
@@ -212,7 +214,6 @@ export function EvidenceSheet({
               onClick={onFullTranscript}
             >
               Full transcript
-              <Icon name="arrowRight" />
             </button>
           )}
           <button className="button button--secondary" onClick={onClose}>

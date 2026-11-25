@@ -26,7 +26,8 @@ export function createDependencies(): {
 } {
   if (import.meta.env.VITE_API_BASE_URL ||
       (import.meta.env.DEV && import.meta.env.MODE !== 'test')) {
-    const apis = createHttpApis(import.meta.env.VITE_API_BASE_URL ?? '')
+    const simulation = import.meta.env.MODE === 'simulation'
+    const apis = createHttpApis(simulation ? '' : import.meta.env.VITE_API_BASE_URL ?? '', simulation)
     return { ...apis, profilesApi: demoLoginEnabled() ? apis.profilesApi : null }
   }
 

@@ -84,7 +84,6 @@ export function EntryScreen({
                   </span>
                   <span className="entry-role-title">
                     {item.label}
-                    {item.value === 'manager' && <img src="/brand/login-arrow.svg" alt="" />}
                   </span>
                   <span className="entry-role-detail">
                     {item.value === 'agent' ? 'View your conversations' : 'Open manager workspace'}
@@ -147,7 +146,7 @@ export function EntryScreen({
                 {selected && (
                   <span id={`${profileName}-detail`} className="entry-sr-only">
                     Demo profile{selected.conversationCount !== null &&
-                      ` · ${selected.conversationCount} ${selected.conversationCount === 1 ? 'conversation' : 'conversations'}`}
+                      ` (${selected.conversationCount} ${selected.conversationCount === 1 ? 'conversation' : 'conversations'})`}
                   </span>
                 )}
               </div>
@@ -155,7 +154,6 @@ export function EntryScreen({
 
             <Button className="entry-continue" type="submit" disabled={!selected}>
               <span>{selected ? `Continue as ${selected.displayName}` : 'Continue'}</span>
-              <img src="/brand/login-arrow.svg" alt="" />
             </Button>
           </form>
         </div>

@@ -1,5 +1,5 @@
 import { useKnowledgeDecision } from './controller'
-import { useEffect, useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import {
@@ -15,6 +15,7 @@ import {
 } from '../../components/ui/collapsible'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -22,10 +23,15 @@ import {
 } from '../../components/ui/dialog'
 import {
   type KnowledgeDraft,
+  type KnowledgeDraftContent,
+  type KnowledgeReviewDetail,
   type KnowledgeReviewApi,
 } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
+import { draftPresentation } from './draftPresentation'
 import { queueTabFor, queueTabs } from './draftsQueue'
+import { KnowledgeDocument } from './KnowledgeDocument'
+import { KnowledgeDraftEditor } from './KnowledgeDraftEditor'
 import { KnowledgeSources } from './KnowledgeSources'
 import './knowledge-drafts.css'
 
@@ -33,13 +39,24 @@ type LoadState =
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'unavailable' }
-  | { status: 'ready'; entry: KnowledgeDraft; canDecide: boolean }
+  | ({ status: 'ready'; showApproval?: boolean } & KnowledgeReviewDetail)
 
 const decidedAtFormatter = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
   timeStyle: 'short',
   timeZone: 'UTC',
 })
+
+const sentenceSegmenter = new Intl.Segmenter('en', { granularity: 'sentence' })
+
+function readableParagraphs(paragraph: string) {
+  const sentences = Array.from(sentenceSegmenter.segment(paragraph), ({ segment }) => segment)
+  const paragraphs: string[] = []
+  for (let index = 0; index < sentences.length; index += 2) {
+    paragraphs.push(sentences.slice(index, index + 2).join('').trim())
+  }
+  return paragraphs
+}
 
 const statusTone = {
   pending: 'attention',
@@ -48,27 +65,20 @@ const statusTone = {
   rejected: 'neutral',
 } as const
 
-function SavedDecision({ entry }: { entry: KnowledgeDraft }) {
+function SavedRejection({ entry }: { entry: KnowledgeDraft }) {
   const { decision } = entry
   return (
     <>
-      <StatusLabel tone={entry.status === 'approved' ? 'positive' : 'neutral'}>
-        {entry.status === 'approved' ? 'Approved' : 'Rejected'}
-      </StatusLabel>
-      {decision ? (
+      <StatusLabel>Rejected</StatusLabel>
+      {decision && (
         <p className="metadata-line">
           <span>{decision.managerName}</span>
           <span>
             {decidedAtFormatter.format(new Date(decision.decidedAt))} UTC
           </span>
         </p>
-      ) : (
-        entry.approvedBy && <p>Approved by {entry.approvedBy}</p>
       )}
       {decision?.reason && <p>Reason: {decision.reason}</p>}
-      {entry.status === 'approved' && (
-        <p>This entry is available on Agent knowledge pages.</p>
-      )}
     </>
   )
 }
@@ -78,20 +88,39 @@ function ReviewContent({
   managerId,
   entry,
   canDecide,
+  canEdit,
   onDecided,
 }: {
   api: KnowledgeReviewApi
   managerId: string
   entry: KnowledgeDraft
   canDecide: boolean
+  canEdit?: boolean
   onDecided: (entry: KnowledgeDraft) => void
 }) {
   const verifiedId = useId()
   const reasonId = useId()
+  const approvalNoteId = useId()
   const { reference, referenceOpened, setReferenceOpened, verified, setVerified, reason, setReason, saving, failed, canDecide: decisionAllowed, needsDecision, canApprove, decide, reject } = useKnowledgeDecision(api, managerId, entry, canDecide, onDecided)
   canDecide = decisionAllowed
   const tab = queueTabFor(entry)
+  const { title, layer } = draftPresentation(entry.title, entry.layer)
+  const directApproval = Boolean(entry.authoredPolicyVersion || entry.approvalReference)
+  const approvalNote = directApproval
+    ? null
+    : layer === 'layer1'
+      ? 'A current policy version is required for approval.'
+      : reference
+        ? 'Check the verification source before approving.'
+          : layer === 'layer2'
+            ? 'Verification source needed.'
+            : 'Approval requires an authoritative reference.'
+  const question = entry.question ?? entry.title
+  const [preview, setPreview] = useState<KnowledgeDraftContent | null>(null)
+  const initialContent = { title, question, guidance: entry.paragraphs.join('\n\n') }
+  const edit = canEdit && canDecide && needsDecision ? api.editDraft : undefined
   const attach = api.attachVerification
+  const showDecision = entry.status !== 'approved' || Boolean(entry.duplicateOfId || entry.possibleConflicts?.length)
   const [attaching, setAttaching] = useState(false)
   const [attachmentError, setAttachmentError] = useState(false)
 
@@ -115,122 +144,153 @@ function ReviewContent({
     }
   }
 
+  const referenceLink = reference && (
+    <a
+      className="knowledge-review-reference"
+      href={reference.url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Open verification reference: ${reference.title}`}
+      onClick={() => setReferenceOpened(true)}
+    >
+      <Icon name="link" /> Verification source
+    </a>
+  )
+  const draftText = (
+    <div className="knowledge-entry-text">
+      {(preview ? preview.guidance.split(/\n\s*\n/) : entry.paragraphs).flatMap(readableParagraphs).map((paragraph, index) => (
+        <p key={index}>{paragraph}</p>
+      ))}
+      {entry.steps.length > 0 && (
+        <ol>
+          {entry.steps.map((step) => (
+            <li key={step.number} value={step.number}>
+              {step.text}
+            </li>
+          ))}
+        </ol>
+      )}
+      {!entry.paragraphs.length && !entry.steps.length && (
+        <p>No draft content is available.</p>
+      )}
+    </div>
+  )
+  const verification = (
+    <>
+      {needsDecision && canDecide && !directApproval && entry.canAttachVerification && attach && !reference && (
+        <form className="knowledge-review-step" onSubmit={attachReference}>
+          <h3>Attach a verification source</h3>
+          <label>Source title <input name="title" required maxLength={200} /></label>
+          <label>Source URL <input name="url" type="url" required maxLength={2000} /></label>
+          <label>Exact policy quotation <textarea name="quote" required maxLength={500} /></label>
+          <Button type="submit" variant="secondary" disabled={attaching || saving !== null}>
+            {attaching ? 'Saving…' : 'Attach reference'}
+          </Button>
+          {attachmentError && <p role="alert">Check the policy quotation, source URL and draft version.</p>}
+        </form>
+      )}
+      {needsDecision && canDecide && !directApproval && reference && (
+        <Collapsible className="knowledge-verification">
+          <CollapsibleTrigger asChild>
+            <Button variant="secondary">
+              <Icon name="plus" /> Verify reference
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="knowledge-verification-content">
+            <h3>Verify and approve</h3>
+            <p>
+              Check the draft against the authoritative reference before
+              approving. Matching conversations do not count as verification.
+            </p>
+            <p className="metadata-line">
+              Verification reference: {reference.title}
+            </p>
+            <label className="knowledge-review-check" htmlFor={verifiedId}>
+              <input
+                id={verifiedId}
+                type="checkbox"
+                checked={verified}
+                disabled={!referenceOpened || saving !== null}
+                onChange={(event) => setVerified(event.target.checked)}
+              />
+              I checked this draft against {reference.title}
+            </label>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </>
+  )
+
   return (
     <>
-      <header className="knowledge-review-header">
-        <div className="knowledge-review-title">
-          <h1>{entry.title}</h1>
-          <StatusLabel tone={statusTone[tab]}>{queueTabs[tab]}</StatusLabel>
-        </div>
-        <p className="metadata-line">
-          <span>
-            {entry.sourceConversationIds.length} source{' '}
-            {entry.sourceConversationIds.length === 1
-              ? 'conversation'
-              : 'conversations'}
-          </span>
-          <span>
-            {entry.id} · {entry.topic} · Version{' '}
-            {entry.version.replace(/^v(?=\d)/i, '')}
-          </span>
-        </p>
+      <header className="knowledge-review-title">
+        <h1>{title}</h1>
+        <StatusLabel tone={statusTone[tab]}>{queueTabs[tab]}</StatusLabel>
+        {entry.status === 'approved' && decisionAllowed && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="secondary" className="knowledge-unapprove" disabled={saving !== null}>
+                Unapprove
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogTitle>Unapprove this draft?</DialogTitle>
+              <DialogDescription>
+                The draft will go back to review and disappear from the Agent Knowledge Base.
+              </DialogDescription>
+              {failed === 'unapprove' && (
+                <p role="alert">The draft could not be unapproved. Try again.</p>
+              )}
+              <div className="knowledge-review-actions">
+                <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
+                <Button
+                  loading={saving === 'unapprove'}
+                  loadingLabel="Unapproving…"
+                  disabled={saving !== null}
+                  onClick={() => void decide('unapprove')}
+                >
+                  Unapprove
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </header>
       {api.decisionsAvailable === false && <Panel title="Decision">
         <p>Knowledge drafts are read-only in this demo. Approve and reject are not available yet.</p>
       </Panel>}
-      <KnowledgeSources entry={entry} />
-      <Panel title="Knowledge entry" className="knowledge-entry">
-        {reference && (
-          <a
-            className="knowledge-review-reference"
-            href={reference.url}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Open verification reference: ${reference.title}`}
-            onClick={() => setReferenceOpened(true)}
+      {layer !== 'layer1' && <KnowledgeSources entry={entry} />}
+      {layer === 'other' ? (
+        <Panel title={title === entry.title ? 'Knowledge entry' : entry.title} className="knowledge-entry">
+          {referenceLink}
+          {draftText}
+          {verification}
+        </Panel>
+      ) : (
+        <>
+          <KnowledgeDocument
+            title={preview?.title ?? title}
+            question={preview?.question ?? question}
+            onEdit={edit && !saving && !attaching ? () => setPreview(initialContent) : undefined}
+            editor={preview && edit && (
+              <KnowledgeDraftEditor
+                initial={initialContent}
+                onPreview={setPreview}
+                onCancel={() => setPreview(null)}
+                onSave={async (content) => {
+                  onDecided(await edit(managerId, entry.id, { ...content, version: entry.version }))
+                  setPreview(null)
+                }}
+              />
+            )}
           >
-            <Icon name="link" /> Verification source
-          </a>
-        )}
-        <div className="knowledge-entry-text">
-          {entry.paragraphs.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-          {entry.steps.length > 0 && (
-            <ol>
-              {entry.steps.map((step) => (
-                <li key={step.number} value={step.number}>
-                  {step.text}
-                </li>
-              ))}
-            </ol>
-          )}
-          {!entry.paragraphs.length && !entry.steps.length && (
-            <p>No draft content is available.</p>
-          )}
-        </div>
-        {needsDecision && canDecide && entry.canAttachVerification && attach && !reference && (
-          <form className="knowledge-review-step" onSubmit={attachReference}>
-            <h3>Attach a verification source</h3>
-            <label>Source title <input name="title" required maxLength={200} /></label>
-            <label>Source URL <input name="url" type="url" required maxLength={2000} /></label>
-            <label>Exact policy quotation <textarea name="quote" required maxLength={500} /></label>
-            <Button type="submit" variant="secondary" disabled={attaching || saving !== null}>
-              {attaching ? 'Saving…' : 'Attach reference'}
-            </Button>
-            {attachmentError && <p role="alert">Check the policy quotation, source URL and draft version.</p>}
-          </form>
-        )}
-        {needsDecision && canDecide && reference && (
-          <Collapsible className="knowledge-verification">
-            <CollapsibleTrigger asChild>
-              <Button variant="secondary">
-                <Icon name="plus" /> Verify reference
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="knowledge-verification-content">
-              <h3>Verify and approve</h3>
-              <p>
-                Check the draft against the authoritative reference before
-                approving. Matching conversations do not count as verification.
-              </p>
-              <p className="metadata-line">
-                Verification reference: {reference.title}
-              </p>
-              <label className="knowledge-review-check" htmlFor={verifiedId}>
-                <input
-                  id={verifiedId}
-                  type="checkbox"
-                  checked={verified}
-                  disabled={!referenceOpened || saving !== null}
-                  onChange={(event) => setVerified(event.target.checked)}
-                />
-                I checked this draft against {reference.title}
-              </label>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-        {needsDecision && canDecide && entry.authoredPolicyVersion && (
-          <label className="knowledge-review-check" htmlFor={verifiedId}>
-            <input
-              id={verifiedId}
-              type="checkbox"
-              checked={verified}
-              disabled={saving !== null}
-              onChange={(event) => setVerified(event.target.checked)}
-            />
-            I approve this Memoria-authored policy for future calls.
-          </label>
-        )}
-        <p className="metadata-line">
-          {entry.authoredPolicyVersion
-            ? 'Memoria-authored guidance for future calls. Historical ABCD scoring uses independently verified sources.'
-            : reference
-            ? 'Review the verification source before approving. Source calls show examples, not policy authority.'
-            : 'No authoritative reference is available, so this entry cannot be approved. Matching conversations alone do not verify it.'}
-        </p>
-      </Panel>
-      <Panel title="Decision" className="knowledge-review-decision">
+            {draftText}
+            {referenceLink}
+          </KnowledgeDocument>
+          {!preview && verification}
+        </>
+      )}
+      {showDecision && <Panel title="Decision" className="knowledge-review-decision">
         {entry.duplicateOfId && (
           <p>Resolve duplicate draft {entry.duplicateOfId} before approval.</p>
         )}
@@ -238,16 +298,18 @@ function ReviewContent({
           <p key={conflict.id}>Unresolved conflict: {conflict.explanation}</p>
         ))}
         {!needsDecision ? (
-          <SavedDecision entry={entry} />
+          entry.status === 'rejected' && <SavedRejection entry={entry} />
         ) : !canDecide ? (
           <p>You do not have permission to approve or reject knowledge.</p>
         ) : (
           <>
             <div className="knowledge-review-actions">
+              {approvalNote && <p id={approvalNoteId} className="metadata-line">{approvalNote}</p>}
               <Button
+                aria-describedby={approvalNote ? approvalNoteId : undefined}
                 loading={saving === 'approve'}
                 loadingLabel="Approving…"
-                disabled={!canApprove || saving !== null}
+                disabled={!canApprove || saving !== null || preview !== null}
                 onClick={() => void decide('approve')}
               >
                 Approve
@@ -257,7 +319,7 @@ function ReviewContent({
                   <Button
                     variant="secondary"
                     className="knowledge-review-reject"
-                    disabled={saving !== null}
+                    disabled={saving !== null || preview !== null}
                   >
                     Reject
                   </Button>
@@ -302,7 +364,7 @@ function ReviewContent({
             )}
           </>
         )}
-      </Panel>
+      </Panel>}
     </>
   )
 }
@@ -319,6 +381,11 @@ export function KnowledgeReview({
   const search = params.size ? `?${params}` : ''
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const backLink = useRef<HTMLAnchorElement>(null)
+
+  function dismissApproval() {
+    setState((previous) => previous.status === 'ready' ? { ...previous, showApproval: false } : previous)
+  }
 
   useEffect(() => {
     let active = true
@@ -350,8 +417,8 @@ export function KnowledgeReview({
   }
 
   const back = (
-    <Link className="knowledge-drafts-back" to={`/manager/knowledge${search}`}>
-      <Icon name="arrowLeft" /> Knowledge drafts
+    <Link ref={backLink} className="knowledge-drafts-back" to={`/manager/knowledge${search}`}>
+      Knowledge drafts
     </Link>
   )
 
@@ -387,7 +454,7 @@ export function KnowledgeReview({
     )
   }
 
-  const { entry, canDecide } = state
+  const { entry, canDecide, canEdit } = state
   return (
     <div className="knowledge-drafts knowledge-review">
       {back}
@@ -397,10 +464,34 @@ export function KnowledgeReview({
         managerId={viewer.id}
         entry={entry}
         canDecide={canDecide}
+        canEdit={canEdit}
         onDecided={(decided) =>
-          setState({ status: 'ready', entry: decided, canDecide })
+          setState((previous) => previous.status === 'ready' && previous.entry.id === decided.id
+            ? {
+                ...previous,
+                entry: decided,
+                canEdit: previous.canEdit || (
+                  previous.canDecide && previous.entry.status === 'approved' && decided.status === 'draft'
+                ),
+                showApproval: previous.entry.status !== 'approved' && decided.status === 'approved',
+              }
+            : previous)
         }
       />
+      <Dialog open={Boolean(state.showApproval)} onOpenChange={(open) => { if (!open) dismissApproval() }}>
+        <DialogContent
+          className="knowledge-approval-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            backLink.current?.focus({ preventScroll: true })
+          }}
+        >
+          <span className="knowledge-approval-icon"><Icon name="check" size={28} /></span>
+          <DialogTitle>Approved</DialogTitle>
+          <DialogDescription>Agents can now see this in their Knowledge Base.</DialogDescription>
+          <Button onClick={dismissApproval}>Done</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

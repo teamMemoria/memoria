@@ -80,3 +80,31 @@ Tests sit beside the code they check.
 - Memoria branding: `public/brand/`.
 - Inter font: `public/fonts/LICENSE.txt`.
 - [Microsoft Codicons](https://github.com/microsoft/vscode-codicons/tree/6b53088f5c55bce7107fb579765364f59cd4ad5d), CC BY 4.0: `public/licenses/codicons-LICENSE.txt`.
+
+## School demo (local)
+
+The school demo opens the 25 archived ABCD simulation calls after profile selection.
+Agents see their assigned calls. The Manager sees the full cohort and the existing
+Knowledge Base. The conversation screens read the archived scores and evidence,
+and conversation writes are disabled in this mode.
+
+In the frontend's ignored `.env.simulation.local`, set `MEMORIA_API_TARGET` to the
+local backend with the ABCD calls and demo profiles. Set `MEMORIA_SIMULATION_FILE`
+to the archived 25-call `scorecards.json` export from the Layer 1 simulation.
+Keep that export outside the frontend directory. Then run:
+
+```sh
+npm run demo -- --port 18906 --strictPort
+```
+
+The local server checks conversation access with the backend and serves a scorecard
+only for a matching ABCD record. The regular backend routes handle login and
+knowledge. Use `npm run dev` for development against stored call assessments.
+
+Communication style narration is ready on hover, keyboard focus or turn selection.
+Browser audio restrictions may require clicking or tapping a turn first. Audio is
+generated from the displayed Agent and Customer text and excludes system actions.
+Use the pinned local renderer in [Narration](../ml/NARRATION.md) with an export of
+these same archived turns and voice assignments. Put the verified clip pairs under
+`ml/output/narration/simulation/clips`, or set `MEMORIA_SIMULATION_NARRATION_DIR`
+to a dedicated local cache. Restart the preview after preparing the cache.

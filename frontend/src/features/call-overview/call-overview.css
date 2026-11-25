@@ -173,6 +173,52 @@
   font-size: 16px;
   line-height: 24px;
 }
+.call-audit--simulation {
+  margin-bottom: 20px;
+}
+.call-audit--simulation .call-audit-overall {
+  display: grid;
+  font-size: 16px;
+  line-height: 24px;
+}
+.call-audit--simulation .call-audit-overall strong,
+.call-audit--simulation .call-criterion-result {
+  color: var(--score-ink, var(--color-heading));
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.call-audit--simulation [data-score-tone='positive'] {
+  --score-ink: var(--color-positive);
+  --score-fill: var(--color-positive-fill);
+  --score-surface: #e2f6e5;
+}
+.call-audit--simulation [data-score-tone='attention'] {
+  --score-ink: var(--color-attention);
+  --score-fill: var(--color-accent);
+  --score-surface: var(--color-evidence);
+}
+.call-audit--simulation [data-score-tone='negative'] {
+  --score-ink: var(--color-negative);
+  --score-fill: var(--color-negative-fill);
+  --score-surface: #fcecef;
+}
+.call-audit--simulation .call-audit-root[data-score-tone],
+.call-audit--simulation [data-score-tone] .call-criterion {
+  border-color: var(--score-fill);
+  background: var(--score-surface);
+}
+.call-audit--simulation .call-criterion-marker {
+  background: var(--score-ink, var(--color-heading));
+}
+.call-audit--simulation .call-criterion-column::after {
+  background: var(--score-fill, var(--color-heading));
+}
+.call-audit--simulation [data-score-tone] .call-audit-phone {
+  background: var(--score-ink);
+  color: white;
+}
 .call-finding-actions {
   display: flex;
   flex-wrap: wrap;

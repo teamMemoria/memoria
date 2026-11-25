@@ -11,7 +11,7 @@ import {
 import {
   checkTitle,
   checkLabels,
-  checkTurns,
+  linkedCheckTurns,
   type ScreenProps,
 } from '../assessment-shared/assessment'
 import { TranscriptWaveform } from './waveform/TranscriptWaveform'
@@ -22,7 +22,12 @@ export function CommunicationScreen({
   onOpen,
   loadNarration,
 }: ScreenProps) {
-  const { checks, phrases, selectedCheck, selected, setSelected, evidence, selectTurn } = useCommunication(data)
+  const { checks, phrases, selected, setSelected, evidence, selectTurn } = useCommunication(data)
+  const simulation = data.call.assessmentSource === 'simulation'
+  const feedback = simulation ? checks.find((check) =>
+    (check.outcome === 'partial' || check.outcome === 'breach') &&
+    linkedCheckTurns(data, check).some((turn) => turn.speaker === 'Agent'),
+  ) : undefined
   return (
     <>
       <section
@@ -52,18 +57,19 @@ export function CommunicationScreen({
                       {quote?.kind === 'conversation'
                         ? `Turn ${quote.turn_id}`
                         : 'Source unavailable'}
-                      <Icon name="arrowRight" size={14} />
                     </span>
                   </span>
                   <span className="wording-track" aria-hidden="true">
                     <i
                       style={{
-                        width: check.outcome === 'supported' ? '100%' : '0%',
+                        width: check.maximum ? `${(100 * (check.earned ?? 0)) / check.maximum}%` : '0%',
                       }}
                     />
                   </span>
                   <span className="wording-caption">
-                    <small>{checkLabels[check.outcome]} · </small>
+                    <span className={`card-badge${check.outcome === 'supported' ? '' : ' card-badge--attention'}`}>
+                      {checkLabels[check.outcome]}
+                    </span>
                     {quote && <q>{quote.quote}</q>}
                   </span>
                 </button>
@@ -107,27 +113,37 @@ export function CommunicationScreen({
           )}
         </Card>
       </section>
-      <Card ref={evidence} className="dashboard-card evidence-section">
+      <section ref={evidence} className="evidence-section evidence-section--plain" aria-labelledby="communication-evidence-title">
         <TranscriptWaveform
           key={`${data.call.id}-${data.call.assessmentVersion?.transcript ?? ''}`}
           agentName={data.call.agentName}
           loadNarration={loadNarration}
+          voiceOnByDefault={simulation}
           turns={data.call.transcript?.turns ?? []}
           selected={selected}
           onSelect={setSelected}
           onOpen={onOpen}
         />
-        {selectedCheck && (
-          <EvidenceLink
-            turns={checkTurns(selectedCheck)}
-            checkId={selectedCheck.id}
-            onOpen={onOpen}
-          >
-            View check and reference
-          </EvidenceLink>
-        )}
         <MaterialLimits data={data} />
-      </Card>
+      </section>
+      {feedback && (
+        <section className="coaching" aria-label="Wording feedback">
+          <div className="coaching-summary">
+            <span className="coaching-icon"><Icon name="info" size={23} /></span>
+            <div>
+              <h2>{checkTitle(feedback)}</h2>
+              <p>{feedback.explanation}</p>
+              <EvidenceLink
+                turns={linkedCheckTurns(data, feedback).map((turn) => turn.number)}
+                checkId={feedback.id}
+                onOpen={onOpen}
+              >
+                View wording evidence
+              </EvidenceLink>
+            </div>
+          </div>
+        </section>
+      )}
       <Coaching data={data} />
     </>
   )

@@ -214,7 +214,7 @@ export function StatusLabel({
   tone = 'neutral',
   children,
 }: {
-  tone?: 'neutral' | 'positive' | 'attention'
+  tone?: 'neutral' | 'positive' | 'attention' | 'negative'
   children: ReactNode
 }) {
   return (

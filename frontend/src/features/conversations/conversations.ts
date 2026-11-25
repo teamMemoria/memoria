@@ -1,4 +1,4 @@
-import type { ReviewRequest } from '../../types/callReview'
+import type { ReviewRequest } from '../../types/callReview.js'
 
 export const automatedResultLabels = {
   'needs-review': 'Needs review',
@@ -32,6 +32,7 @@ export const reviewRequestStatuses = {
 export type ConversationStatusFilter = keyof typeof conversationStatusLabels
 
 export type Conversation = {
+  simulationScore?: number
   sourceId?: string | null
   id: string
   topic: string
