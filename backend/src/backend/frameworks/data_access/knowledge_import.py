@@ -5,7 +5,8 @@ groups with duplicate links and matches to approved entries, possible
 conflicts, and its own verification hints. This module checks that output and
 stores it as pending for review:
 
-* only the built-in Layer 2 pilot can auto-approve source-verified facts;
+* only the built-in Layer 2 pilot can auto-approve, and only facts most calls
+  agree on (see ``agrees``); a known publisher source is attached when there is one;
 * a draft a reviewer has edited, unapproved or otherwise decided keeps its content;
 * possible conflicts go to ``knowledge_conflicts`` and never change an entry's
   status, so they stay separate from disputes a reviewer confirms.
@@ -27,6 +28,8 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from backend.entities.inferred_knowledge import Settings as AgreementSettings
+from backend.entities.inferred_knowledge import agrees
 from backend.entities.knowledge_import import (
     CONFLICT_STATUSES,
     IMPORTABLE_STATUSES,
@@ -88,6 +91,8 @@ class KnowledgeImportService:
     now: Callable[[], datetime] = utc_now
     generate: Callable[[str, list[dict]], dict] | None = None
     source_prefix: str | None = None
+    # Set to turn on automatic approval of facts the calls agree on.
+    auto_approval: AgreementSettings | None = None
 
     async def run(
         self, organization_id: str, *, requested_by: str | None = None
@@ -158,7 +163,7 @@ class KnowledgeImportService:
                 raise ImportRejectedError(
                     "The pipeline output has a value of the wrong type."
                 ) from error
-            if approver_id is not None and self.generate is not None:
+            if approver_id is not None and self.auto_approval is not None:
                 membership = await load_membership(
                     session, organization_id, approver_id
                 )
@@ -180,8 +185,7 @@ class KnowledgeImportService:
             ):
                 continue
             support, total = item["agreement"]
-            source = verification_source(draft.source_key, draft.answer_text)
-            if source is None or total < 10 or support * 10 < total * 7:
+            if not agrees(support, total, self.auto_approval):
                 continue
             if await session.scalar(
                 select(KnowledgeConflict.id)
@@ -204,14 +208,16 @@ class KnowledgeImportService:
             await session.refresh(draft, ["topic"])
             if draft.topic.disputed:
                 continue
-            _, quote, url = source
-            draft.verification_reference = {
-                "title": "ABCD guidelines",
-                "url": url,
-                "quote": quote if isinstance(quote, str) else "\n".join(quote),
-            }
+            source = verification_source(draft.source_key, draft.answer_text)
+            if source is not None:
+                _, quote, url = source
+                draft.verification_reference = {
+                    "title": "ABCD guidelines",
+                    "url": url,
+                    "quote": quote if isinstance(quote, str) else "\n".join(quote),
+                }
             entry = await approve_draft(session, draft, membership)
-            entry.approved_review.verified_reference_url = url
+            entry.approved_review.verified_reference_url = source and source[2]
             entry.approved_review.note = (
                 f"Automatically approved: {support}/{total} calls agreed."
             )

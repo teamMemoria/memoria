@@ -1,4 +1,8 @@
-"""Group corroborating claims into candidates for Manager review."""
+"""Group corroborating claims into candidates.
+
+A candidate most calls agree on is approved automatically. A Manager can still
+edit it or withdraw the approval.
+"""
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -14,6 +18,11 @@ class Settings:
 
 
 DEFAULT = Settings()
+
+
+def agrees(support: int, total: int, s: Settings = DEFAULT) -> bool:
+    """Enough calls cover the topic, and enough of them give the same value."""
+    return total >= s.min_calls and support / total >= s.agreement
 
 
 @dataclass(frozen=True)
@@ -49,10 +58,12 @@ class Topic:
     def decide(self, s: Settings) -> str:
         """``candidate``, ``conflict`` (for a manager) or ``undecided``."""
         votes, calls = self.votes(), len(self.values_by_call)
-        if calls < s.min_calls or not votes:
+        if not votes:
             return "undecided"
-        if votes[0][1] / calls >= s.agreement:
+        if agrees(votes[0][1], calls, s):
             return "candidate"
+        if calls < s.min_calls:
+            return "undecided"
         return (
             "conflict"
             if sum(n >= s.conflict_calls for _, n in votes) >= 2

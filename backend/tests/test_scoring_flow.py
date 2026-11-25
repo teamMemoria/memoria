@@ -192,6 +192,9 @@ async def test_layer2_manual_approval_and_persisted_template_assessment(
     sessions = sessions_for(session)
     settings = Settings(app_env="test", layer2_template_pilot=True)
     analysis, knowledge_import = pilot_services(sessions, settings)
+    # The fact below would be approved automatically; this test covers the
+    # Manager's own verify-and-approve path, so switch that off here.
+    knowledge_import.auto_approval = None
     app = create_app(
         create_database_providers(sessions), settings, analysis, knowledge_import
     )

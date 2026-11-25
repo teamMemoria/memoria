@@ -98,7 +98,7 @@ def draft_candidates(organization, conversations, settings: Settings, questions=
                     else f"Standard promo codes expire after {value} days.",
                     **(
                         {"agreement": (support, len(topic.values_by_call))}
-                        if verified and outcome == "candidate" and value == votes[0][0]
+                        if outcome == "candidate" and value == votes[0][0]
                         else {}
                     ),
                     "question_passages": [_passage(c, q) for c, q, _ in evidence],

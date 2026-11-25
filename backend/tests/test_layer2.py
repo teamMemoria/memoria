@@ -2,10 +2,12 @@
 
 import random
 
+import pytest
+
 import backend.data.layer2_evaluation as evaluation
 from backend.data.layer2_evaluation import answer_key, evaluate
 from backend.data.value_claims import claims, values
-from backend.entities.inferred_knowledge import Claim, Settings, learn
+from backend.entities.inferred_knowledge import Claim, Settings, agrees, learn
 
 SCOPE = ("promo_code_invalid", (), "days")
 PROMO = frozenset({"promo", "cod", "valid"})
@@ -155,3 +157,11 @@ def test_abcd_files_are_downloaded_once(tmp_path, monkeypatch):
     assert evaluation.fetch("guidelines.json").read_text() == "{}"
     evaluation.fetch("guidelines.json")
     assert downloads == [evaluation.ABCD + "guidelines.json"]
+
+
+@pytest.mark.parametrize(
+    ("support", "total", "expected"),
+    [(7, 10, True), (10, 10, True), (6, 10, False), (9, 9, False), (0, 0, False)],
+)
+def test_agreement_needs_enough_calls_and_70_percent(support, total, expected):
+    assert agrees(support, total) is expected
