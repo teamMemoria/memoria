@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.data.demo_profiles import DemoProfiles, load_profiles, profile_display_name
 from backend.data.import_conversations import placeholder_agent_id
 from backend.db.session import async_session_factory
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Conversation,
     Organization,

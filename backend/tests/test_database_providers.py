@@ -7,8 +7,8 @@ from sqlalchemy.exc import OperationalError
 
 from backend.core.auth import Permission
 from backend.core.config import Settings
+from backend.frameworks.database.models import OrganizationMembership, User, UserRole
 from backend.main import create_app
-from backend.models import OrganizationMembership, User, UserRole
 from backend.providers import (
     FixtureIdentityProvider,
     Providers,

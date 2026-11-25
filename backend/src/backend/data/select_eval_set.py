@@ -24,7 +24,13 @@ from pathlib import Path
 from sqlalchemy import func, select
 
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation, FindingCategory, Topic, Turn
+from backend.frameworks.database.models import (
+    Agent,
+    Conversation,
+    FindingCategory,
+    Topic,
+    Turn,
+)
 
 DEFAULT_OUT = Path("evaluation/scoring_template.csv")
 DEFAULT_PER_DATASET = 14

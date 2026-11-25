@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Audit,
     Conversation,

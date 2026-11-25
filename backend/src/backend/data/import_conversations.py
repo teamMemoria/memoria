@@ -28,7 +28,13 @@ from backend.data.conversation_metrics import (
 )
 from backend.data.demo_profiles import demo_agent_ids
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation, ConversationMetric, Organization, Turn
+from backend.frameworks.database.models import (
+    Agent,
+    Conversation,
+    ConversationMetric,
+    Organization,
+    Turn,
+)
 
 REQUIRED_KEYS = ("id", "source", "channel", "turns", "source_fields")
 

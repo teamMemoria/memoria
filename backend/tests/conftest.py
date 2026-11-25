@@ -11,7 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from backend.core.config import get_settings
-from backend.models.evaluation import EvaluationForm, EvaluationFormVersion
+from backend.frameworks.database.models.evaluation import (
+    EvaluationForm,
+    EvaluationFormVersion,
+)
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 SOURCE_DIR = BACKEND_DIR / "src"

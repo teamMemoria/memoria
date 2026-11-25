@@ -5,7 +5,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-import backend.models  # noqa: F401  (registers models for autogenerate)
+import backend.frameworks.database.models  # noqa: F401  (registers models for autogenerate)
 from alembic import context
 from backend.core.config import get_settings
 from backend.core.database import Base

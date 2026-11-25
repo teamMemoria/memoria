@@ -8,7 +8,7 @@ from backend.data.assign_synthetic_dates import (
     assign_synthetic_dates,
     synthetic_times,
 )
-from backend.models import Agent, Conversation, Organization
+from backend.frameworks.database.models import Agent, Conversation, Organization
 
 START = DEFAULT_START
 WEEKS = 8

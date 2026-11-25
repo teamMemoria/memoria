@@ -8,7 +8,7 @@ from backend.frameworks.data_access.organization_scope import (
     knowledge_drafts_for,
     knowledge_entries_for,
 )
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Audit,
     Conversation,

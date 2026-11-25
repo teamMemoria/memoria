@@ -13,7 +13,7 @@ from backend.data.import_conversations import (
     placeholder_agent_id,
 )
 from backend.data.seed_demo_profiles import seed_demo_profiles
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Conversation,
     Organization,

@@ -11,7 +11,7 @@ from backend.frameworks.data_access.knowledge_health import (
     mark_topic_disputed,
     resolve_knowledge_conflict,
 )
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Conversation,
     DraftStatus,

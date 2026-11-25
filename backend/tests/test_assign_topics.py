@@ -8,7 +8,7 @@ from backend.data.assign_topics import (
     topic_counts,
     topic_for,
 )
-from backend.models import Agent, Conversation, Organization, Topic
+from backend.frameworks.database.models import Agent, Conversation, Organization, Topic
 
 MAPPING = load_mapping()
 

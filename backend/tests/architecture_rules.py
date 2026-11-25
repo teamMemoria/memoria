@@ -22,7 +22,6 @@ OUTER_MODULES = (
     "sqlalchemy",
     "fastapi",
     "pydantic",
-    "backend.models",
     "backend.schemas",
     "backend.providers",
     "backend.services",

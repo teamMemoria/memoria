@@ -9,9 +9,14 @@ from backend.db.performance_trends import (
     compare_agent_performance_windows,
     get_agent_performance_trends,
 )
-from backend.models.audit import Audit, Finding, FindingCategory, FindingResult
-from backend.models.conversation import Agent, Conversation, Topic
-from backend.models.organization import Organization
+from backend.frameworks.database.models.audit import (
+    Audit,
+    Finding,
+    FindingCategory,
+    FindingResult,
+)
+from backend.frameworks.database.models.conversation import Agent, Conversation, Topic
+from backend.frameworks.database.models.organization import Organization
 
 
 def utc(year: int, month: int, day: int) -> datetime:

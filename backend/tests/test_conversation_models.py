@@ -3,7 +3,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from backend.models import Agent, Conversation, Organization, Speaker, Topic, Turn
+from backend.frameworks.database.models import (
+    Agent,
+    Conversation,
+    Organization,
+    Speaker,
+    Topic,
+    Turn,
+)
 
 
 def make_conversation(agent: Agent, original_id: str = "abc123") -> Conversation:

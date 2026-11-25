@@ -7,8 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from backend.core.config import Settings
-from backend.main import create_app
-from backend.models import (
+from backend.frameworks.database.models import (
     AgentContext,
     FeedbackFlag,
     Finding,
@@ -16,6 +15,7 @@ from backend.models import (
     ManagerReview,
     ManagerReviewOutcome,
 )
+from backend.main import create_app
 from backend.providers import create_fixture_providers
 from backend.providers.base import ConflictError
 from backend.providers.database import create_database_providers

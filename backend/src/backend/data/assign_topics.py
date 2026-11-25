@@ -22,7 +22,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.session import async_session_factory
-from backend.models import Conversation, Organization, Topic
+from backend.frameworks.database.models import Conversation, Organization, Topic
 
 DEFAULT_MAPPING = Path(__file__).with_name("topic_mapping.toml")
 
