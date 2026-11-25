@@ -36,6 +36,7 @@ it('keeps unresolved checks available without treating them as customer requests
 it('filters archived chart links to exact citations and keeps the demo read-only', async () => {
   const call = await scoredCall('completeness')
   call.assessmentSource = 'simulation'
+  call.sourceId = '7388'
   const check = call.criteria[0].scoring!.checks[0]
   Object.assign(check, { ruleId: 'completeness.direct_response', outcome: 'partial', earned: 0.5, critical: false })
   const reference = check.citations.find((citation) => citation.kind === 'reference')!
@@ -50,7 +51,12 @@ it('filters archived chart links to exact citations and keeps the demo read-only
   expect(timeline.getAllByRole('button')).toHaveLength(2)
   expect(timeline.queryByRole('button', { name: /Chart point: turn 13,/ })).toBeNull()
   const dialog = await inspect(/Confirm the required input.*Partial credit/)
-  expect(dialog.getByText(/Synthetic assumption/)).toBeTruthy()
+  expect(dialog.getByText('Call ABCD 7388')).toBeTruthy()
+  expect(dialog.getByText(reference.quote)).toBeTruthy()
+  expect(dialog.queryByText(/Synthetic assumption/)).toBeNull()
+  expect(dialog.queryByText(`Reference ${reference.reference_id}`)).toBeNull()
+  expect(dialog.queryByText('Source version')).toBeNull()
+  expect(dialog.queryByText('Agent statements do not verify system actions.')).toBeNull()
   expect(dialog.queryByText('Eligible at the recorded assessment date')).toBeNull()
   expect(screen.queryByRole('region', { name: 'Review actions' })).toBeNull()
 })

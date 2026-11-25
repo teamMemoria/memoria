@@ -20,7 +20,7 @@ it.each(categories)('opens the $id assessment from overview and renders stored e
   expect(screen.getByText('Score unavailable')).toBeTruthy()
   expect(within(screen.getByRole('list', { name: 'Call details' })).getByText(`${call.transcript!.turns.length} turns`)).toBeTruthy()
   await act(() => router.navigate(-1))
-  await screen.findByRole('heading', { name: call.topic })
+  await screen.findByRole('heading', { name: 'Call C1042', level: 1 })
   await act(() => router.navigate(1))
   await screen.findByRole('heading', { name: title, level: 1 })
 })
@@ -68,7 +68,7 @@ it.each([
 ] as const)('keeps %s distinct from ready feedback', async (status, title) => {
   await openCategory('procedure', { status, findings: [], sourceId: 'source-example' })
   expect(screen.getByRole('heading', { name: title })).toBeTruthy()
-  expect(screen.getByText(/ABCD source-example/)).toBeTruthy()
+  expect(within(screen.getByRole('list', { name: 'Call details' })).getByText(/ABCD source-example/)).toBeTruthy()
   expect(screen.queryByText('Feedback ready', { exact: true })).toBeNull()
   if (status === 'partial') expect(screen.getByText(/feedback is not ready/)).toBeTruthy()
   else expect(screen.queryByRole('navigation', { name: 'Assessment categories' })).not.toBeNull()

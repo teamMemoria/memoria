@@ -252,9 +252,7 @@ export function CheckEvidence({
       {check.citations.map((citation, index) => (
         <figure key={index} className="source-quote">
           <blockquote>{citation.quote}</blockquote>
-          <figcaption>
-            <CitationSource citation={citation} onOpen={onOpen} />
-          </figcaption>
+          <CitationSource citation={citation} onOpen={onOpen} />
         </figure>
       ))}
       {!check.citations.length && <p>No linked evidence supplied.</p>}
@@ -266,30 +264,32 @@ function CitationSource({ citation, onOpen }: {
   citation: ScoringCheck['citations'][number]
   onOpen: EvidenceHandler
 }) {
-  const conversation = citation.kind === 'conversation'
-  const referenceLabel = conversation ? null : citation.origin === 'synthetic assumptions'
-    ? 'Synthetic assumption' : citation.origin === 'ABCD publisher guidance'
-      ? 'ABCD publisher guidance' : 'Guideline/rubric section'
-  const eligibility = !conversation && !citation.origin
-  return (
-    <>
-      {conversation ? (
+  if (citation.kind === 'conversation') {
+    return (
+      <figcaption>
         <EvidenceLink turns={[citation.turn_id]} onOpen={onOpen}>
           Turn {citation.turn_id} ({citation.event_kind})
         </EvidenceLink>
-      ) : (
-        <span className="assessment-metadata">
-          <span>{referenceLabel} {citation.section_id}</span>
-          <span>Reference {citation.reference_id}</span>
-        </span>
+      </figcaption>
+    )
+  }
+  if (citation.origin === 'synthetic assumptions') return null
+  const referenceLabel = citation.origin === 'ABCD publisher guidance'
+    ? 'ABCD publisher guidance' : 'Guideline/rubric section'
+  return (
+    <figcaption>
+      <span className="assessment-metadata">
+        <span>{referenceLabel} {citation.section_id}</span>
+        <span>Reference {citation.reference_id}</span>
+      </span>
+      {!citation.origin && (
+        <details className="source-provenance">
+          <summary>Reference version and eligibility</summary>
+          <small>Version {citation.reference_version}</small>
+          <small>Eligible at the recorded assessment date</small>
+        </details>
       )}
-      <details className="source-provenance">
-        <summary>{eligibility ? 'Reference version and eligibility' : 'Source version'}</summary>
-        {conversation && <small>Source {citation.conversation_id}</small>}
-        <small>Version {conversation ? citation.transcript_version : citation.reference_version}</small>
-        {eligibility && <small>Eligible at the recorded assessment date</small>}
-      </details>
-    </>
+    </figcaption>
   )
 }
 

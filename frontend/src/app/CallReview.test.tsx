@@ -25,7 +25,7 @@ describe('Agent call review', () => {
   })
 
   it('colors the overview scores using the same rounded bands as the score bar', async () => {
-    const call = await callFixture()
+    const call = await callFixture({ sourceId: '7388', topic: 'Website' })
     call.assessmentSource = 'simulation'
     const scores = { procedure: 79.5, completeness: 59.5, 'answer-support': 59.4, 'communication-style': null }
     call.criteria = call.criteria.map((criterion) => ({
@@ -39,7 +39,11 @@ describe('Agent call review', () => {
       score: 72, coverage: 75, reason: null, weights: null, profileId: null, profileVersion: null,
     }
     openCall(call)
-    const overview = await screen.findByRole('region', { name: 'Assessment scores' })
+    await screen.findByRole('heading', { name: 'ABCD 7388', level: 1 })
+    const metadata = within(screen.getByRole('list', { name: 'Call details' }))
+    expect(metadata.getByText('Website')).toBeTruthy()
+    expect(metadata.queryByText('ABCD 7388')).toBeNull()
+    const overview = screen.getByRole('region', { name: 'Assessment scores' })
     expect(within(overview).getByText('72%').closest('[data-score-tone]')?.getAttribute('data-score-tone')).toBe('attention')
     for (const [name, tone] of [
       ['Procedure: 80%', 'positive'],
@@ -108,7 +112,7 @@ describe('Agent call review', () => {
     const search = '?q=Refund&status=feedback-ready'
     const { router } = openApp({ path: '/agent/conversations' + search })
     fireEvent.click(await screen.findByRole('link', { name: 'Open conversation C1042: Refund request' }))
-    await screen.findByRole('heading', { name: 'Damaged jacket refund' })
+    await screen.findByRole('heading', { name: 'Call C1042' })
     const feedback = screen.getByRole('region', { name: 'Automatic feedback' })
     expect(within(feedback).getByRole('link', { name: 'Procedure: Needs review' })).toBeTruthy()
     expect(within(feedback).queryByText('Text only')).toBeNull()
@@ -134,7 +138,7 @@ describe('Agent call review', () => {
     await act(() => router.navigate(1))
     await screen.findByRole('heading', { name: 'Complete conversation' })
     fireEvent.click(screen.getByRole('link', { name: 'Call overview' }))
-    await screen.findByRole('heading', { name: 'Damaged jacket refund' })
+    await screen.findByRole('heading', { name: 'Call C1042' })
     fireEvent.click(within(screen.getByRole('main')).getByRole('link', { name: 'Conversations' }))
     await screen.findByRole('table')
     expect(router.state.location.search).toBe(search)
@@ -243,12 +247,12 @@ describe('Agent call review', () => {
     expect(screen.getByText('Only the first eight turns are available.')).toBeTruthy()
     expect(screen.queryByText('I’ve verified the purchase. The jacket is eligible.')).toBeNull()
     fireEvent.click(screen.getByRole('link', { name: 'Call overview' }))
-    await screen.findByRole('heading', { name: call.topic })
+    await screen.findByRole('heading', { name: 'Call C1042' })
   })
 
   it.each([
     { path: '/agent/conversations', heading: 'My conversations', list: true },
-    { path: callPath, heading: 'Damaged jacket refund', list: false },
+    { path: callPath, heading: 'Call C1042', list: false },
     { path: findingPath, heading: 'Procedure finding', list: false },
   ])('recovers from a failed request at $path through the visible retry action', async ({ path, heading, list }) => {
     const call = await callFixture()

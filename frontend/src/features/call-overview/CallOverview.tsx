@@ -1,5 +1,5 @@
 import { conversationFilters } from '../../lib/workspaceSearch'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { AssessmentState } from '../../components/AssessmentState'
 import { formatDate } from '../../lib/dates'
 import { ResourceNotice } from '../../components/ResourceNotice'
@@ -20,6 +20,13 @@ import type {
 } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import './call-overview.css'
+
+const criterionIcons: Record<AuditCriterion['id'], ComponentProps<typeof Icon>['name']> = {
+  procedure: 'document',
+  'answer-support': 'knowledge',
+  completeness: 'checklist',
+  'communication-style': 'conversations',
+}
 
 export function CallOverview({
   viewer,
@@ -116,6 +123,7 @@ function CallContent({
   role: Viewer['role']
 }) {
   const simulation = call.assessmentSource === 'simulation'
+  const sourceId = call.sourceId ?? call.assessmentVersion?.sourceId
   const criteria = simulation
     ? categories.flatMap(({ id, title }) => {
         const criterion = call.criteria.find((item) => item.id === id)
@@ -152,8 +160,8 @@ function CallContent({
 
   return (
     <>
-      <h1>{call.topic}</h1>
-      <ConversationMetadata call={call} sourceId={call.sourceId} />
+      <h1>{sourceId ? `ABCD ${sourceId}` : `Call ${call.id}`}</h1>
+      <ConversationMetadata call={call} sourceId={sourceId} showTopic />
       {!simulation && pilotLabel(call) && <p className="metadata-line">{pilotLabel(call)}</p>}
       {!simulation && <p className="call-overview-summary">{call.summary}</p>}
       <AssessmentState call={call} transcript={transcript}>
@@ -185,12 +193,7 @@ function CallContent({
                 const cardContent = (
                   <>
                     <span className="call-criterion-marker">
-                      <Icon
-                        name={
-                          criterion.id === 'procedure' ? 'document' : 'people'
-                        }
-                        size={24}
-                      />
+                      <Icon name={criterionIcons[criterion.id]} size={24} />
                     </span>
                     <span className="call-criterion-title">
                       {criterion.title}

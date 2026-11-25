@@ -7,11 +7,13 @@
 }
 [data-slot='sheet-content'] {
   position: fixed;
-  inset: 12px 12px 12px auto;
+  inset: 50% auto auto 50%;
   z-index: 21;
   display: flex;
   flex-direction: column;
-  width: min(590px, calc(100% - 24px));
+  width: min(760px, calc(100% - 40px));
+  max-height: min(840px, calc(100dvh - 48px));
+  transform: translate(-50%, -50%);
   border: 1px solid #e1e7ef;
   border-radius: 20px;
   background: var(--color-canvas);
@@ -43,18 +45,18 @@
 .speaker-avatar--customer { background: #e8f1ea; color: #287153; }
 .source-quote blockquote { margin: 12px 0 0; font-size: 16px; line-height: 26px; }
 .selected-source-label { display: block; margin-top: 12px; color: #a25332; font-size: 10px; }
-.sheet-body .source-note { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
-.sheet-body .source-note .codicon { flex-shrink: 0; margin-top: 3px; }
+.sheet-body .source-note { font-size: 12px; }
 @media (prefers-reduced-motion: no-preference) {
   [data-slot='sheet-overlay'][data-state='open'] { animation: backdrop-in 180ms ease-out; }
   [data-slot='sheet-overlay'][data-state='closed'] { animation: backdrop-in 160ms ease-in reverse; }
-  [data-slot='sheet-content'][data-state='open'] { animation: sheet-in 320ms cubic-bezier(.22,1,.36,1); }
-  [data-slot='sheet-content'][data-state='closed'] { animation: sheet-in 180ms ease-in reverse; }
+  [data-slot='sheet-content'][data-state='open'] { animation: evidence-modal-in 240ms cubic-bezier(.22,1,.36,1); }
 }
 @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes sheet-in { from { transform: translateX(calc(100% + 24px)); opacity: 0.5; } to { transform: translateX(0); opacity: 1; } }
+@keyframes evidence-modal-in {
+  from { transform: translate(-50%, -50%) scale(.97); opacity: 0; }
+}
 @media (max-width: 500px) {
-  [data-slot='sheet-content'] { inset: 8px; width: auto; border-radius: 16px; }
+  [data-slot='sheet-content'] { width: calc(100% - 16px); max-height: calc(100dvh - 16px); border-radius: 16px; }
   [data-slot='sheet-header'] { padding: 25px 20px 20px; }
   [data-slot='sheet-title'] { font-size: 23px; }
   [data-slot='sheet-content'] > .close-dialog { top: 15px; right: 15px; }

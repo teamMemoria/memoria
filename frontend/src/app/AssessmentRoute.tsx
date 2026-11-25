@@ -143,7 +143,8 @@ function AssessmentContent({
   return (
     <div className="assessment-page">
       <Link className="detail-back inline-center" to={`${base}${search}`}>
-        {call.topic && call.topic !== 'Unassigned' ? call.topic : 'Back to conversation'}
+        <Icon name="arrowLeft" />
+        {sourceId ? `ABCD ${sourceId}` : `Call ${call.id}`}
       </Link>
       <header className="assessment-heading">
         <div className="assessment-intro">

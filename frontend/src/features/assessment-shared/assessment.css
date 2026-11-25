@@ -77,7 +77,7 @@
 .quiet-note { gap: 8px; width: 100%; margin-top: 13px; padding: 9px 11px; border-radius: 7px; background: #f5f7fb; color: var(--color-muted); font-size: 16px; line-height: 24px; text-align: left; }
 .reference-tag { gap: 6px; flex-shrink: 0; padding: 5px 8px; border-radius: 5px; background: #f2f5fa; color: var(--color-muted); font-size: 14px; }
 .quote-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 26px; margin-top: 18px; padding-top: 17px; border-top: 1px solid #edf0f5; }
-.close-dialog { width: 36px; height: 36px; border-radius: 50%; color: var(--color-muted); font-size: 27px; }
+.close-dialog { width: 36px; height: 36px; padding: 0; border-radius: 50%; color: var(--color-muted); }
 .source-reference { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--color-table-border); }
 .source-reference h3 { margin: 12px 0 7px; font-size: 16px; }
 .source-reference p { font-size: 16px; line-height: 25px; }
