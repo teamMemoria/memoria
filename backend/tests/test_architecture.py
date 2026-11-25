@@ -98,22 +98,12 @@ assert app.openapi()['paths']['/api/manager/knowledge/drafts/{draft_id}/approve'
     subprocess.run([sys.executable, "-c", code], cwd=ROOT / "backend", check=True)
 
 
-def test_ml_rules_have_no_io_dependencies():
+def test_ml_helpers_have_no_io_dependencies():
     for path in [
-        *(ROOT / "ml/rules").glob("*.py"),
         *(ROOT / "ml").glob("*.py"),
         ROOT / "ml/metrics/score.py",
     ]:
-        if path.name.startswith("test_") or (
-            path.parent == ROOT / "ml"
-            and path.name
-            in {
-                "report.py",
-                "generate_narration.py",
-                "procedure_support.py",
-                "completeness_style.py",
-            }
-        ):
+        if path.name.startswith("test_") or path.name == "generate_narration.py":
             continue
         module = ".".join(path.relative_to(ROOT).with_suffix("").parts)
         assert not violations(path.read_text(), module, layer="ml"), path
@@ -175,15 +165,3 @@ def test_review_http_uses_interactor_and_sql_does_not_construct_it():
     assert "RecordReviewDecision().execute" in route.read_text()
     assert "decision_repository" in route.read_text()
     assert "RecordReviewDecision" not in repository.read_text()
-
-
-def test_ml_compatibility_imports_have_fixed_targets():
-    for name in ("procedure_support", "completeness_style"):
-        tree = ast.parse((ROOT / "ml" / (name + ".py")).read_text())
-        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
-        assert len(calls) == 1
-        assert (
-            isinstance(calls[0].func, ast.Name) and calls[0].func.id == "import_module"
-        )
-        assert ast.literal_eval(calls[0].args[0]) == "ml.rules." + name
-        assert set(imports(ROOT / "ml" / (name + ".py"))) == {"sys", "importlib"}

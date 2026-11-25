@@ -69,7 +69,7 @@ def category(name, result, findings=(), limitations=()):
 
 
 def complete_report(request):
-    """A report in the shape run_feedback_report returns, built from the request."""
+    """Build a report in the analysis adapter format from the request."""
     [reference] = request.references
     return {
         "schema_version": 1,
