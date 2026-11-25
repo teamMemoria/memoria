@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +16,14 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = Field(
         default="production",
         validation_alias=AliasChoices("MEMORIA_APP_ENV", "app_env"),
+    )
+    cors_origins: str = Field(
+        default="",
+        validation_alias=AliasChoices("MEMORIA_CORS_ORIGINS", "cors_origins"),
+    )
+    public_demo: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("MEMORIA_PUBLIC_DEMO", "public_demo"),
     )
 
     layer2_template_pilot: bool = False
@@ -41,6 +50,32 @@ class Settings(BaseSettings):
     @property
     def dev_identity_enabled(self) -> bool:
         return self.app_env in ("development", "test")
+
+    @property
+    def demo_profile_selection_enabled(self) -> bool:
+        return self.dev_identity_enabled or self.public_demo
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        """Exact browser origins configured for the deployed frontend."""
+        origins = [
+            origin.strip().rstrip("/") for origin in self.cors_origins.split(",")
+        ]
+        for origin in filter(None, origins):
+            parsed = urlsplit(origin)
+            if (
+                parsed.scheme not in ("http", "https")
+                or not parsed.hostname
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+                or parsed.username
+                or parsed.password
+            ):
+                raise ValueError(
+                    "MEMORIA_CORS_ORIGINS must contain exact HTTP(S) origins"
+                )
+        return list(dict.fromkeys(origin for origin in origins if origin))
 
 
 @lru_cache

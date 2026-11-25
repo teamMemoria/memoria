@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Annotated
 
 import pytest
@@ -69,6 +70,71 @@ def test_dev_identity_is_disabled_in_production():
     response = make_client("production").get("/api/viewer", headers=as_user(ALEX))
     assert response.status_code == 401
     assert response.json() == {"detail": "Authentication is not configured"}
+
+
+def test_public_demo_requires_opt_in_and_only_accepts_seeded_profiles():
+    class DemoIdentities:
+        async def resolve(self, subject, organization_id=None):
+            users = {
+                "demo-agent-01": CurrentUser(
+                    "demo-agent-01", "org-northwind", DEV_IDENTITIES[ALEX].permissions
+                ),
+                "demo-manager-01": CurrentUser(
+                    "demo-manager-01", "org-northwind", DEV_IDENTITIES[MAYA].permissions
+                ),
+                "demo-unlisted": CurrentUser(
+                    "demo-unlisted", "org-northwind", DEV_IDENTITIES[MAYA].permissions
+                ),
+            }
+            user = users.get(subject)
+            if user and organization_id in (None, user.organization_id):
+                return user
+            return None
+
+    providers = replace(create_fixture_providers(), identities=DemoIdentities())
+    client = make_client("production", providers)
+    assert (
+        client.get("/api/viewer", headers=as_user("demo-agent-01")).status_code == 401
+    )
+
+    app = create_app(
+        providers=providers, settings=Settings(app_env="production", public_demo=True)
+    )
+    for permission in Permission:
+
+        def route(
+            user: Annotated[CurrentUser, Depends(require_permission(permission))],
+        ):
+            return {"userId": user.user_id}
+
+        app.get(f"/test/{permission.value}")(route)
+    client = TestClient(app)
+    assert (
+        client.get("/api/viewer", headers=as_user("demo-agent-01")).status_code == 404
+    )
+    assert client.get("/api/viewer", headers=as_user(ALEX)).status_code == 401
+    assert (
+        client.get("/api/viewer", headers=as_user("demo-unlisted")).status_code == 401
+    )
+    assert (
+        client.get(
+            "/api/viewer",
+            headers={**as_user("demo-agent-01"), "X-Organization": "org-harbor"},
+        ).status_code
+        == 401
+    )
+    assert (
+        client.get(
+            "/test/feedback:review", headers=as_user("demo-agent-01")
+        ).status_code
+        == 403
+    )
+    assert (
+        client.get(
+            "/test/feedback:review", headers=as_user("demo-manager-01")
+        ).status_code
+        == 200
+    )
 
 
 def test_settings_default_to_production(monkeypatch):

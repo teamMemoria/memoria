@@ -3,10 +3,6 @@
 import re
 from itertools import pairwise
 
-from backend.entities.policies import SOURCE_PREFIX
-
-PROMO_PREFIX = SOURCE_PREFIX + "promo-days-"
-
 
 def account_lookup(events, *, after):
     return next(

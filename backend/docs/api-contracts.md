@@ -49,13 +49,18 @@ header:
 | `approver-devon-park` | `org-northwind` | `knowledge:approve`, `knowledge:read` |
 | `agent-riley-chen` | `org-harbor` | `conversations:read-own`, `knowledge:read` |
 
-`MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every request gets `401`.
+`MEMORIA_APP_ENV` defaults to `production`, where the header is ignored and every
+request gets `401` unless `MEMORIA_PUBLIC_DEMO=true` explicitly enables the
+seeded-profile demo. In that mode, only IDs listed in `demo_profiles.toml` are
+accepted, and stored membership and route permissions still control access.
+See [deployed frontend access](deployed-frontend-access.md).
 
 ### How an identity enters the request context
 
-1. **Authentication** decides *who* is asking. A future login system will verify the user and hand
-   the backend their user ID. Until then, in development and test only, `X-Dev-User` stands in for
-   that verified ID. Nothing else in a request is treated as proof of identity.
+1. **Identity selection** decides *who* is asking. A future login system will verify the user and hand
+   the backend their user ID. In development and test, `X-Dev-User` names a development identity.
+   In the explicitly public seeded-profile demo, it names one of the listed demo profiles. This
+   demo selection is not authentication; any visitor can select a listed profile.
 2. **Authorization** decides *what they may do*, and always comes from the server. `get_current_user`
    passes the user ID to the identity provider (`Providers.identities`), which returns the
    `CurrentUser`:
@@ -362,15 +367,17 @@ with fixtures they answer `503`.
 
 What an import guarantees, each covered by `tests/test_knowledge_import.py`:
 
-- **Nothing is approved.**
+- **Pipeline output cannot approve drafts.**
   - The output is refused whole (`422`) unless:
     - the status is `ok` or `completed_with_failures`;
     - `company_id` is the requester's organization;
     - `release_checks.release_allowed` is `true`;
     - every draft is an untrusted `draft`.
   - New drafts are stored `pending`.
-  - `knowledge_entries` and `knowledge_reviews` are never written, so no entry is approved, renewed
-    (`last_confirmed_at`) or replaced, and drafts never reach the agent knowledge routes.
+  - The built-in ABCD pilot can automatically publish a fact when at least 70% of at least 10
+    distinct calls support it, its exact wording matches a published guideline, and it has no
+    unresolved conflict or duplicate. The review records the source, counts and Manager who
+    ran the import. External pipeline adapters only create pending drafts.
 - **Reviewed drafts are left alone.** A draft a reviewer has approved or rejected keeps its content
   when the pipeline sends it again.
 - **Evidence is checked and kept.**
@@ -403,8 +410,7 @@ What an import guarantees, each covered by `tests/test_knowledge_import.py`:
     between the "still pending" check and the write.
 
 No pipeline is configured by default, so the import route answers `503` until one is passed to
-`create_app(knowledge_import=KnowledgeImportService(sessions, adapter))`. Approving and rejecting
-drafts are not part of this change.
+`create_app(knowledge_import=KnowledgeImportService(sessions, adapter))` or enabled in the ABCD pilot.
 
 ## Post-call analysis
 

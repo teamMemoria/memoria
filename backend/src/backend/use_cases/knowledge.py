@@ -1,5 +1,6 @@
 """Knowledge decisions and imports with injected persistence and execution."""
 
+from collections.abc import Awaitable, Callable
 from typing import Protocol, TypeVar
 
 from backend.entities.knowledge import (
@@ -29,15 +30,11 @@ class KnowledgeInteractor:
         return await repository.save(decision)
 
 
-class ImportDataAccess(Protocol):
-    async def import_output(
-        self, organization_id: str, output: dict
-    ) -> ImportResult: ...
-
-
 class KnowledgeImportInteractor:
-    def __init__(self, repository: ImportDataAccess, run_pipeline):
-        self.repository = repository
+    def __init__(
+        self, store: Callable[[str, dict], Awaitable[ImportResult]], run_pipeline
+    ):
+        self.store = store
         self.run_pipeline = run_pipeline
 
     async def execute(self, organization_id: str) -> ImportResult:
@@ -50,4 +47,4 @@ class KnowledgeImportInteractor:
                 f"The knowledge pipeline failed with {type(error).__name__}."
             ) from error
         check_output(organization_id, output)
-        return await self.repository.import_output(organization_id, output)
+        return await self.store(organization_id, output)
