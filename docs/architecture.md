@@ -81,15 +81,9 @@ backend/src/backend/
 
 ml/
 ├── entities.py               # stable assessment vocabulary
-├── rules/
-│   ├── procedure_support.py  # existing shared recognition
-│   └── completeness_style.py
-├── scoring.py                # existing result aggregation
-├── audit.py                  # pure validation and eligibility
-├── abcd.py, references.py, citations.py, wording.py
-├── adapters/report.py        # execution limits, timing, report orchestration
-└── report.py, procedure_support.py, completeness_style.py
-                              # old import compatibility
+├── metric_categories/        # scoring catalogue and category templates
+├── metrics/                  # template preparation, scoring and Luna reviews
+└── abcd.py, references.py, citations.py, wording.py
 
 frontend/src/
 ├── types/                    # existing API/data contracts
@@ -131,7 +125,6 @@ flowchart LR
 | Knowledge eligibility mixed with writes | Pure draft state validation, injected transaction repository | Version, reference, permission, conflict/duplicate and visibility tests |
 | Assessment generation coupled to storage | Injected generation/parsing/validation; storage remains a transaction edge | Optional-engine startup, invalid report, retry and persistence tests |
 | Knowledge pipeline execution mixed with validation | Injected pipeline; pure validation; existing transactional import | Idempotency, source counts, failure and concurrency tests |
-| ML execution clock alongside rules | Clock/limits in report adapter; rules and aggregation pure | Existing benchmark/regressions unchanged |
 | Assessment screens mix display derivation with interaction | Pure presenters and controller hooks, unchanged views | Existing frontend tests, JSX/asset comparison and browser screenshots |
 
 ## Preserved boundaries and deliberate exclusions
@@ -148,15 +141,13 @@ flowchart LR
 - Existing focused review-queue, evidence and small form components remain
   components. React interaction is a valid View/Controller responsibility;
   extraction was limited to actual mixed responsibilities.
-- The two ML rule modules retain shared recognition between paired metrics.
-  Splitting them into four near-duplicates would increase coupling and risk.
 - `core/config.py`, `core/database.py`, `services/clock.py`, narration and CLI
   utilities are execution edges despite their legacy paths. Business layers
   cannot import them. Renaming every leaf is not necessary for the diagram.
 - Analysis and knowledge extraction remain optional injected capabilities.
   This branch does not import #122's scoring engine or #129's generator, change
   any rule/prompt versions, or fill missing evidence.
-- Import guards cover business layers, ML rules and presenters. They are not a
+- Import guards cover business layers, ML helpers and presenters. They are not a
   claim that every possible dynamic import or future dependency is proven safe.
 
 ## Preserved behavior
@@ -191,10 +182,7 @@ assessments. No new database migration is required by this refactor.
   this retains dependency inversion with less wiring.
 - Guards resolve relative imports, recognize common import aliases, reject
   dynamic-import escapes and flag file/environment/network/clock access. Tests
-  intentionally introduce violations to prove rejection. Fixed legacy ML
-  aliases have a separately tested exact target; their real rule modules are
-  checked normally. These are static guards, not a sandbox against arbitrary
-  Python metaprogramming.
+  intentionally introduce violations to prove rejection.
 
 ```mermaid
 flowchart LR

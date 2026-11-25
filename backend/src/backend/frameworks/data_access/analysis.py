@@ -1,9 +1,8 @@
 """Post-call analysis: start a run, call the analysis adapter, save the audit.
 
-The adapter follows the post-call feedback report contract in ``ml/report.py``
-(``run_feedback_report``): it receives one conversation's versioned evidence,
-the approved references that apply to it and the active evaluation criteria,
-and returns a report whose ``categories`` hold the four category results.
+The adapter receives an ``AnalysisRequest`` containing one conversation's versioned
+evidence, the applicable approved references and the active evaluation criteria.
+It returns a report whose ``categories`` hold the four category results.
 
 Nothing from the report is trusted until ``parse_report`` has checked it
 against the evidence that was sent. A report that is not complete, cites turns

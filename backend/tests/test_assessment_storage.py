@@ -303,9 +303,7 @@ async def test_application_starts_without_importing_any_scoring_engine(monkeypat
     real_import = builtins.__import__
 
     def reject_engine(name, *args, **kwargs):
-        if name.startswith(
-            ("ml.rule_", "ml.scoring", "ml.metrics", "ollama", "openai", "groq")
-        ):
+        if name.startswith(("ml.metrics", "ollama", "openai", "groq")):
             raise AssertionError("Unexpected scoring dependency: " + name)
         return real_import(name, *args, **kwargs)
 

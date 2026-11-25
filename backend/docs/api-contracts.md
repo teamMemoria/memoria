@@ -435,8 +435,7 @@ Concurrent starts for one conversation queue a single run: every request gets th
 
 ### The adapter
 
-The run calls an `AnalysisAdapter` with an `AnalysisRequest`, following the input and output of
-`run_feedback_report` in `ml/report.py`:
+The run calls an `AnalysisAdapter` with an `AnalysisRequest` containing:
 
 - `conversation`: `{id, transcript_version, events}`. Each event has the original turn number as
   `turn_id`, `kind` (`message` or `action`), `speaker` and `text`. `transcript_version` is a SHA-256
@@ -458,10 +457,9 @@ The audit model has one finding per category. When a report has several findings
 their explanations, suggestions and evidence turns are combined, and the first cited reference is
 linked.
 
-No adapter is configured by default, so runs fail with `analysis-unavailable` until one is passed to
-`create_app(analysis=AnalysisService(sessions, adapter))`. `run_feedback_report` currently accepts
-only prepared ABCD evidence, so connecting it needs an adapter that prepares stored conversations
-the same way.
+Analysis uses an adapter supplied through `create_app(analysis=AnalysisService(sessions, adapter))`
+or the scoring pilot when `layer2_template_pilot` and development identity are enabled. Without a
+configured adapter, a run fails with `analysis-unavailable`.
 
 Runs execute as background tasks in the API process. Any error during a run, including a report
 with values of the wrong type or a failed save, ends it as `failed` with an error code
