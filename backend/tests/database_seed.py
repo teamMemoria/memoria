@@ -19,6 +19,7 @@ from backend.models import (
     Conversation,
     DraftStatus,
     EntryStatus,
+    EvaluationCriterion,
     EvaluationForm,
     EvaluationFormVersion,
     FeedbackFlag,
@@ -363,3 +364,38 @@ async def seed(session: AsyncSession) -> Seed:
     # Providers must read what is stored, not objects cached in this session.
     session.expunge_all()
     return result
+
+
+async def scoring_data(session):
+    data = await seed(session)
+    # Used evaluation versions are immutable. Configure a fresh test-only version.
+    await session.execute(update(EvaluationFormVersion).values(is_active=False))
+    await session.flush()
+    version = EvaluationFormVersion(
+        form_id=data.form_version.form_id, version_number=2, is_active=True
+    )
+    session.add(version)
+    await session.flush()
+    data.form_version = version
+    for position, category_id in enumerate(
+        (
+            FindingCategory.PROCEDURE,
+            FindingCategory.ANSWER_SUPPORT,
+            FindingCategory.COMPLETENESS,
+            FindingCategory.COMMUNICATION,
+        ),
+        1,
+    ):
+        session.add(
+            EvaluationCriterion(
+                form_version_id=data.form_version.id,
+                position=position,
+                category=category_id,
+                name=category_id.value,
+                weight=0.25,
+                pass_threshold=0.7,
+                enabled=True,
+            )
+        )
+    await session.commit()
+    return data

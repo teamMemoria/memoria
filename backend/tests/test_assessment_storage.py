@@ -5,59 +5,30 @@ from copy import deepcopy
 import httpx
 import pytest
 from ml.test_evidence import prepared
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from backend.core.config import Settings
 from backend.main import create_app
 from backend.models import (
     AnalysisRunStatus,
     Audit,
-    EvaluationCriterion,
-    EvaluationFormVersion,
-    FindingCategory,
 )
 from backend.providers import create_fixture_providers
 from backend.providers.database import create_database_providers, with_scoring
 from backend.schemas.call_review import CallFinding
 from backend.services.analysis import AnalysisService, parse_report
 from backend.services.assessment_storage import import_prepared
-from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, SAM, seed, sessions_for
+from tests.database_seed import (
+    ALEX,
+    HARBOR,
+    MAYA,
+    NORTHWIND,
+    SAM,
+    scoring_data,
+    seed,
+    sessions_for,
+)
 from tests.test_analysis import NOW, category, conversation_citation, reference_citation
-
-
-async def scoring_data(session):
-    data = await seed(session)
-    # Used evaluation versions are immutable. Configure a fresh test-only version.
-    await session.execute(update(EvaluationFormVersion).values(is_active=False))
-    await session.flush()
-    version = EvaluationFormVersion(
-        form_id=data.form_version.form_id, version_number=2, is_active=True
-    )
-    session.add(version)
-    await session.flush()
-    data.form_version = version
-    for position, category_id in enumerate(
-        (
-            FindingCategory.PROCEDURE,
-            FindingCategory.ANSWER_SUPPORT,
-            FindingCategory.COMPLETENESS,
-            FindingCategory.COMMUNICATION,
-        ),
-        1,
-    ):
-        session.add(
-            EvaluationCriterion(
-                form_version_id=data.form_version.id,
-                position=position,
-                category=category_id,
-                name=category_id.value,
-                weight=0.25,
-                pass_threshold=0.7,
-                enabled=True,
-            )
-        )
-    await session.commit()
-    return data
 
 
 def scored_output(request):

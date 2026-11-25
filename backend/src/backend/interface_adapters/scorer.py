@@ -17,15 +17,15 @@ from backend.entities.assessments import (
     ReportRejectedError,
     WeightProfile,
 )
-from backend.entities.draft_matches import (
-    PROMO_PREFIX,
-    faq_search,
-    promo_days,
-    promo_exchange,
-)
+from backend.entities.draft_matches import faq_search, promo_days, promo_exchange
 from backend.entities.extension import extension_refusal
 from backend.entities.fulfilment import OUTCOME, REQUESTS, VALUE, recorded_outcomes
-from backend.entities.policies import EXTENSION_KEY, FAQ_KEY, GOLD_EXTENSION_KEY
+from backend.entities.policies import (
+    EXTENSION_KEY,
+    FAQ_KEY,
+    GOLD_EXTENSION_KEY,
+    PROMO_PREFIX,
+)
 from backend.entities.refund_amount import (
     REFUND_AMOUNT_CHECK,
     SUBSCRIPTION_PRICE_CHECK,

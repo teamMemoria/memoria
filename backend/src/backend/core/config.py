@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     )
 
     layer2_template_pilot: bool = False
+    layer2_luna_review: str | None = None
+    layer2_luna_followup: str | None = None
+    layer2_policy_assessments: str | None = None
     layer2_policy_questions: str | None = None
 
     knowledge_draft_threshold: int = Field(default=10, ge=1)

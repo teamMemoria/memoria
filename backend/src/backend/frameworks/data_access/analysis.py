@@ -20,6 +20,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Any
 
 from sqlalchemy import func, select
@@ -49,6 +50,8 @@ from backend.entities.assessments import (
     reuse_active_run,
     transcript_version,
 )
+from backend.entities.policies import SOURCE_PREFIX
+from backend.entities.score_policy import PercentagePolicy
 from backend.frameworks.data_access.database import (
     CATEGORY_FOR_CRITERION,
     CRITERION_FOR_CATEGORY,
@@ -65,7 +68,10 @@ from backend.frameworks.database.models import (
     EntryStatus,
     EvaluationFormVersion,
     Finding,
+    KnowledgeConflict,
+    KnowledgeDraft,
     KnowledgeEntry,
+    KnowledgeReview,
     Organization,
     Speaker,
     Topic,
@@ -104,6 +110,8 @@ class AnalysisService:
     # Engine-specific approval and point-policy validation is explicitly composed.
     # The default legacy parser cannot accept a proposed scored payload.
     report_parser: Callable[[AnalysisRequest, Any], ParsedReport] = parse_report
+    include_knowledge_provenance: bool = False
+    percentage_policy: PercentagePolicy | None = None
 
     async def _conversation(
         self, session: AsyncSession, organization_id: str, conversation_id: str
@@ -286,7 +294,9 @@ class AnalysisService:
                     ) from error
 
             interactor: AssessmentInputBoundary = AssessmentInteractor(
-                generate, self.report_parser, validate_report_payload
+                generate,
+                self.report_parser,
+                partial(validate_report_payload, policy=self.percentage_policy),
             )
             try:
                 parsed = await interactor.execute(request)
@@ -375,6 +385,15 @@ class AnalysisService:
             }
             for turn in conversation.turns
         ]
+        topic_matches = KnowledgeEntry.topic_id == conversation.topic_id
+        if self.include_knowledge_provenance:
+            # The normalized draft topic may differ from the imported call's topic.
+            # The pilot checks the supported claim and reference scope explicitly.
+            topic_matches |= KnowledgeEntry.approved_review.has(
+                KnowledgeReview.draft.has(
+                    KnowledgeDraft.source_key.startswith(SOURCE_PREFIX)
+                )
+            )
         entries = await session.scalars(
             select(KnowledgeEntry)
             .join(KnowledgeEntry.topic)
@@ -382,15 +401,47 @@ class AnalysisService:
                 Topic.disputed.is_(False),
                 KnowledgeEntry.organization_id == conversation.organization_id,
                 KnowledgeEntry.status == EntryStatus.APPROVED,
+                *([topic_matches] if conversation.topic_id is not None else []),
+            )
+            .options(
+                selectinload(KnowledgeEntry.topic),
                 *(
-                    [KnowledgeEntry.topic_id == conversation.topic_id]
-                    if conversation.topic_id is not None
+                    [
+                        selectinload(KnowledgeEntry.approved_review)
+                        .selectinload(KnowledgeReview.draft)
+                        .selectinload(KnowledgeDraft.supporting_conversations)
+                    ]
+                    if self.include_knowledge_provenance
                     else []
                 ),
             )
-            .options(selectinload(KnowledgeEntry.topic))
             .order_by(KnowledgeEntry.id)
         )
+        entries = list(entries)
+        conflicted_drafts = set()
+        if self.include_knowledge_provenance:
+            draft_ids = [
+                entry.approved_review.draft_id
+                for entry in entries
+                if (entry.approved_review.draft.source_key or "").startswith(
+                    SOURCE_PREFIX
+                )
+            ]
+            if draft_ids:
+                conflicts = await session.execute(
+                    select(
+                        KnowledgeConflict.draft_id, KnowledgeConflict.other_draft_id
+                    ).where(
+                        KnowledgeConflict.organization_id
+                        == conversation.organization_id,
+                        KnowledgeConflict.lifecycle_status == "open",
+                        (
+                            KnowledgeConflict.draft_id.in_(draft_ids)
+                            | KnowledgeConflict.other_draft_id.in_(draft_ids)
+                        ),
+                    )
+                )
+                conflicted_drafts = {draft for pair in conflicts for draft in pair}
         references = [
             {
                 "id": str(entry.id),
@@ -399,8 +450,15 @@ class AnalysisService:
                 "title": entry.topic.name,
                 "text": entry.answer_text,
                 "status": entry.status.value,
+                **(
+                    self._knowledge_provenance(entry)
+                    if self.include_knowledge_provenance
+                    else {}
+                ),
             }
             for entry in entries
+            if not self.include_knowledge_provenance
+            or entry.approved_review.draft_id not in conflicted_drafts
         ]
         criteria = [
             {
@@ -448,6 +506,19 @@ class AnalysisService:
             canonical_evidence=canonical,
         )
         return request, form_version
+
+    @staticmethod
+    def _knowledge_provenance(entry):
+        review = entry.approved_review
+        draft = review.draft
+        return {
+            "draft_source_key": draft.source_key,
+            "draft_conversation_ids": [
+                str(c.id) for c in draft.supporting_conversations
+            ],
+            "verified_reference_url": review.verified_reference_url,
+            "verification": draft.verification_reference,
+        }
 
     async def _save(
         self,

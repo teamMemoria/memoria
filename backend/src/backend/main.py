@@ -67,20 +67,16 @@ def create_app(
     app.state.providers = providers
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
+    if settings.layer2_template_pilot and settings.dev_identity_enabled:
+        from backend.frameworks.data_access.scoring_setup import pilot_services
+
+        pilot_analysis, pilot_import = pilot_services(database.sessions, settings)
+        analysis = analysis or pilot_analysis
+        knowledge_import = knowledge_import or pilot_import
     app.state.analysis = analysis or AnalysisService(database.sessions)
     app.state.assessment_runs = AssessmentRunsInteractor(
         AnalysisRunsAdapter(app.state.analysis)
     )
-    if (
-        knowledge_import is None
-        and settings.layer2_template_pilot
-        and settings.dev_identity_enabled
-    ):
-        from backend.frameworks.data_access.draft_setup import (
-            pilot_knowledge_import,
-        )
-
-        knowledge_import = pilot_knowledge_import(database.sessions, settings)
     app.state.knowledge_import = knowledge_import or KnowledgeImportService(
         database.sessions
     )

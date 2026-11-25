@@ -4,6 +4,21 @@ This is a behavior-preserving refactor. The screens, HTTP contracts, assessment
 calculations, evidence rules and human decision gates retain their existing
 behavior. It does not generate new assessments or approve real knowledge.
 
+## Template assessment and Layer 2 integration
+
+Layer 2 groups call evidence into pending drafts. The Manager flow approves independent
+sources. Scoring checks the approved source version and excludes references derived
+from the same conversation.
+
+The scorer links requests, replies, and actions, then builds the same report for local
+findings and saved Luna reviews. The backend checks citations and recalculates scores
+before saving. Agents and Managers read that saved result.
+
+Each metric uses `100 × (earned + unresolved / 2) / applicable` when evidence resolves
+at least one part. Category weights combine the four unrounded metrics. A missing metric
+leaves the overall score unavailable. Compact catalogue files expand to the original
+check conditions, source requirements, and versions before scoring.
+
 ## Dependency rule
 
 Business rules depend on ordinary Python values. Use cases depend on business
