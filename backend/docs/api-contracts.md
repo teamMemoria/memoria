@@ -349,7 +349,7 @@ Counts come from `get_agent_performance_trends` in `backend/src/backend/db/perfo
 
 ## Knowledge drafts from the pipeline
 
-`backend/src/backend/services/knowledge_import.py` stores the knowledge pipeline's output
+`backend/src/backend/frameworks/data_access/knowledge_import.py` stores the knowledge pipeline's output
 (`knowledge-pipeline/1`) for an authorized reviewer, and the routes below read it back. Every route
 needs `knowledge:approve` and is scoped to the requester's organization. Reads need the database;
 with fixtures they answer `503`.
@@ -414,7 +414,7 @@ No pipeline is configured by default, so the import route answers `503` until on
 
 ## Post-call analysis
 
-`backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result
+`backend/src/backend/frameworks/data_access/analysis.py` runs the post-call feedback report and saves its result
 as the conversation's audit. Each attempt is an `analysis_runs` row, so processing status and
 technical failures are recorded apart from any audit.
 

@@ -9,6 +9,13 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from backend.core.config import Settings
+from backend.frameworks.data_access.analysis import (
+    AlreadyAnalysedError,
+    AnalysisRequest,
+    AnalysisService,
+    RetryRequiredError,
+    parse_report,
+)
 from backend.main import create_app
 from backend.models import (
     AnalysisRun,
@@ -17,13 +24,6 @@ from backend.models import (
     EvaluationFormVersion,
 )
 from backend.providers.database import create_database_providers
-from backend.services.analysis import (
-    AlreadyAnalysedError,
-    AnalysisRequest,
-    AnalysisService,
-    RetryRequiredError,
-    parse_report,
-)
 from tests.database_seed import ALEX, MAYA, NORTHWIND, seed, sessions_for
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
