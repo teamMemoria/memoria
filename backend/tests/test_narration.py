@@ -1,6 +1,7 @@
 import hashlib
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -66,6 +67,22 @@ def test_narration_reuses_agent_and_manager_access(setup):
         assert result.headers["content-type"] == "audio/mpeg"
         assert result.headers["cache-control"] == "private, no-store"
         assert result.headers["x-narration-type"] == "synthetic"
+
+
+def test_hosted_demo_reads_narration_from_its_archive_directory(setup):
+    client, path, params, _, identity, directory = setup
+    hosted_cache = directory / "narration"
+    hosted_cache.mkdir()
+    content = store(hosted_cache, identity, b"ID3-test-hosted-narration")
+    client.app.state.demo_scorecards = SimpleNamespace(
+        call=lambda call: call, narration_directory=hosted_cache
+    )
+    for role, user in [("agent", ALEX), ("manager", MAYA)]:
+        result = client.get(
+            "/api/" + role + path, params=params, headers={"X-Dev-User": user}
+        )
+        assert result.status_code == 200
+        assert result.content == content
 
 
 @pytest.mark.parametrize("user", ["agent-sam-rivera", "agent-riley-chen"])

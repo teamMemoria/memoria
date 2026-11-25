@@ -55,6 +55,26 @@ it('groups simulation drafts and renders the document below Sources for Layer 2'
   expect(screen.getByRole('region', { name: 'Draft document viewer' })).toBeTruthy()
 })
 
+it('limits the hosted demo queue and counts to the two demo layers', async () => {
+  vi.stubEnv('VITE_DEMO_LOGIN', 'true')
+  vi.stubEnv('VITE_HOSTED_DEMO_SCORECARDS', 'true')
+  const api = createDevKnowledgeReviewApi()
+  const pending = (await api.listForManager(manager.id)).filter(({ status }) => status === 'draft')
+  pending[0] = { ...pending[0], layer: 'layer1' }
+  pending[1] = {
+    ...pending[1], layer: 'layer2',
+    title: 'What troubleshooting options can the Agent suggest when site search fails?',
+    topic: 'Site search troubleshooting',
+  }
+  openQueue({ ...api, listForManager: async () => pending })
+  await screen.findByRole('table', { name: 'Layer 1 policies' })
+  const layer2 = screen.getByRole('table', { name: 'Layer 2 drafts' })
+  expect(within(layer2).getByRole('link', { name: 'Fixing site search' })).toBeTruthy()
+  expect(within(layer2).getByRole('cell', { name: 'Website' })).toBeTruthy()
+  expect(screen.queryByRole('table', { name: 'Other drafts' })).toBeNull()
+  expect(screen.getByRole('tab', { name: 'Pending review (2)' })).toBeTruthy()
+})
+
 it('keeps tab totals, hover preview and selected status in sync', async () => {
   openQueue()
   await screen.findByRole('table')

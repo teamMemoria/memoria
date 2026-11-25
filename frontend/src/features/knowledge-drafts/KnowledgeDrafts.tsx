@@ -1,4 +1,5 @@
 import { useWorkspaceSearch } from '../../lib/workspaceSearch'
+import { hostedDemoScorecardsEnabled } from '../../lib/demoLogin'
 import { formatDate } from '../../lib/dates'
 import { useResource } from '../../lib/useResource'
 import { useCallback, useState } from 'react'
@@ -91,7 +92,10 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
   const tab = previewTab ?? selectedTab
 
 
-  const entries = state.status === 'ready' ? state.data : []
+  const drafts = state.status === 'ready' ? state.data : []
+  const entries = hostedDemoScorecardsEnabled()
+    ? drafts.filter((entry) => draftPresentation(entry.title, entry.layer).layer !== 'other')
+    : drafts
   const counts = countQueueTabs(entries)
   const visible = filterQueue(entries, { tab, query })
   const groups = (Object.keys(draftLayers) as DraftLayer[])

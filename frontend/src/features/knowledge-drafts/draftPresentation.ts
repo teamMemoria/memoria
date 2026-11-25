@@ -1,3 +1,5 @@
+import { demoScorecardsEnabled } from '../../lib/demoLogin'
+
 export const draftLayers = {
   layer1: 'Layer 1 policies',
   layer2: 'Layer 2 drafts',
@@ -49,7 +51,7 @@ const demoDrafts: Record<string, readonly [DraftLayer, string]> = {
 }
 
 export function draftPresentation(originalTitle: string, layer?: DraftLayer | null): { title: string; layer: DraftLayer } {
-  const match = import.meta.env.MODE === 'simulation' && Object.hasOwn(demoDrafts, originalTitle)
+  const match = demoScorecardsEnabled() && Object.hasOwn(demoDrafts, originalTitle)
     ? demoDrafts[originalTitle]
     : undefined
   return { title: match?.[1] ?? originalTitle, layer: layer ?? match?.[0] ?? 'other' }
@@ -76,5 +78,5 @@ const demoTopics = new Map([
 ])
 
 export function draftTopic(topic: string) {
-  return import.meta.env.MODE === 'simulation' ? demoTopics.get(topic) ?? topic : topic
+  return demoScorecardsEnabled() ? demoTopics.get(topic) ?? topic : topic
 }
