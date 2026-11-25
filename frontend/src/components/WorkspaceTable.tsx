@@ -17,7 +17,7 @@ export function WorkspaceTable({ label, caption, columns, children }: {
   return (
     <div className="conversation-table-scroll" role="region" aria-label={label} tabIndex={0}>
       <table className="conversation-table workspace-table">
-        <caption className="workspace-table-sr-only">{caption}</caption>
+        <caption className="sr-only">{caption}</caption>
         <colgroup>
           {columns.map(({ label, width }) => <col key={label} style={{ width: `${width}%` }} />)}
         </colgroup>
@@ -25,7 +25,7 @@ export function WorkspaceTable({ label, caption, columns, children }: {
           <tr>
             {columns.map(({ label, sort, hideLabel }) => (
               <th key={label} scope="col" aria-sort={sort}>
-                {hideLabel ? <span className="workspace-table-sr-only">{label}</span> : label}
+                {hideLabel ? <span className="sr-only">{label}</span> : label}
               </th>
             ))}
           </tr>

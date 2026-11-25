@@ -1,3 +1,4 @@
+import { transcriptEvidence } from '../../lib/transcriptEvidence'
 import type {
   AuditCriterion,
   CallFinding,
@@ -36,13 +37,7 @@ export function assessmentData(call: CallReview, category: CriterionId) {
       ),
     ]),
   ]
-  const turns =
-    call.transcript?.turns.filter((turn) =>
-      citedNumbers.includes(turn.number),
-    ) ?? []
-  const missingTurns = citedNumbers.filter(
-    (number) => !turns.some((turn) => turn.number === number),
-  )
+  const { turns, missing: missingTurns } = transcriptEvidence(call.transcript, citedNumbers)
   const referenceIds = [
     ...new Set(
       [

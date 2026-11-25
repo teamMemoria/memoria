@@ -28,12 +28,17 @@ export function ConversationChart({
     return () => observer.disconnect()
   }, [])
   const [hover, setHover] = useState<number | null>(null)
-  const points = turns.filter((turn) => events.includes(turn.number))
-  const total = points.reduce(
-    (sum, turn) =>
-      sum + events.filter((number) => number === turn.number).length,
-    0,
-  )
+  const byTurn = new Map<number, number>()
+  for (const turn of events) byTurn.set(turn, (byTurn.get(turn) ?? 0) + 1)
+
+  let total = 0
+  const points: { turn: TranscriptTurn; count: number }[] = []
+  for (const turn of turns) {
+    const count = byTurn.get(turn.number)
+    if (!count) continue
+    total += count
+    points.push({ turn, count: total })
+  }
   const end = Math.max(1, turns.length - 1)
   const height = 190,
     left = 38,
@@ -41,21 +46,12 @@ export function ConversationChart({
     bottom = 220
   const position = (number: number) =>
     left + (turns.findIndex((turn) => turn.number === number) / end) * width
-  const data = points.map((turn, index) => {
-    const count = points
-      .slice(0, index + 1)
-      .reduce(
-        (sum, point) =>
-          sum + events.filter((number) => number === point.number).length,
-        0,
-      )
-    return {
-      turn,
-      count,
-      x: position(turn.number),
-      y: bottom - (count / Math.max(total, 1)) * height,
-    }
-  })
+  const data = points.map(({ turn, count }) => ({
+    turn,
+    count,
+    x: position(turn.number),
+    y: bottom - (count / total) * height,
+  }))
   // Step changes are justified by retained source positions; no interpolated times or outcomes.
   const path = `M${left},${bottom} ${data.map((p) => `H${p.x} V${p.y}`).join(' ')} H${left + width}`
   const tickCount = Math.min(
@@ -162,7 +158,7 @@ export function ConversationChart({
           )}
         </>
       ) : (
-        <div className="source-chart-empty">
+        <div className="source-chart-empty grid-center">
           No supported records supplied for this chart.
         </div>
       )}

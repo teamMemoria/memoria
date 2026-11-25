@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Icon } from '../../components/Icon'
 import { Panel } from '../../components/controls'
 import {
@@ -13,6 +14,17 @@ import { queueTabFor, queueTabs } from './draftsQueue'
 
 export function KnowledgeSources({ entry }: { entry: KnowledgeDraft }) {
   const height = Math.max(88, entry.sourceConversationIds.length * 96 - 8)
+  const published = entry.status === 'approved'
+  const stages = [
+    { stage: 'draft', icon: 'document', heading: 'Draft', detail: draftPresentation(entry.title, entry.layer).title },
+    { stage: 'review', icon: 'account', heading: 'Manager review', detail: queueTabs[queueTabFor(entry)] },
+    {
+      stage: published ? 'approved' : 'locked',
+      icon: published ? 'check' : 'lock',
+      heading: 'Approved knowledge',
+      detail: published ? 'Available to assigned Agents' : 'Locked',
+    },
+  ] as const
 
   return (
     <Panel title="Sources" className="knowledge-sources">
@@ -26,7 +38,7 @@ export function KnowledgeSources({ entry }: { entry: KnowledgeDraft }) {
               <Dialog key={id}>
                 <DialogTrigger asChild>
                   <button
-                    className="knowledge-source"
+                    className="knowledge-source flex-center"
                     type="button"
                     aria-label={`View source call ${id}`}
                   >
@@ -93,42 +105,22 @@ export function KnowledgeSources({ entry }: { entry: KnowledgeDraft }) {
             )
           })}
         </svg>
-        <div className="knowledge-flow-node knowledge-flow-node--draft">
-          <Icon name="document" size={24} />
-          <span>
-            <strong>Draft</strong>
-            <span>{draftPresentation(entry.title, entry.layer).title}</span>
-          </span>
-        </div>
-        <span className="knowledge-flow-arrow" aria-hidden="true">
-          <Icon name="arrowRight" />
-        </span>
-        <div className="knowledge-flow-node knowledge-flow-node--review">
-          <Icon name="account" size={24} />
-          <span>
-            <strong>Manager review</strong>
-            <span>{queueTabs[queueTabFor(entry)]}</span>
-          </span>
-        </div>
-        <span className="knowledge-flow-arrow" aria-hidden="true">
-          <Icon name="arrowRight" />
-        </span>
-        <div
-          className={`knowledge-flow-node knowledge-flow-node--${entry.status === 'approved' ? 'approved' : 'locked'}`}
-        >
-          <Icon
-            name={entry.status === 'approved' ? 'check' : 'lock'}
-            size={24}
-          />
-          <span>
-            <strong>Approved knowledge</strong>
-            <span>
-              {entry.status === 'approved'
-                ? 'Available to assigned Agents'
-                : 'Locked'}
-            </span>
-          </span>
-        </div>
+        {stages.map(({ stage, icon, heading, detail }, index) => (
+          <Fragment key={stage}>
+            {index > 0 && (
+              <span className="knowledge-flow-arrow" aria-hidden="true">
+                <Icon name="arrowRight" />
+              </span>
+            )}
+            <div className={`knowledge-flow-node flex-center knowledge-flow-node--${stage}`}>
+              <Icon name={icon} size={24} />
+              <span>
+                <strong>{heading}</strong>
+                <span>{detail}</span>
+              </span>
+            </div>
+          </Fragment>
+        ))}
       </div>
     </Panel>
   )

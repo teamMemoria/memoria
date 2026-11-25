@@ -97,6 +97,25 @@ export type CallReview = {
   } | null
 }
 
+export const decisionOutcomes = {
+  confirmed: {
+    label: 'Confirmed',
+    description: 'The automatic feedback is correct.',
+  },
+  corrected: {
+    label: 'Corrected',
+    description: 'The feedback needs a correction, explained below.',
+  },
+  dismissed: {
+    label: 'Dismissed',
+    description: 'The feedback does not apply to this call.',
+  },
+  'cannot-assess': {
+    label: 'Cannot assess',
+    description: 'The evidence is not enough to decide.',
+  },
+} as const satisfies Record<NonNullable<CallReview['decision']>['outcome'], { label: string; description: string }>
+
 export type AgentContext = {
   text: string
   savedAt: string

@@ -106,8 +106,6 @@
 
 .sidebar-item {
   position: relative;
-  display: flex;
-  align-items: center;
   gap: 18px;
   flex-shrink: 0;
   width: calc(100% - 40px);
@@ -198,8 +196,6 @@ a.sidebar-item[aria-current='page'] {
 }
 
 .avatar {
-  display: grid;
-  place-items: center;
   width: 40px;
   height: 40px;
   border-radius: 50%;

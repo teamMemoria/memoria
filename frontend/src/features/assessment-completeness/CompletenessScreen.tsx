@@ -4,11 +4,10 @@ import { Icon } from '../../components/Icon'
 import {
   Coaching,
   EvidenceLink,
-  ScoreCard,
+  AssessmentDashboard,
   AssessmentSummary,
   Quote,
-  MaterialLimits,
-  EvidenceNotes,
+  EvidenceSection,
 } from '../assessment-shared/AssessmentElements'
 import { checkTurns, type ScreenProps } from '../assessment-shared/assessment'
 import { ConversationChart } from '../assessment-shared/ConversationChart'
@@ -23,11 +22,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
 
   return (
     <>
-      <section
-        className="dashboard-top dashboard-top--wide"
-        aria-label="Request completeness checks"
-      >
-        <ScoreCard data={data} label="Requests" />
+      <AssessmentDashboard data={data} category="completeness">
         <Card className="dashboard-card action-area request-coverage">
           <h2>Agent actions</h2>
           {!data.criterion?.scoring && (
@@ -43,7 +38,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
                 }}
               >
                 <span
-                  className={`request-icon ${index % 2 ? 'request-icon--blue' : ''}`}
+                  className={`request-icon grid-center ${index % 2 ? 'request-icon--blue' : ''}`}
                 >
                   <Icon name="document" size={23} />
                 </span>
@@ -57,7 +52,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
                   </small>
                 </span>
                 <span
-                  className={`request-state request-state--${request.state}`}
+                  className={`request-state inline-center request-state--${request.state}`}
                 >
                   {request.state}
                   {request.state === 'answered' && <Icon name="check" />}
@@ -91,7 +86,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
             </p>
           )}
           <div
-            className={`promise-note ${promises.length ? '' : 'promise-note--empty'}`}
+            className={`promise-note flex-center ${promises.length ? '' : 'promise-note--empty'}`}
           >
             <span className="promise-icon">
               <Icon name="info" size={19} />
@@ -122,14 +117,16 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
           </div>
           <p className="request-boundary">Addressed does not mean completed.</p>
         </Card>
-      </section>
-      <section className="evidence-section evidence-section--plain" aria-labelledby="completeness-evidence-title">
-        <div className="section-heading">
-          <h2 id="completeness-evidence-title">Evidence</h2>
-          <span className="card-badge">
+      </AssessmentDashboard>
+      <EvidenceSection
+        titleId="completeness-evidence-title"
+        data={data}
+        action={
+          <span className="card-badge inline-center">
             {requests.length} recognised requests, {promises.length} promises
           </span>
-        </div>
+        }
+      >
         <ConversationChart
           turns={data.call.transcript?.turns ?? []}
           events={answered.map(
@@ -146,7 +143,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
             <Quote key={turn.number} turn={turn} onOpen={onOpen} />
           ))}
         </div>
-        <div className="completion-strip">
+        <div className="completion-strip flex-center">
           <span>Customer request</span>
           <i />
           <span>
@@ -161,9 +158,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
               : 'No linked response'}
           </span>
         </div>
-        <EvidenceNotes data={data} />
-        <MaterialLimits data={data} />
-      </section>
+      </EvidenceSection>
       <Coaching data={data} />
     </>
   )

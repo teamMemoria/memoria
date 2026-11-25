@@ -46,9 +46,7 @@ export function createDevApprovedKnowledgeApi(
   }
 
   return {
-    async listForAgent(agentId) {
-      return readable(agentId)
-    },
+    listForAgent: readable,
     async getForAgent(agentId, entryId) {
       return (await readable(agentId)).find((entry) => entry.id === entryId) ?? null
     },

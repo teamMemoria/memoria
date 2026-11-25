@@ -1,13 +1,12 @@
 import type { ComponentProps } from 'react'
 import { cleanup, render, fireEvent, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterAll, afterEach, beforeAll, vi } from 'vitest'
-import { createDevConversationsApi } from '../features/conversations/devConversationsApi'
-import { agent, callFixture, deferred } from '../lib/callReview.test-data'
-import { createDevApprovedKnowledgeApi } from '../lib/devApprovedKnowledge'
-import { createDevCallApi } from '../lib/devCallApi'
-import { createDevTeamReviewApi } from '../features/review-queue/devTeamReviewApi'
-import { createDevKnowledgeReviewApi } from '../lib/devKnowledgeReview'
+import { afterEach, vi } from 'vitest'
+import { agent, callFixture, deferred } from '../test/callReview.test-data'
+import { createDevApprovedKnowledgeApi } from '../test/devApprovedKnowledge'
+import { createDevCallApi } from '../test/devCallApi'
+import { createDevConversationsApi, createDevTeamReviewApi } from '../test/devTeamReviewApi'
+import { createDevKnowledgeReviewApi } from '../test/devKnowledgeReview'
 import type { Viewer } from '../types/viewer'
 import App from './App'
 
@@ -21,21 +20,6 @@ export const manager: Viewer = {
 export const callPath = '/agent/conversations/C1042'
 export const findingPath = `${callPath}/findings/procedure-order`
 
-const originalShowModal = HTMLDialogElement.prototype.showModal
-const originalClose = HTMLDialogElement.prototype.close
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function () {
-    this.open = true
-  }
-  HTMLDialogElement.prototype.close = function () {
-    this.open = false
-    this.dispatchEvent(new Event('close'))
-  }
-})
-afterAll(() => {
-  HTMLDialogElement.prototype.showModal = originalShowModal
-  HTMLDialogElement.prototype.close = originalClose
-})
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
@@ -44,36 +28,56 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+function createTestDependencies(callApi: ReturnType<typeof createDevCallApi>, knowledgeReviewApi: ReturnType<typeof createDevKnowledgeReviewApi>) {
+  return {
+    callApi,
+    knowledgeReviewApi,
+    conversationsApi: createDevConversationsApi(callApi),
+    knowledgeApi: createDevApprovedKnowledgeApi(knowledgeReviewApi),
+    teamReviewApi: createDevTeamReviewApi(callApi),
+  }
+}
+
 export function openApp({
   path = '/',
+  as = agent,
+  fixtures = createDevCallApi(),
+  drafts = createDevKnowledgeReviewApi(),
   ...overrides
-}: Partial<ComponentProps<typeof App>> & { path?: string } = {}) {
-  const callApi = createDevCallApi()
-  const knowledgeReviewApi = createDevKnowledgeReviewApi()
+}: Partial<ComponentProps<typeof App>> & {
+  path?: string
+  as?: Viewer
+  fixtures?: ReturnType<typeof createDevCallApi>
+  drafts?: ReturnType<typeof createDevKnowledgeReviewApi>
+} = {}) {
   const router = createMemoryRouter([
     {
       path: '*',
-      element: (
-        <App
-          viewerApi={{ getViewer: async () => agent }}
-          conversationsApi={createDevConversationsApi(callApi)}
-          callApi={callApi}
-          knowledgeApi={createDevApprovedKnowledgeApi(knowledgeReviewApi)}
-          teamReviewApi={createDevTeamReviewApi(callApi)}
-          knowledgeReviewApi={knowledgeReviewApi}
-          {...overrides}
-        />
-      ),
+      element: <App {...createTestDependencies(fixtures, drafts)} viewerApi={{ getViewer: async () => as }} {...overrides} />,
     },
   ], { initialEntries: [path] })
   const view = render(<RouterProvider router={router} />)
   return { router, ...view }
 }
 
-// Radix scrolls the highlighted option; jsdom has no scrolling implementation.
-HTMLElement.prototype.scrollIntoView ??= () => {}
-
-export async function selectStatus(label: string) {
-  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Review status' }), { key: 'ArrowDown' })
+export async function chooseOption(label: string | RegExp, field: string | undefined = 'Review status') {
+  const select = await screen.findByRole('combobox', { name: field || undefined })
+  fireEvent.keyDown(select, { key: 'ArrowDown' })
   fireEvent.click(await screen.findByRole('option', { name: label }))
+}
+
+export function input(label: string, value: string) {
+  fireEvent.change(screen.getByLabelText(label), { target: { value } })
+}
+
+export function button(name: string | RegExp) {
+  return screen.getByRole<HTMLButtonElement>('button', { name })
+}
+
+export function press(name: string | RegExp, scope: Pick<typeof screen, 'getByRole'> = screen) {
+  fireEvent.click(scope.getByRole('button', { name }))
+}
+
+export function openCall(call: Awaited<ReturnType<typeof callFixture>> | null, path = callPath) {
+  return openApp({ path, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
 }

@@ -1,3 +1,6 @@
+import { conversationFilters } from '../../lib/workspaceSearch'
+import { ResourceNotice } from '../../components/ResourceNotice'
+import { transcriptEvidence } from '../../lib/transcriptEvidence'
 import { useEffect, useRef } from 'react'
 import {
   Link,
@@ -21,9 +24,7 @@ import {
   reviewRequestStatuses,
   reviewStatusLabels,
 } from '../conversations/conversations'
-import { AgentContext } from './AgentContext'
-import { FlagFeedback } from './FlagFeedback'
-import { Waveforms } from './Waveforms'
+import { AgentReviewForms } from './AgentReviewForms'
 import './procedure.css'
 
 function TranscriptTable({
@@ -49,7 +50,7 @@ function TranscriptTable({
 
   return (
     <table className="evidence-transcript">
-      <caption className="evidence-sr-only">
+      <caption className="sr-only">
         Numbered conversation turns
       </caption>
       <thead>
@@ -89,90 +90,6 @@ function TranscriptTable({
   )
 }
 
-function ConversationTimeline({
-  call,
-  selected,
-  onSelect,
-}: {
-  call: CallReview
-  selected: number | null
-  onSelect: (turn: number) => void
-}) {
-  const turns = call.transcript?.turns ?? []
-  const offered = turns.some((turn) => turn.number === 8)
-  const verified = turns.some((turn) => turn.number === 13)
-
-  if (call.id !== 'C1042' || !offered || !verified) return null
-
-  return (
-    <section
-      className="evidence-timeline-scroll"
-      aria-label="Conversation evidence map"
-      tabIndex={0}
-    >
-      <div className="evidence-timeline">
-        <p className="evidence-timeline-title">
-          Conversation timeline <Icon name="info" />
-        </p>
-        <p className="evidence-timeline-caption">
-          Illustrative waveform. Audio unavailable.
-        </p>
-        <div className="evidence-timeline-selection" aria-hidden="true" />
-        <span className="evidence-timeline-interval" aria-hidden="true" />
-        {[
-          '0:00',
-          '0:30',
-          '1:00',
-          '1:30',
-          '2:00',
-          '2:30',
-          '3:00',
-          '3:30',
-          '4:00',
-          '4:32',
-        ].map((time, index) => {
-          // Positions are a share of the 1366px design so the timeline fills the width.
-          const left = `${((index === 9 ? 1335 : 99 + index * 136.32) / 1366) * 100}%`
-          return (
-            <span key={time} aria-hidden="true">
-              <span
-                className="evidence-timeline-grid"
-                style={{ left, marginLeft: -1 }}
-              />
-              <span className="evidence-timeline-time" style={{ left }}>
-                {time}
-              </span>
-            </span>
-          )
-        })}
-        <span className="evidence-timeline-speaker">Agent</span>
-        <span className="evidence-timeline-speaker evidence-timeline-speaker--customer">
-          Customer
-        </span>
-        <Waveforms />
-        <button
-          type="button"
-          className="evidence-timeline-marker"
-          aria-pressed={selected === 8}
-          aria-controls="transcript-turn-8"
-          onClick={() => onSelect(8)}
-        >
-          Refund offered at turn 8
-        </button>
-        <button
-          type="button"
-          className="evidence-timeline-marker evidence-timeline-marker--verified"
-          aria-pressed={selected === 13}
-          aria-controls="transcript-turn-13"
-          onClick={() => onSelect(13)}
-        >
-          Purchase verified at turn 13
-        </button>
-      </div>
-    </section>
-  )
-}
-
 function ReferenceDialog({
   call,
   referenceId,
@@ -197,7 +114,7 @@ function ReferenceDialog({
   return (
     <dialog
       ref={dialog}
-      className="evidence-reference-dialog"
+      className="evidence-reference-dialog panel-frame"
       aria-labelledby="evidence-reference-title"
       onClose={onClose}
       onClick={(event) => {
@@ -234,7 +151,7 @@ function ReferenceDialog({
   )
 }
 
-function AgentProcedure({
+export function Procedure({
   viewer,
   api,
 }: {
@@ -246,15 +163,11 @@ function AgentProcedure({
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const state = useCallReview(api, viewer.id, conversationId)
-  const backParams = new URLSearchParams()
-  for (const key of ['q', 'status']) {
-    const value = params.get(key)
-    if (value) backParams.set(key, value)
-  }
+  const backParams = conversationFilters(params, false)
   const search = backParams.size ? `?${backParams}` : ''
   const overviewPath = `/agent/conversations/${encodeURIComponent(conversationId)}${search}`
   const back = (
-    <Link className="evidence-back" to={overviewPath}>
+    <Link className="evidence-back inline-center" to={overviewPath}>
       Call overview
     </Link>
   )
@@ -264,22 +177,9 @@ function AgentProcedure({
       <div className="procedure">
         {back}
         <h1>Conversation evidence</h1>
-        {state.status === 'loading' && (
-          <p role="status">Loading conversation evidence…</p>
-        )}
-        {state.status === 'error' && (
-          <Panel title="Unable to load evidence">
-            <p role="alert">
-              Conversation evidence could not be loaded. Please try again.
-            </p>
-            <Button onClick={state.retry}>Try again</Button>
-          </Panel>
-        )}
-        {state.status === 'unavailable' && (
-          <Panel title="Conversation unavailable">
-            <p>This conversation is not available in your workspace.</p>
-          </Panel>
-        )}
+        <ResourceNotice state={state} loading="Loading conversation evidence…" errorTitle="Unable to load evidence"
+          error="Conversation evidence could not be loaded. Please try again."
+          unavailableTitle="Conversation unavailable" unavailable="This conversation is not available in your workspace." />
       </div>
     )
   }
@@ -311,9 +211,8 @@ function AgentProcedure({
           ?.referenceId ?? null)
   const reference = call.references.find((entry) => entry.id === referenceId)
   const approved = reference && canReadKnowledge(reference, viewer.id)
-  const missingTurns = (finding?.evidenceTurnNumbers ?? []).filter(
-    (number) => !turns.some((turn) => turn.number === number),
-  )
+  const cited = finding?.evidenceTurnNumbers ?? []
+  const { missing: missingTurns } = transcriptEvidence(call.transcript, cited)
   const missingEvidence = !call.transcript?.complete || missingTurns.length > 0
   const evidenceLimitation = !call.transcript?.complete
     ? (call.transcript?.unavailableReason ??
@@ -321,14 +220,9 @@ function AgentProcedure({
     : missingTurns.length > 0
       ? `Cited transcript ${missingTurns.length === 1 ? 'turn' : 'turns'} ${missingTurns.join(', ')} ${missingTurns.length === 1 ? 'is' : 'are'} unavailable.`
       : 'An applicable approved reference is unavailable, disputed or stale.'
-  const excerptNumbers = new Set([
-    ...(finding?.evidenceTurnNumbers ?? []),
-    selected,
-    10,
-  ])
-  const visibleTurns = fullTranscript
-    ? turns
-    : turns.filter((turn) => excerptNumbers.has(turn.number))
+  const { turns: visibleTurns } = transcriptEvidence(
+    call.transcript, [...cited, selected ?? 0, 10], fullTranscript ? 'full' : 'selected',
+  )
   const transcriptParams = new URLSearchParams(params)
   if (selected) transcriptParams.set('turn', String(selected))
   const transcriptPath = `/agent/conversations/${encodeURIComponent(call.id)}/transcript?${transcriptParams}`
@@ -390,13 +284,6 @@ function AgentProcedure({
           )}
         </div>
       </header>
-      {!fullTranscript && (
-        <ConversationTimeline
-          call={call}
-          selected={selected}
-          onSelect={selectTurn}
-        />
-      )}
       {(missingEvidence || (!fullTranscript && !approved)) && (
         <Panel title="Cannot assess">
           <p>{evidenceLimitation}</p>
@@ -409,7 +296,7 @@ function AgentProcedure({
         }
       >
         <section
-          className="evidence-panel"
+          className="evidence-panel panel-frame"
           aria-labelledby="conversation-evidence-title"
         >
           <h2 id="conversation-evidence-title">
@@ -433,7 +320,7 @@ function AgentProcedure({
         </section>
         {finding && (
           <section
-            className="evidence-panel evidence-finding"
+            className="evidence-panel panel-frame evidence-finding"
             aria-labelledby="automatic-feedback-title"
           >
             <h2 id="automatic-feedback-title">Automatic feedback</h2>
@@ -457,7 +344,7 @@ function AgentProcedure({
                   return (
                     <li key={step.label}>
                       <span
-                        className={`evidence-step-marker${observed ? '' : ' evidence-step-marker--neutral'}`}
+                        className={`evidence-step-marker grid-center${observed ? '' : ' evidence-step-marker--neutral'}`}
                       >
                         <Icon name={observed ? 'check' : 'info'} />
                       </span>
@@ -524,26 +411,8 @@ function AgentProcedure({
           </section>
         )}
       </div>
-      {finding && api && (
-        <div className="agent-actions">
-          <AgentContext
-            api={api}
-            agentId={viewer.id}
-            conversationId={call.id}
-            saved={call.agentContext}
-            onSaved={(agentContext) => state.update({ agentContext })}
-          />
-          <FlagFeedback
-            api={api}
-            agentId={viewer.id}
-            conversationId={call.id}
-            findingId={finding.id}
-            request={call.reviewRequest}
-            onRequested={(reviewRequest) => state.update({ reviewRequest })}
-          />
-        </div>
-      )}
-      <footer className="evidence-footer">
+      {finding && api && <AgentReviewForms api={api} call={call} findingId={finding.id} update={state.update} />}
+      <footer className="evidence-footer flex-center">
         <p>
           {fullTranscript
             ? `${turns.length} ${call.transcript?.complete ? 'complete conversation' : 'available'} turns`
@@ -569,18 +438,5 @@ function AgentProcedure({
         />
       )}
     </div>
-  )
-}
-
-export function Procedure(props: {
-  viewer: Viewer
-  api: CallApi | null
-}) {
-  return props.viewer.role === 'agent' ? (
-    <AgentProcedure {...props} />
-  ) : (
-    <Panel title="Page unavailable for your role">
-      <p>Conversation evidence is available in the Agent workspace.</p>
-    </Panel>
   )
 }

@@ -1,6 +1,6 @@
 // Adapted from shadcn/ui. MIT licence: /licenses/shadcn-ui-LICENSE.txt.
 import type { ComponentProps } from 'react'
-import { Dialog as DialogPrimitive } from 'radix-ui'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Icon } from '../Icon'
 import './dialog.css'
 
@@ -20,10 +20,10 @@ export function DialogContent({
       <DialogPrimitive.Overlay className="ui-dialog-overlay" />
       <DialogPrimitive.Content
         {...props}
-        className={`ui-dialog-content ${className}`}
+        className={`ui-dialog-content panel-frame ${className}`}
       >
         {children}
-        <DialogPrimitive.Close className="ui-dialog-close" aria-label="Close">
+        <DialogPrimitive.Close className="ui-dialog-close grid-center" aria-label="Close">
           <Icon name="close" size={20} />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

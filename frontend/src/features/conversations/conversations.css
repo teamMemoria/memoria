@@ -90,18 +90,6 @@
   min-width: 0;
   gap: 0;
 }
-.conversation-sr-only,
-.conversation-filters > .field > span:first-child,
-.conversation-filters > .field > label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.conversation-date,
 .conversation-review-status {
   color: var(--color-muted);
 }

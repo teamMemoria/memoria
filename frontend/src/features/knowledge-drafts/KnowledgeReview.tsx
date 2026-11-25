@@ -1,5 +1,9 @@
+import { useSubmission } from '../../lib/useSubmission'
+import { formatTimestamp } from '../../lib/dates'
+import { ResourceNotice } from '../../components/ResourceNotice'
 import { useKnowledgeDecision } from './controller'
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useResource } from '../../lib/useResource'
+import { useCallback, useId, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import {
@@ -24,7 +28,6 @@ import {
 import {
   type KnowledgeDraft,
   type KnowledgeDraftContent,
-  type KnowledgeReviewDetail,
   type KnowledgeReviewApi,
 } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
@@ -34,18 +37,6 @@ import { KnowledgeDocument } from './KnowledgeDocument'
 import { KnowledgeDraftEditor } from './KnowledgeDraftEditor'
 import { KnowledgeSources } from './KnowledgeSources'
 import './knowledge-drafts.css'
-
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'unavailable' }
-  | ({ status: 'ready'; showApproval?: boolean } & KnowledgeReviewDetail)
-
-const decidedAtFormatter = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'UTC',
-})
 
 const sentenceSegmenter = new Intl.Segmenter('en', { granularity: 'sentence' })
 
@@ -74,7 +65,7 @@ function SavedRejection({ entry }: { entry: KnowledgeDraft }) {
         <p className="metadata-line">
           <span>{decision.managerName}</span>
           <span>
-            {decidedAtFormatter.format(new Date(decision.decidedAt))} UTC
+            {formatTimestamp(decision.decidedAt)}
           </span>
         </p>
       )}
@@ -121,32 +112,23 @@ function ReviewContent({
   const edit = canEdit && canDecide && needsDecision ? api.editDraft : undefined
   const attach = api.attachVerification
   const showDecision = entry.status !== 'approved' || Boolean(entry.duplicateOfId || entry.possibleConflicts?.length)
-  const [attaching, setAttaching] = useState(false)
-  const [attachmentError, setAttachmentError] = useState(false)
+  const { submit: attachSource, saving: attaching, failed: attachmentError } = useSubmission()
 
-  async function attachReference(event: FormEvent<HTMLFormElement>) {
+  function attachReference(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!attach || attaching) return
+    if (!attach) return
     const fields = new FormData(event.currentTarget)
-    setAttaching(true)
-    setAttachmentError(false)
-    try {
-      onDecided(await attach(managerId, entry.id, {
-        title: String(fields.get('title')),
-        url: String(fields.get('url')),
-        quote: String(fields.get('quote')),
-        version: entry.version,
-      }))
-    } catch {
-      setAttachmentError(true)
-    } finally {
-      setAttaching(false)
-    }
+    void attachSource(true, async () => onDecided(await attach(managerId, entry.id, {
+      title: String(fields.get('title')),
+      url: String(fields.get('url')),
+      quote: String(fields.get('quote')),
+      version: entry.version,
+    })))
   }
 
   const referenceLink = reference && (
     <a
-      className="knowledge-review-reference"
+      className="knowledge-review-reference inline-center"
       href={reference.url}
       target="_blank"
       rel="noreferrer"
@@ -183,7 +165,7 @@ function ReviewContent({
           <label>Source title <input name="title" required maxLength={200} /></label>
           <label>Source URL <input name="url" type="url" required maxLength={2000} /></label>
           <label>Exact policy quotation <textarea name="quote" required maxLength={500} /></label>
-          <Button type="submit" variant="secondary" disabled={attaching || saving !== null}>
+          <Button type="submit" variant="secondary" disabled={Boolean(attaching) || saving !== null}>
             {attaching ? 'Saving…' : 'Attach reference'}
           </Button>
           {attachmentError && <p role="alert">Check the policy quotation, source URL and draft version.</p>}
@@ -205,7 +187,7 @@ function ReviewContent({
             <p className="metadata-line">
               Verification reference: {reference.title}
             </p>
-            <label className="knowledge-review-check" htmlFor={verifiedId}>
+            <label className="knowledge-review-check flex-center" htmlFor={verifiedId}>
               <input
                 id={verifiedId}
                 type="checkbox"
@@ -223,7 +205,7 @@ function ReviewContent({
 
   return (
     <>
-      <header className="knowledge-review-title">
+      <header className="knowledge-review-title flex-center">
         <h1>{title}</h1>
         <StatusLabel tone={statusTone[tab]}>{queueTabs[tab]}</StatusLabel>
         {entry.status === 'approved' && decisionAllowed && (
@@ -241,7 +223,7 @@ function ReviewContent({
               {failed === 'unapprove' && (
                 <p role="alert">The draft could not be unapproved. Try again.</p>
               )}
-              <div className="knowledge-review-actions">
+              <div className="knowledge-review-actions flex-center">
                 <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
                 <Button
                   loading={saving === 'unapprove'}
@@ -290,7 +272,7 @@ function ReviewContent({
           {!preview && verification}
         </>
       )}
-      {showDecision && <Panel title="Decision" className="knowledge-review-decision">
+      {showDecision && <Panel title="Decision" className="knowledge-review-decision" hideTitle>
         {entry.duplicateOfId && (
           <p>Resolve duplicate draft {entry.duplicateOfId} before approval.</p>
         )}
@@ -303,7 +285,7 @@ function ReviewContent({
           <p>You do not have permission to approve or reject knowledge.</p>
         ) : (
           <>
-            <div className="knowledge-review-actions">
+            <div className="knowledge-review-actions flex-center">
               {approvalNote && <p id={approvalNoteId} className="metadata-line">{approvalNote}</p>}
               <Button
                 aria-describedby={approvalNote ? approvalNoteId : undefined}
@@ -379,50 +361,21 @@ export function KnowledgeReview({
   const { entryId = '' } = useParams()
   const [params] = useSearchParams()
   const search = params.size ? `?${params}` : ''
-  const [state, setState] = useState<LoadState>({ status: 'loading' })
-  const [attempt, setAttempt] = useState(0)
   const backLink = useRef<HTMLAnchorElement>(null)
-
-  function dismissApproval() {
-    setState((previous) => previous.status === 'ready' ? { ...previous, showApproval: false } : previous)
-  }
-
-  useEffect(() => {
-    let active = true
-    if (!api || viewer.role !== 'manager') return
-    void api.getForManager(viewer.id, entryId).then(
-      (detail) => {
-        if (!active) return
-        setState(
-          detail && detail.entry.id === entryId
-            ? { status: 'ready', ...detail }
-            : { status: 'unavailable' },
-        )
-      },
-      () => {
-        if (active) setState({ status: 'error' })
-      },
-    )
-    return () => {
-      active = false
-    }
-  }, [api, viewer.id, viewer.role, entryId, attempt])
-
-  if (viewer.role !== 'manager') {
-    return (
-      <Panel title="Page unavailable for your role">
-        <p>Knowledge review is available in the Manager workspace.</p>
-      </Panel>
-    )
-  }
+  const read = useCallback(async () => {
+    const detail = await api!.getForManager(viewer.id, entryId)
+    return detail?.entry.id === entryId ? { ...detail, showApproval: false } : null
+  }, [api, viewer.id, entryId])
+  const state = useResource(api ? read : null)
+  const dismissApproval = () => state.update((detail) => ({ ...detail, showApproval: false }))
 
   const back = (
-    <Link ref={backLink} className="knowledge-drafts-back" to={`/manager/knowledge${search}`}>
+    <Link ref={backLink} className="knowledge-drafts-back inline-center" to={`/manager/knowledge${search}`}>
       Knowledge drafts
     </Link>
   )
 
-  if (!api || state.status !== 'ready' || state.entry.id !== entryId) {
+  if (!api || state.status !== 'ready') {
     return (
       <div className="knowledge-drafts">
         {back}
@@ -431,30 +384,16 @@ export function KnowledgeReview({
           <Panel title="Knowledge review unavailable">
             <p>Knowledge review is not connected.</p>
           </Panel>
-        ) : state.status === 'loading' || state.status === 'ready' ? (
-          <p role="status">Loading knowledge entry…</p>
-        ) : state.status === 'error' ? (
-          <Panel title="Unable to load knowledge entry">
-            <p role="alert">The entry could not be loaded. Please try again.</p>
-            <Button
-              onClick={() => {
-                setState({ status: 'loading' })
-                setAttempt((value) => value + 1)
-              }}
-            >
-              Try again
-            </Button>
-          </Panel>
         ) : (
-          <Panel title="Entry unavailable">
-            <p>This knowledge entry is not available for review.</p>
-          </Panel>
+          <ResourceNotice state={state} loading="Loading knowledge entry…" errorTitle="Unable to load knowledge entry"
+            error="The entry could not be loaded. Please try again."
+            unavailableTitle="Entry unavailable" unavailable="This knowledge entry is not available for review." />
         )}
       </div>
     )
   }
 
-  const { entry, canDecide, canEdit } = state
+  const { entry, canDecide, canEdit, showApproval } = state.data
   return (
     <div className="knowledge-drafts knowledge-review">
       {back}
@@ -466,7 +405,7 @@ export function KnowledgeReview({
         canDecide={canDecide}
         canEdit={canEdit}
         onDecided={(decided) =>
-          setState((previous) => previous.status === 'ready' && previous.entry.id === decided.id
+          state.update((previous) => previous.entry.id === decided.id
             ? {
                 ...previous,
                 entry: decided,
@@ -478,7 +417,7 @@ export function KnowledgeReview({
             : previous)
         }
       />
-      <Dialog open={Boolean(state.showApproval)} onOpenChange={(open) => { if (!open) dismissApproval() }}>
+      <Dialog open={showApproval} onOpenChange={(open) => { if (!open) dismissApproval() }}>
         <DialogContent
           className="knowledge-approval-dialog"
           onCloseAutoFocus={(event) => {
@@ -486,7 +425,7 @@ export function KnowledgeReview({
             backLink.current?.focus({ preventScroll: true })
           }}
         >
-          <span className="knowledge-approval-icon"><Icon name="check" size={28} /></span>
+          <span className="knowledge-approval-icon grid-center"><Icon name="check" size={28} /></span>
           <DialogTitle>Approved</DialogTitle>
           <DialogDescription>Agents can now see this in their Knowledge Base.</DialogDescription>
           <Button onClick={dismissApproval}>Done</Button>

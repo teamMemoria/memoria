@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useWorkspaceSearch } from '../../lib/workspaceSearch'
+import { formatDate } from '../../lib/dates'
+import { useResource } from '../../lib/useResource'
+import { useCallback, useState } from 'react'
+import { Link } from 'react-router'
 import { CountBar } from '../../components/CountBar'
 import { WorkspaceTable } from '../../components/WorkspaceTable'
 import { Button, Panel, Tabs, TextField } from '../../components/controls'
 import type { KnowledgeDraft, KnowledgeReviewApi } from '../../types/knowledge'
 import type { Viewer } from '../../types/viewer'
-import { formatKnowledgeDate } from '../approved-knowledge/knowledge'
 import { draftLayers, draftPresentation, draftTopic, type DraftLayer } from './draftPresentation'
 import {
   countQueueTabs,
@@ -17,11 +19,6 @@ import {
 import './knowledge-drafts.css'
 
 type Props = { viewer: Viewer; api: KnowledgeReviewApi | null }
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; entries: KnowledgeDraft[] }
-
 function DraftTable({ entries, caption, search, showSources = true }: {
   entries: KnowledgeDraft[]
   caption: string
@@ -45,7 +42,7 @@ function DraftTable({ entries, caption, search, showSources = true }: {
           <tr key={entry.id}>
             <td>
               <Link to={path}>{title}</Link>
-              <span className="knowledge-drafts-sr-only">{entry.id}</span>
+              <span className="sr-only">{entry.id}</span>
             </td>
             <td>{draftTopic(entry.topic)}</td>
             {showSources && (
@@ -54,7 +51,7 @@ function DraftTable({ entries, caption, search, showSources = true }: {
                 {entry.sourceConversationIds.length === 1 ? 'source' : 'sources'}
               </td>
             )}
-            <td>{formatKnowledgeDate(entry.updatedAt)}</td>
+            <td>{formatDate(entry.updatedAt)}</td>
             <td>
               <Link to={path} aria-label={`Review ${title}`}>
                 Review
@@ -67,38 +64,10 @@ function DraftTable({ entries, caption, search, showSources = true }: {
   )
 }
 
-function useKnowledgeQueue(api: KnowledgeReviewApi | null, viewer: Viewer) {
-  const [state, setState] = useState<LoadState>({ status: 'loading' })
-  const [attempt, setAttempt] = useState(0)
-
-  // Reloads on every visit so counts reflect decisions made elsewhere.
-  useEffect(() => {
-    let active = true
-    if (!api || viewer.role !== 'manager') return
-    void api.listForManager(viewer.id).then(
-      (entries) => {
-        if (active) setState({ status: 'ready', entries })
-      },
-      () => {
-        if (active) setState({ status: 'error' })
-      },
-    )
-    return () => {
-      active = false
-    }
-  }, [api, viewer.id, viewer.role, attempt])
-
-  function retry() {
-    setState({ status: 'loading' })
-    setAttempt((value) => value + 1)
-  }
-
-  return { state, retry }
-}
-
 export function KnowledgeDrafts({ viewer, api }: Props) {
-  const [params, setParams] = useSearchParams()
-  const { state, retry } = useKnowledgeQueue(api, viewer)
+  const { params, filter: setParam, query, search } = useWorkspaceSearch({ tab: 'pending' })
+  const read = useCallback(() => api!.listForManager(viewer.id), [api, viewer.id])
+  const state = useResource(api ? read : null)
   const [generating, setGenerating] = useState(false)
   const [generationMessage, setGenerationMessage] = useState('')
   const [previewTab, setPreviewTab] = useState<QueueTab | null>(null)
@@ -110,7 +79,7 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
     try {
       const result = await api.generateDrafts(viewer.id)
       setGenerationMessage(`New drafts: ${result.created}. Skipped: ${result.skipped.length}.`)
-      retry()
+      state.retry()
     } catch {
       setGenerationMessage('Draft generation could not finish.')
     } finally {
@@ -120,31 +89,9 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
   const requestedTab = params.get('tab')
   const selectedTab: QueueTab = isQueueTab(requestedTab) ? requestedTab : 'pending'
   const tab = previewTab ?? selectedTab
-  const query = params.get('q') ?? ''
-  const search = params.size ? `?${params}` : ''
 
-  function setParam(key: 'tab' | 'q', value: string) {
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous)
-        if (value && !(key === 'tab' && value === 'pending'))
-          next.set(key, value)
-        else next.delete(key)
-        return next
-      },
-      { replace: true },
-    )
-  }
 
-  if (viewer.role !== 'manager') {
-    return (
-      <Panel title="Page unavailable for your role">
-        <p>Knowledge drafts are available in the Manager workspace.</p>
-      </Panel>
-    )
-  }
-
-  const entries = state.status === 'ready' ? state.entries : []
+  const entries = state.status === 'ready' ? state.data : []
   const counts = countQueueTabs(entries)
   const visible = filterQueue(entries, { tab, query })
   const groups = (Object.keys(draftLayers) as DraftLayer[])
@@ -157,9 +104,9 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
 
   const list = visible.length ? (
     showLayers ? (
-      <div className="knowledge-draft-groups">
+      <div className="knowledge-draft-groups grid-layout">
         {groups.map(({ layer, entries: groupEntries }) => (
-          <section className="knowledge-draft-group" key={layer} aria-labelledby={`draft-group-${layer}`}>
+          <section className="knowledge-draft-group grid-layout" key={layer} aria-labelledby={`draft-group-${layer}`}>
             <header>
               <h2 id={`draft-group-${layer}`}>{draftLayers[layer]}</h2>
               <span className="metadata-line">
@@ -209,7 +156,7 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
           <p role="alert">
             Knowledge drafts could not be loaded. Please try again.
           </p>
-          <Button onClick={retry}>Try again</Button>
+          <Button onClick={state.retry}>Try again</Button>
         </Panel>
       ) : (
         <>
@@ -239,12 +186,13 @@ export function KnowledgeDrafts({ viewer, api }: Props) {
               label: `${queueTabs[value]} (${counts[value]})`,
               content:
                 value === tab ? (
-                  <div className="knowledge-drafts-results">
+                  <div className="knowledge-drafts-results grid-layout">
                     <div role="search" aria-label="Find knowledge entries">
                       <TextField
                         id="knowledge-drafts-search"
                         type="search"
                         label="Search knowledge entries"
+                        hideLabel
                         placeholder="Search drafts"
                         value={query}
                         onChange={(event) => setParam('q', event.target.value)}

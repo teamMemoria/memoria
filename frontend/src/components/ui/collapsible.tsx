@@ -1,5 +1,5 @@
 // Adapted from shadcn/ui. MIT licence: /licenses/shadcn-ui-LICENSE.txt.
-import { Collapsible as CollapsiblePrimitive } from 'radix-ui'
+import * as CollapsiblePrimitive from '@radix-ui/react-collapsible'
 
 export const Collapsible = CollapsiblePrimitive.Root
 export const CollapsibleTrigger = CollapsiblePrimitive.Trigger

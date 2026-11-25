@@ -1,3 +1,4 @@
+import { TranscriptNotice } from '../../components/TranscriptNotice'
 import type { ReactNode } from 'react'
 import { Card } from '../../components/ui/card'
 import { Icon } from '../../components/Icon'
@@ -40,7 +41,7 @@ export function EvidenceLink({
 }) {
   return (
     <button
-      className="source-link"
+      className="source-link inline-center"
       onClick={(event) => {
         event.currentTarget.focus()
         onOpen(turns, referenceId, section, checkId)
@@ -72,7 +73,28 @@ export function ItemEvidence({
   )
 }
 
-export function ScoreCard({
+const dashboards = {
+  procedure: { label: 'Procedure checks', score: 'Procedure checks', visual: 'half', layout: 'three procedure-top' },
+  'answer-support': { label: 'Answer support checks', score: 'Answer support', visual: 'number', layout: 'wide' },
+  completeness: { label: 'Request completeness checks', score: 'Requests', visual: 'ring', layout: 'wide' },
+  'communication-style': { label: 'Communication wording checks', score: 'Clarity & respect', visual: 'wording', layout: 'three communication-top' },
+} as const
+
+export function AssessmentDashboard({ data, category, children }: {
+  data: AssessmentData
+  category: keyof typeof dashboards
+  children: ReactNode
+}) {
+  const { label, score, visual, layout } = dashboards[category]
+  return (
+    <section className={`dashboard-top dashboard-top--${layout}`} aria-label={label}>
+      <ScoreCard data={data} label={score} visual={visual} />
+      {children}
+    </section>
+  )
+}
+
+function ScoreCard({
   data,
   label,
   visual = 'ring',
@@ -94,10 +116,10 @@ export function ScoreCard({
   const scoreText = available ? percentage(scoring!.score) : '—'
   return (
     <Card
-      className={`dashboard-card score-area ${visual === 'wording' ? 'score-area--wording' : ''} ${available ? '' : 'score-area--unavailable'}`}
+      className={`dashboard-card score-area flex-center ${visual === 'wording' ? 'score-area--wording' : ''} ${available ? '' : 'score-area--unavailable'}`}
     >
-      <div className="card-eyebrow">{label}</div>
-      <div className="score-measurement">
+      <div className="card-eyebrow flex-center">{label}</div>
+      <div className="score-measurement flex-center">
         {visual === 'number' ? (
           <div className="big-score">
             <span aria-label={scoreLabel}>{scoreText}</span>
@@ -108,37 +130,11 @@ export function ScoreCard({
             role="img"
             aria-label={scoreLabel}
           >
-            {visual === 'half' ? (
-              <svg viewBox="0 0 240 152" aria-hidden="true">
-                <path
-                  className="gauge-track"
-                  d="M24 126 A96 96 0 0 1 216 126"
-                />
-                {available && (
-                  <path
-                    className="gauge-value"
-                    pathLength="100"
-                    strokeDasharray={`${scoring!.score} 100`}
-                    d="M24 126 A96 96 0 0 1 216 126"
-                  />
-                )}
-              </svg>
-            ) : (
-              <svg viewBox="0 0 200 200" aria-hidden="true">
-                <circle className="gauge-track" cx="100" cy="100" r="83" />
-                {available && (
-                  <circle
-                    className="gauge-value gauge-value--circle"
-                    pathLength="100"
-                    strokeDasharray={`${scoring!.score} 100`}
-                    cx="100"
-                    cy="100"
-                    r="83"
-                  />
-                )}
-              </svg>
-            )}
-            <div className="gauge-copy">
+            <svg viewBox={visual === 'half' ? '0 0 240 152' : '0 0 200 200'} aria-hidden="true">
+              <GaugeShape half={visual === 'half'} />
+              {available && <GaugeShape half={visual === 'half'} score={scoring!.score!} />}
+            </svg>
+            <div className="gauge-copy flex-center">
               <strong>{scoreText}</strong>
               {!available && <span>{scoreLabel}</span>}
             </div>
@@ -162,6 +158,14 @@ export function ScoreCard({
       </div>
     </Card>
   )
+}
+
+function GaugeShape({ half, score }: { half: boolean; score?: number }) {
+  const sweep = score === undefined ? {} : { pathLength: 100, strokeDasharray: `${score} 100` }
+  const className = score === undefined ? 'gauge-track' : half ? 'gauge-value' : 'gauge-value gauge-value--circle'
+  return half
+    ? <path className={className} d="M24 126 A96 96 0 0 1 216 126" {...sweep} />
+    : <circle className={className} cx="100" cy="100" r="83" {...sweep} />
 }
 
 export function Quote({
@@ -249,34 +253,53 @@ export function CheckEvidence({
         <figure key={index} className="source-quote">
           <blockquote>{citation.quote}</blockquote>
           <figcaption>
-            {citation.kind === 'conversation' ? (
-              <>
-                <EvidenceLink turns={[citation.turn_id]} onOpen={onOpen}>
-                  Turn {citation.turn_id} ({citation.event_kind})
-                </EvidenceLink>
-                <details className="source-provenance">
-                  <summary>Source version</summary>
-                  <small>Source {citation.conversation_id}</small>
-                  <small>Version {citation.transcript_version}</small>
-                </details>
-              </>
-            ) : (
-              <>
-                <span className="assessment-metadata">
-                  <span>{citation.origin === 'synthetic assumptions' ? 'Synthetic assumption' : citation.origin === 'ABCD publisher guidance' ? 'ABCD publisher guidance' : 'Guideline/rubric section'} {citation.section_id}</span>
-                  <span>Reference {citation.reference_id}</span>
-                </span>
-                <details className="source-provenance">
-                  <summary>{citation.origin ? 'Source version' : 'Reference version and eligibility'}</summary>
-                  <small>Version {citation.reference_version}</small>
-                  {!citation.origin && <small>Eligible at the recorded assessment date</small>}
-                </details>
-              </>
-            )}
+            <CitationSource citation={citation} onOpen={onOpen} />
           </figcaption>
         </figure>
       ))}
       {!check.citations.length && <p>No linked evidence supplied.</p>}
+    </details>
+  )
+}
+
+function CitationSource({ citation, onOpen }: {
+  citation: ScoringCheck['citations'][number]
+  onOpen: EvidenceHandler
+}) {
+  const conversation = citation.kind === 'conversation'
+  const referenceLabel = conversation ? null : citation.origin === 'synthetic assumptions'
+    ? 'Synthetic assumption' : citation.origin === 'ABCD publisher guidance'
+      ? 'ABCD publisher guidance' : 'Guideline/rubric section'
+  const eligibility = !conversation && !citation.origin
+  return (
+    <>
+      {conversation ? (
+        <EvidenceLink turns={[citation.turn_id]} onOpen={onOpen}>
+          Turn {citation.turn_id} ({citation.event_kind})
+        </EvidenceLink>
+      ) : (
+        <span className="assessment-metadata">
+          <span>{referenceLabel} {citation.section_id}</span>
+          <span>Reference {citation.reference_id}</span>
+        </span>
+      )}
+      <details className="source-provenance">
+        <summary>{eligibility ? 'Reference version and eligibility' : 'Source version'}</summary>
+        {conversation && <small>Source {citation.conversation_id}</small>}
+        <small>Version {conversation ? citation.transcript_version : citation.reference_version}</small>
+        {eligibility && <small>Eligible at the recorded assessment date</small>}
+      </details>
+    </>
+  )
+}
+
+export function MoreChecks({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <details className={`more-checks ${className}`}>
+      <summary className="more-checks-toggle" aria-label="Additional checks" title="Additional checks">
+        <Icon name="chevronDown" size={20} />
+      </summary>
+      {children}
     </details>
   )
 }
@@ -295,13 +318,13 @@ export function CheckList({
   const row = (check: ScoringCheck) => (
     <button
       key={check.id}
-      className={`check-row check-row--${check.outcome === 'breach' ? 'attention' : check.outcome}`}
+      className={`check-row flex-center check-row--${check.outcome === 'breach' ? 'attention' : check.outcome}`}
       onClick={(event) => {
         event.currentTarget.focus()
         onOpen(checkTurns(check), undefined, undefined, check.id)
       }}
     >
-      <span className="check-symbol">
+      <span className="check-symbol grid-center grid-center">
         <Icon
           name={check.outcome === 'supported' ? 'check' : 'info'}
           size={17}
@@ -325,17 +348,33 @@ export function CheckList({
     <div className="procedure-checks">
       {ordered.slice(0, visible).map(row)}
       {ordered.length > visible && (
-        <details className="more-checks">
-          <summary className="more-checks-toggle" aria-label="Additional checks" title="Additional checks">
-            <Icon name="chevronDown" size={20} />
-          </summary>
-          {ordered.slice(visible).map(row)}
-        </details>
+        <MoreChecks>{ordered.slice(visible).map(row)}</MoreChecks>
       )}
       {!checks.length && (
         <p className="card-subtitle">No individual checks supplied.</p>
       )}
     </div>
+  )
+}
+
+export function EvidenceSection({ data, titleId, action, children, afterNotes }: {
+  data: AssessmentData
+  titleId: string
+  action?: ReactNode
+  children: ReactNode
+  afterNotes?: ReactNode
+}) {
+  return (
+    <section className="evidence-section evidence-section--plain" aria-labelledby={titleId}>
+      <div className="section-heading flex-center">
+        <h2 id={titleId}>Evidence</h2>
+        {action}
+      </div>
+      {children}
+      <EvidenceNotes data={data} />
+      {afterNotes}
+      <MaterialLimits data={data} />
+    </section>
   )
 }
 
@@ -365,7 +404,6 @@ export function EvidenceRows({
           </div>
         ))}
       </div>
-      <EvidenceNotes data={data} />
     </>
   )
 }
@@ -375,7 +413,7 @@ export function MaterialLimits({ data }: { data: AssessmentData }) {
   if (!scoring) return null
   if (scoring.processingError)
     return (
-      <p role="alert" className="quiet-note">
+      <p role="alert" className="quiet-note flex-center">
         Processing error: {scoring.processingError}. This is not an Agent
         performance result.
       </p>
@@ -414,21 +452,21 @@ export function Coaching({ data }: { data: AssessmentData }) {
   if (data.call.assessmentSource === 'simulation' && !suggestions.length) return null
 
   return (
-    <section
-      className={`coaching ${suggestions.length ? '' : 'coaching--empty'}`}
-      aria-label="How to improve"
-    >
+    <CoachingNotice title="How to improve" empty={!suggestions.length}>
+      {!suggestions.length && <p>No recommendation recorded.</p>}
+      {suggestions.map((finding) => <p key={finding.id}>{finding.suggestion}</p>)}
+    </CoachingNotice>
+  )
+}
+
+export function CoachingNotice({ title, label = title, empty, children }: {
+  title: string; label?: string; empty?: boolean; children: ReactNode
+}) {
+  return (
+    <section className={`coaching ${empty ? 'coaching--empty' : ''}`} aria-label={label}>
       <div className="coaching-summary">
-        <span className="coaching-icon">
-          <Icon name="info" size={23} />
-        </span>
-        <div>
-          <h2>How to improve</h2>
-          {!suggestions.length && <p>No recommendation recorded.</p>}
-          {suggestions.map((finding) => (
-            <p key={finding.id}>{finding.suggestion}</p>
-          ))}
-        </div>
+        <span className="coaching-icon grid-center"><Icon name="info" size={23} /></span>
+        <div><h2>{title}</h2>{children}</div>
       </div>
     </section>
   )
@@ -437,20 +475,14 @@ export function Coaching({ data }: { data: AssessmentData }) {
 export function EvidenceNotes({ data }: { data: AssessmentData }) {
   return (
     <>
-      {!data.call.transcript?.complete && (
-        <p className="quiet-note">
-          {data.call.transcript?.unavailableReason ||
-            'The complete transcript is unavailable.'}{' '}
-          Missing evidence does not establish an Agent error.
-        </p>
-      )}
+      <TranscriptNotice transcript={data.call.transcript} className="quiet-note flex-center" />
       {data.missingTurns.length > 0 && (
-        <p className="quiet-note">
+        <p className="quiet-note flex-center">
           Cited passages unavailable: {data.missingTurns.join(', ')}.
         </p>
       )}
       {!data.turns.length && (
-        <p className="quiet-note">
+        <p className="quiet-note flex-center">
           No transcript passages are linked to this category.
         </p>
       )}

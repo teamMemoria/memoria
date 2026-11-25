@@ -75,10 +75,10 @@ export function TranscriptWaveform({
     ) ?? data[0]
   return (
     <>
-      <div className="section-heading waveform-heading">
+      <div className="section-heading flex-center waveform-heading">
         <h2 id="communication-evidence-title">Evidence</h2>
         <div className="waveform-tools">
-          <span className="chart-legend">
+          <span className="chart-legend inline-center">
             <i />
             Agent
             <span className="legend-customer" />
@@ -87,7 +87,7 @@ export function TranscriptWaveform({
             Action
           </span>
           {!voiceOnByDefault && <button
-            className="waveform-voice"
+            className="waveform-voice inline-center"
             aria-pressed={audio.enabled}
             aria-label={audio.enabled ? 'Mute demo voice' : 'Enable demo voice'}
             disabled={!!audio.unavailable}
@@ -121,7 +121,7 @@ export function TranscriptWaveform({
           {data.map((turn) => (
             <button
               key={turn.number}
-              className={`waveform-turn waveform-turn--${turn.speaker === 'System action' ? 'action' : turn.speaker.toLowerCase()} ${turn.number === active?.number ? 'waveform-turn--active' : ''} ${turn.number === selected ? 'waveform-turn--selected' : ''}`}
+              className={`waveform-turn flex-center waveform-turn--${turn.speaker === 'System action' ? 'action' : turn.speaker.toLowerCase()} ${turn.number === active?.number ? 'waveform-turn--active' : ''} ${turn.number === selected ? 'waveform-turn--selected' : ''}`}
               data-turn={turn.number}
               data-speaking={turn.number === audio.speaking}
               style={
@@ -147,7 +147,7 @@ export function TranscriptWaveform({
               }}
               onClick={() => selectTurn(turn)}
             >
-              <span className="waveform-bars" aria-hidden="true">
+              <span className="waveform-bars flex-center" aria-hidden="true">
                 {turn.words.map((word, index) => (
                   <i
                     key={index}
@@ -193,7 +193,7 @@ export function TranscriptWaveform({
           </EvidenceLink>
         </div>
       ) : (
-        <p className="quiet-note">Transcript unavailable.</p>
+        <p className="quiet-note flex-center">Transcript unavailable.</p>
       )}
     </>
   )

@@ -102,3 +102,35 @@ a {
     line-height: 30px;
   }
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+}
+.inline-center {
+  display: inline-flex;
+  align-items: center;
+}
+.grid-center {
+  display: grid;
+  place-items: center;
+}
+.grid-layout {
+  display: grid;
+  min-width: 0;
+}
+.panel-frame {
+  border: 1px solid var(--color-border);
+  border-radius: var(--panel-radius);
+}

@@ -4,12 +4,11 @@ import { Icon } from '../../components/Icon'
 import { Card } from '../../components/ui/card'
 import {
   Coaching,
-  ScoreCard,
+  AssessmentDashboard,
   EvidenceLink,
   AssessmentSummary,
   CheckList,
-  EvidenceNotes,
-  MaterialLimits,
+  EvidenceSection,
   Quote,
 } from '../assessment-shared/AssessmentElements'
 import {
@@ -28,16 +27,12 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
 
   return (
     <>
-      <section
-        className="dashboard-top dashboard-top--three procedure-top"
-        aria-label="Procedure checks"
-      >
-        <ScoreCard data={data} label="Procedure checks" visual="half" />
+      <AssessmentDashboard data={data} category="procedure">
         <Card className={`dashboard-card finding-card${hasDeduction ? ' finding-card--attention' : ''}`}>
-          <div className="card-eyebrow">
+          <div className="card-eyebrow flex-center">
             {featured ? 'Finding' : 'Assessment'}
             {featured && (
-              <span className={`card-badge procedure-finding-status--${featured.outcome}`}>
+              <span className={`card-badge inline-center procedure-finding-status--${featured.outcome}`}>
                 {checkLabels[featured.outcome]}
               </span>
             )}
@@ -74,7 +69,7 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
           ) : (
             <div className="procedure-checks">
               {steps.map((step, index) => (
-                <div className="check-row" key={index}>
+                <div className="check-row flex-center" key={index}>
                   <span>
                     <strong>{step.label}</strong>
                     <small>{step.note}</small>
@@ -108,11 +103,8 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
             </div>
           )}
         </Card>
-      </section>
-      <section className="evidence-section evidence-section--plain" aria-labelledby="procedure-evidence-title">
-        <div className="section-heading">
-          <h2 id="procedure-evidence-title">Evidence</h2>
-        </div>
+      </AssessmentDashboard>
+      <EvidenceSection titleId="procedure-evidence-title" data={data}>
         <ConversationChart
           turns={data.call.transcript?.turns ?? []}
           events={actions.map((turn) => turn.number)}
@@ -136,12 +128,12 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
             return (
               <button
                 key={turn.number}
-                className="timeline-event"
+                className="timeline-event grid-layout"
                 aria-pressed={activeTurn?.number === turn.number}
                 onClick={() => setActiveNumber(turn.number)}
               >
                 <time>{turn.time ?? `Turn ${turn.number}`}</time>
-                <span className="timeline-point">
+                <span className="timeline-point grid-center">
                   <Icon name="document" size={15} />
                 </span>
                 <strong className="check-excerpt">
@@ -152,7 +144,7 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
           })}
         </div>
         {activeTurn && (
-          <div className="timeline-preview" aria-live="polite">
+          <div className="timeline-preview flex-center" aria-live="polite">
             <span className="timeline-preview-time">
               {activeTurn.time ?? `Turn ${activeTurn.number}`}
               <small>{activeTurn.speaker}</small>
@@ -165,9 +157,7 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
             </EvidenceLink>
           </div>
         )}
-        <EvidenceNotes data={data} />
-        <MaterialLimits data={data} />
-      </section>
+      </EvidenceSection>
       <Coaching data={data} />
     </>
   )

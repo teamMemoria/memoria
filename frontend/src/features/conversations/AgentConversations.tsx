@@ -1,15 +1,12 @@
+import { ConversationFilters, NoMatchingConversations } from './ConversationFilters'
 import { useConversations } from './controller'
-import { MemoriaSelectField } from '../../components/ui/select'
 import { useState, type CSSProperties } from 'react'
-import { Link } from 'react-router'
-import { WorkspaceTable } from '../../components/WorkspaceTable'
+import { ConversationTable } from './ConversationTable'
 import {
   Button,
   Panel,
   StatusLabel,
-  TextField,
 } from '../../components/controls'
-import { percentage } from '../../types/callReview'
 import type { Viewer } from '../../types/viewer'
 import {
   automatedResultLabels,
@@ -20,7 +17,7 @@ import {
   type ConversationsApi,
 } from './conversations'
 import { ConversationScoreBar } from './ConversationScoreBar'
-import { rankByScore, scoreBandFrom, scoreColumns, scoreOptions, type ScoreBand } from './scoreBands'
+import { rankByScore, scoreBandFrom, type ScoreBand } from './scoreBands'
 import './conversations.css'
 
 const filters = Object.entries(conversationStatusLabels)
@@ -48,7 +45,7 @@ export function AgentConversations({
   api: ConversationsApi | null
   simulation?: boolean
 }) {
-  const { state, setLoaded, setAttempt, previewStatus, setPreviewStatus, query, status, requestedStatus, search, changeFilter, setParams } = useConversations(viewer, api)
+  const { state, previewStatus, setPreviewStatus, query, status, requestedStatus, search, changeFilter, setParams } = useConversations(viewer, api)
   const [previewBand, setPreviewBand] = useState<ScoreBand | null>(null)
   const selectedBand = simulation ? scoreBandFrom(requestedStatus) : null
 
@@ -65,19 +62,14 @@ export function AgentConversations({
           : 'Conversation data is not connected.'}
       </p>
       {api && (
-        <Button
-          onClick={() => {
-            setLoaded({ api, agentId: viewer.id, status: 'loading' })
-            setAttempt((value) => value + 1)
-          }}
-        >
+        <Button onClick={state.retry}>
           Try again
         </Button>
       )}
     </Panel>
   )
 
-  const records = state.status === 'ready' ? state.records : []
+  const records = state.status === 'ready' ? state.data : []
   const matches = filterConversations(records, {
     query,
     status: simulation ? 'all' : previewStatus ?? status,
@@ -167,44 +159,19 @@ export function AgentConversations({
           </div>
         </section>
       )}
-      <div
-        className="conversation-filters"
-        role="search"
-        aria-label="Find conversations"
-      >
-        <TextField
-          id="conversation-search"
-          label="Search calls"
-          type="search"
-          placeholder={simulation ? 'Search by call, agent or topic' : 'Search calls'}
-          value={query}
-          onChange={(event) => changeFilter('q', event.target.value, true)}
-          disabled={state.status !== 'ready'}
-        />
-        {simulation ? (
-          <MemoriaSelectField
-            id="conversation-score"
-            label="Overall score"
-            value={selectedBand ?? 'all'}
-            onValueChange={selectScoreBand}
-            disabled={state.status !== 'ready'}
-            options={scoreOptions}
-          />
-        ) : (
-          <MemoriaSelectField
-            id="conversation-status"
-            label="Review status"
-            value={status}
-            onValueChange={(value) => changeFilter('status', value)}
-            disabled={state.status !== 'ready'}
-            options={filters}
-          />
-        )}
-      </div>
+      <ConversationFilters
+        simulation={simulation}
+        query={query}
+        value={simulation ? selectedBand ?? 'all' : status}
+        statusOptions={filters}
+        disabled={state.status !== 'ready'}
+        onSearch={(value) => changeFilter('q', value, true)}
+        onSelect={simulation ? selectScoreBand : (value) => changeFilter('status', value)}
+      />
       {state.status === 'loading' && (
         <p role="status">Loading your conversations…</p>
       )}
-      {state.status === 'error' && error}
+      {(state.status === 'error' || state.status === 'unavailable') && error}
       {state.status === 'ready' &&
         (records.length === 0 ? (
           <Panel title="No conversations yet">
@@ -212,65 +179,38 @@ export function AgentConversations({
           </Panel>
         ) : (
           <>
-            <p className="conversation-sr-only" role="status">
-              {visible.length}{' '}
-              {visible.length === 1 ? 'conversation' : 'conversations'} shown
-            </p>
-            <WorkspaceTable
+            <ConversationTable
+              rows={visible}
               label="Conversations table"
               caption={simulation ? 'Your conversations.' : 'Your conversations, newest first. Needs review is an automated assessment, not a submitted Manager review request.'}
-              columns={simulation ? scoreColumns : reviewColumns}
-            >
-              {visible.map((conversation) => (
-                <tr key={conversation.id}>
+              scored={simulation}
+              columns={reviewColumns}
+              link={(conversation) => ({
+                className: 'conversation-open',
+                to: `/agent/conversations/${encodeURIComponent(conversation.id)}${search}`,
+                'aria-label': simulation ? `Open ABCD ${conversation.sourceId}` : `Open conversation ${conversation.id}: ${conversation.topic}`,
+              })}
+              details={(conversation) => (
+                <>
+                  <td>{conversation.topic}</td>
+                  <td>{conversation.agentName}</td>
                   <td>
-                    <Link
-                      className="conversation-open"
-                      to={`/agent/conversations/${encodeURIComponent(conversation.id)}${search}`}
-                      aria-label={simulation ? `Open ABCD ${conversation.sourceId}` : `Open conversation ${conversation.id}: ${conversation.topic}`}
-                    >
-                      {conversation.sourceId ? `ABCD ${conversation.sourceId}` : conversation.id}
-                    </Link>
+                    <StatusLabel tone={resultTones[conversation.automatedResult]}>
+                      {automatedResultLabels[conversation.automatedResult]}
+                    </StatusLabel>
                   </td>
-                  {simulation ? (
-                    <>
-                      <td>{conversation.agentName}</td>
-                      <td>{conversation.topic}</td>
-                      <td>{percentage(conversation.simulationScore)}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td>{conversation.topic}</td>
-                      <td>{conversation.agentName}</td>
-                      <td>
-                        <StatusLabel tone={resultTones[conversation.automatedResult]}>
-                          {automatedResultLabels[conversation.automatedResult]}
-                        </StatusLabel>
-                      </td>
-                      <td className="conversation-review-status">
-                        {conversation.reviewStatus
-                          ? reviewStatusLabels[conversation.reviewStatus]
-                          : 'Not ready'}
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-            </WorkspaceTable>
+                  <td className="conversation-review-status">
+                    {conversation.reviewStatus ? reviewStatusLabels[conversation.reviewStatus] : 'Not ready'}
+                  </td>
+                </>
+              )}
+            />
             {visible.length === 0 && (
-              <Panel title="No matching conversations">
-                <p>{simulation ? 'Try another search or score range.' : 'Try another search or review status.'}</p>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setPreviewStatus(null)
-                    setPreviewBand(null)
-                    setParams({})
-                  }}
-                >
-                  Clear filters
-                </Button>
-              </Panel>
+              <NoMatchingConversations scored={simulation} onClear={() => {
+                setPreviewStatus(null)
+                setPreviewBand(null)
+                setParams({})
+              }} />
             )}
           </>
         ))}

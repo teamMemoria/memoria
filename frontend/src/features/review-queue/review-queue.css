@@ -20,8 +20,6 @@
   color: var(--color-muted);
 }
 .review-queue-back {
-  display: inline-flex;
-  align-items: center;
   gap: 12px;
   justify-self: start;
 }

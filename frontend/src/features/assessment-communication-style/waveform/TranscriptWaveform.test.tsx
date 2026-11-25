@@ -61,6 +61,19 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+function narration(agent: 'masculine' | 'feminine' = 'masculine', customer: 'masculine' | 'feminine' = 'feminine') {
+  const { result, unmount } = renderHook(() => useTranscriptSpeech(turns, agent, customer, load))
+  return {
+    current: () => result.current,
+    toggle: () => action(() => result.current.toggle(turns[0])),
+    preview: (turn: TranscriptTurn, immediate = false) => action(() => result.current.preview(turn, immediate)),
+    unmount,
+  }
+}
+
+const tick = (ms: number) => action(() => vi.advanceTimersByTime(ms))
+const emit = (type: string) => action(() => player.dispatchEvent(new Event(type)))
+
 describe('natural hover narration', () => {
   it('keeps casting separate from identity facts', () => {
     expect(voiceAssignment('James', 'feminine')).toEqual({
@@ -74,86 +87,70 @@ describe('natural hover narration', () => {
     expect(voiceAssignment('Alex', 'masculine').matched).toBe(false)
   })
   it('stays silent until enabled and uses exact masked text and role-specific mock voices', async () => {
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => {
-      result.current.preview(turns[0])
-      vi.advanceTimersByTime(500)
-    })
+    const voice = narration()
+    await voice.preview(turns[0])
+    await tick(500)
     expect(load).not.toHaveBeenCalled()
-    await action(() => result.current.toggle(turns[0]))
+    await voice.toggle()
     expect(load.mock.calls[0].slice(0, 2)).toEqual([turns[0], 'af_heart'])
-    expect(result.current.speaking).toBe(1)
-    await action(() => result.current.preview(turns[2]))
-    await action(() => vi.advanceTimersByTime(299))
+    expect(voice.current().speaking).toBe(1)
+    await voice.preview(turns[2])
+    await tick(299)
     expect(load).toHaveBeenCalledTimes(1)
-    await action(() => vi.advanceTimersByTime(1))
+    await tick(1)
     expect(load.mock.calls[1].slice(0, 2)).toEqual([turns[2], 'am_michael'])
-    expect(result.current.speaking).toBe(3)
+    expect(voice.current().speaking).toBe(3)
     expect(window.Audio).toHaveBeenCalledTimes(1)
   })
   it('uses Bella and Fenrir for the other assigned role voices', async () => {
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'feminine', 'masculine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
-    await action(() => result.current.preview(turns[2], true))
+    const voice = narration('feminine', 'masculine')
+    await voice.toggle()
+    await voice.preview(turns[2], true)
     expect(load.mock.calls.map((call) => call[1])).toEqual([
       'am_fenrir',
       'af_bella',
     ])
   })
   it('does not restart delays, queue dialogue or replay finished passages on movement', async () => {
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
-    await action(() => result.current.preview(turns[2]))
-    await action(() => vi.advanceTimersByTime(150))
-    await action(() => result.current.preview(turns[2]))
-    await action(() => vi.advanceTimersByTime(150))
-    await action(() => player.dispatchEvent(new Event('ended')))
+    const voice = narration()
+    await voice.toggle()
+    await voice.preview(turns[2])
+    await tick(150)
+    await voice.preview(turns[2])
+    await tick(150)
+    await emit('ended')
     const calls = play.mock.calls.length
-    await action(() => {
-      result.current.preview(turns[2])
-      vi.advanceTimersByTime(500)
-    })
+    await voice.preview(turns[2])
+    await tick(500)
     expect(load).toHaveBeenCalledTimes(2)
     expect(play).toHaveBeenCalledTimes(calls)
-    expect(result.current.speaking).toBeNull()
+    expect(voice.current().speaking).toBeNull()
   })
   it('taps start pending previews immediately and repeat visits reuse only matching cached blobs', async () => {
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
-    await action(() => result.current.preview(turns[2]))
-    await action(() => result.current.preview(turns[2], true))
-    expect(result.current.speaking).toBe(3)
-    await action(() => result.current.preview(turns[0], true))
+    const voice = narration()
+    await voice.toggle()
+    await voice.preview(turns[2])
+    await voice.preview(turns[2], true)
+    expect(voice.current().speaking).toBe(3)
+    await voice.preview(turns[0], true)
     expect(load).toHaveBeenCalledTimes(2)
-    expect(result.current.speaking).toBe(1)
+    expect(voice.current().speaking).toBe(1)
     expect(URL.revokeObjectURL).toHaveBeenCalled()
   })
   it('stops on actions and never requests their audio', async () => {
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
-    await action(() => result.current.preview(turns[1], true))
+    const voice = narration()
+    await voice.toggle()
+    await voice.preview(turns[1], true)
     expect(load).toHaveBeenCalledTimes(1)
-    expect(result.current.speaking).toBeNull()
+    expect(voice.current().speaking).toBeNull()
   })
   it('rejects changed canonical text before requesting a clip', async () => {
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
+    const voice = narration()
     await action(() =>
-      result.current.toggle({ ...turns[0], text: 'Invented wording' }),
+      voice.current().toggle({ ...turns[0], text: 'Invented wording' }),
     )
     expect(load).not.toHaveBeenCalled()
-    expect(result.current.error).toContain('unavailable for this passage')
+    expect(voice.current().error).toContain('unavailable for this passage')
   })
   it('aborts stale fetches and ignores late network results after switching turns', async () => {
     let resolve: (value: Blob) => void = () => {}
@@ -163,71 +160,63 @@ describe('natural hover narration', () => {
           resolve = done
         }),
     )
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
+    const voice = narration()
+    await voice.toggle()
     const signal = load.mock.calls[0][2]
-    await action(() => result.current.preview(turns[2], true))
+    await voice.preview(turns[2], true)
     expect(signal.aborted).toBe(true)
     const calls = play.mock.calls.length
     await action(() => resolve(blob()))
     expect(play).toHaveBeenCalledTimes(calls)
-    expect(result.current.speaking).toBe(3)
+    expect(voice.current().speaking).toBe(3)
   })
   it('reports missing audio and invalid blobs with a retry state instead of another voice', async () => {
     load.mockRejectedValueOnce(new Error('Not prepared'))
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
-    expect(result.current.enabled).toBe(false)
-    expect(result.current.error).toContain('Not prepared')
+    const voice = narration()
+    await voice.toggle()
+    expect(voice.current().enabled).toBe(false)
+    expect(voice.current().error).toContain('Not prepared')
     load.mockResolvedValueOnce(new Blob(['not audio'], { type: 'text/plain' }))
-    await action(() => result.current.toggle(turns[0]))
-    expect(result.current.error).toContain('Invalid narration')
-    await action(() => result.current.toggle(turns[0]))
-    expect(result.current.error).toBe('')
-    expect(result.current.speaking).toBe(1)
+    await voice.toggle()
+    expect(voice.current().error).toContain('Invalid narration')
+    await voice.toggle()
+    expect(voice.current().error).toBe('')
+    expect(voice.current().speaking).toBe(1)
   })
   it('does not report speaking during loading, buffering, pause or after completion', async () => {
     play.mockResolvedValue(undefined)
-    const { result } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
-    expect(result.current.speaking).toBeNull()
-    await action(() => player.dispatchEvent(new Event('playing')))
-    expect(result.current.speaking).toBe(1)
-    await action(() => player.dispatchEvent(new Event('waiting')))
-    expect(result.current.speaking).toBeNull()
-    await action(() => player.dispatchEvent(new Event('playing')))
-    await action(() => player.dispatchEvent(new Event('pause')))
-    expect(result.current.speaking).toBeNull()
+    const voice = narration()
+    await voice.toggle()
+    expect(voice.current().speaking).toBeNull()
+    await emit('playing')
+    expect(voice.current().speaking).toBe(1)
+    await emit('waiting')
+    expect(voice.current().speaking).toBeNull()
+    await emit('playing')
+    await emit('pause')
+    expect(voice.current().speaking).toBeNull()
   })
   it('stops on Escape, window blur, hidden tabs, mute and unmount', async () => {
-    const { result, unmount } = renderHook(() =>
-      useTranscriptSpeech(turns, 'masculine', 'feminine', load),
-    )
-    await action(() => result.current.toggle(turns[0]))
+    const voice = narration()
+    await voice.toggle()
     await action(() =>
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })),
     )
-    expect(result.current.speaking).toBeNull()
-    await action(() => result.current.preview(turns[0], true))
+    expect(voice.current().speaking).toBeNull()
+    await voice.preview(turns[0], true)
     await action(() => window.dispatchEvent(new Event('blur')))
-    expect(result.current.speaking).toBeNull()
-    await action(() => result.current.preview(turns[0], true))
+    expect(voice.current().speaking).toBeNull()
+    await voice.preview(turns[0], true)
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
     await action(() => document.dispatchEvent(new Event('visibilitychange')))
-    expect(result.current.speaking).toBeNull()
-    await action(() => result.current.toggle(turns[0]))
-    expect(result.current.enabled).toBe(false)
-    await action(() => result.current.toggle(turns[0]))
-    await action(() => result.current.preview(turns[2]))
+    expect(voice.current().speaking).toBeNull()
+    await voice.toggle()
+    expect(voice.current().enabled).toBe(false)
+    await voice.toggle()
+    await voice.preview(turns[2])
     const calls = load.mock.calls.length
-    unmount()
-    await action(() => vi.advanceTimersByTime(500))
+    voice.unmount()
+    await tick(500)
     expect(load).toHaveBeenCalledTimes(calls)
     expect(player.getAttribute('src')).toBeNull()
   })
@@ -250,7 +239,7 @@ describe('natural hover narration', () => {
       ),
     )
     await action(() => fireEvent.mouseMove(short))
-    await action(() => vi.advanceTimersByTime(300))
+    await tick(300)
     expect(load).toHaveBeenCalledTimes(2)
     expect(select).not.toHaveBeenCalled()
     fireEvent.mouseLeave(short)
