@@ -25,9 +25,16 @@ class DraftDecisionState:
     has_conflict: bool
     duplicate: bool
     authored_policy_version: str | None = None
+    approved: bool = False
 
 
 def validate_decision(draft: DraftDecisionState, decision: KnowledgeInput):
+    if decision.outcome == "unapproved":
+        if not draft.approved or decision.version != draft.version:
+            raise KnowledgeDecisionRejected(
+                "Draft changed or is no longer approved. Reload before reviewing."
+            )
+        return
     if not draft.pending or decision.version != draft.version:
         raise KnowledgeDecisionRejected(
             "Draft changed or already decided. Reload before reviewing."

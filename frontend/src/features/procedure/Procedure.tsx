@@ -255,7 +255,6 @@ function AgentProcedure({
   const overviewPath = `/agent/conversations/${encodeURIComponent(conversationId)}${search}`
   const back = (
     <Link className="evidence-back" to={overviewPath}>
-      <Icon name="arrowLeft" />
       Call overview
     </Link>
   )
@@ -377,7 +376,7 @@ function AgentProcedure({
             : `${call.criteria.find((criterion) => criterion.id === finding?.criterionId)?.title ?? 'Audit'} finding`}
         </h1>
         <div className="metadata-line" role="group" aria-label="Call details">
-          <span>Call {call.id}</span>
+          <span>{call.assessmentSource === 'simulation' ? `ABCD ${call.sourceId}` : `Call ${call.id}`}</span>
           {fullTranscript ? (
             <>
               <span>{call.agentName}</span>

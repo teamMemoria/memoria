@@ -188,6 +188,25 @@ export function createDevKnowledgeReviewApi(): DevKnowledgeReviewApi {
       } satisfies Partial<KnowledgeDraft>)
       return structuredClone(entry)
     },
+    async unapprove(managerId, entryId, version) {
+      const { canDecide } = manager(managerId)
+      const entry = saved.find((item) => item.id === entryId)
+      if (!canDecide || entry?.status !== 'approved' || entry.version !== version) {
+        throw new Error('This entry cannot be unapproved.')
+      }
+      const now = new Date().toISOString()
+      Object.assign(entry, {
+        status: 'draft',
+        version: now,
+        approvedAt: null,
+        approvedBy: null,
+        effectiveAt: null,
+        source: null,
+        updatedAt: now,
+        decision: null,
+      } satisfies Partial<KnowledgeDraft>)
+      return structuredClone(entry)
+    },
     async listApproved() {
       return structuredClone(saved.filter((entry) => entry.status === 'approved'))
     },

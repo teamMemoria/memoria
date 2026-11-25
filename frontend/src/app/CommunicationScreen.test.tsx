@@ -15,6 +15,7 @@ it('selects canonical wording turns without presenting the text graphic as recor
         .hasAttribute('disabled'),
     ).toBe(true)
     expect(screen.queryByText('Voice settings')).toBeNull()
+    expect(screen.queryByText('Text only')).toBeNull()
     expect(screen.queryByText(/Generated speech from masked text/)).toBeNull()
     expect(document.querySelectorAll('.waveform-turn').length).toBe(
       call.transcript!.turns.length,

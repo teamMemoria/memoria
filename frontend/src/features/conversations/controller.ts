@@ -25,8 +25,9 @@ export function useConversations(viewer: Viewer, api: ConversationsApi | null) {
     useState<ConversationStatusFilter | null>(null)
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
+  const requestedStatus = params.get('status')
   const status = (filters.find(
-    ([value]) => value === params.get('status'),
+    ([value]) => value === requestedStatus,
   )?.[0] ?? 'all') as ConversationStatusFilter
   const search = params.size ? `?${params}` : ''
   const state = !api
@@ -70,5 +71,5 @@ export function useConversations(viewer: Viewer, api: ConversationsApi | null) {
     )
   }
 
-  return { state, setLoaded, setAttempt, previewStatus, setPreviewStatus, query, status, search, changeFilter, setParams }
+  return { state, setLoaded, setAttempt, previewStatus, setPreviewStatus, query, status, requestedStatus, search, changeFilter, setParams }
 }

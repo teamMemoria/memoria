@@ -1,4 +1,5 @@
 import type { KnowledgeDraft, KnowledgeEntry } from '../../types/knowledge'
+import { draftLayers, draftPresentation, draftTopic } from './draftPresentation'
 
 export const queueTabs = {
   pending: 'Pending review',
@@ -42,13 +43,14 @@ export function filterQueue(
 ) {
   const search = query.trim().toLowerCase()
   return entries
-    .filter(
-      (entry) =>
-        queueTabFor(entry) === tab &&
-        [entry.id, entry.title, entry.topic]
-          .join(' ')
-          .toLowerCase()
-          .includes(search),
-    )
+    .filter((entry) => {
+      if (queueTabFor(entry) !== tab) return false
+      const { title, layer } = draftPresentation(entry.title, entry.layer)
+      const layerLabel = layer === 'other' ? '' : draftLayers[layer]
+      return [entry.id, entry.title, entry.question, entry.topic, title, draftTopic(entry.topic), layerLabel]
+        .join(' ')
+        .toLowerCase()
+        .includes(search)
+    })
     .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt))
 }

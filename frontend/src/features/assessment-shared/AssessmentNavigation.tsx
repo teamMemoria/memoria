@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { NavLink } from 'react-router'
 import { categories } from './assessment'
+import { percentage } from '../../types/callReview'
 import type { CallReview } from '../../types/callReview'
 
 function positionSelection(navigation: HTMLElement) {
@@ -48,6 +49,7 @@ export function AssessmentNavigation({
   call: CallReview
 }) {
   const navigation = useRef<HTMLElement>(null)
+  const simulation = call.assessmentSource === 'simulation'
 
   useLayoutEffect(() => {
     const element = navigation.current!
@@ -84,19 +86,25 @@ export function AssessmentNavigation({
     >
       <span className="metric-selection" aria-hidden="true" />
       {categories.map((item, index) => {
-        const result = call.criteria.find(
+        const criterion = call.criteria.find(
           (criterion) => criterion.id === item.id,
-        )?.result
+        )
         return (
           <NavLink key={item.id} to={`${base}/assessments/${item.id}${search}`}>
-            <span className="metric-number" aria-hidden="true">
-              0{index + 1}
-            </span>
+            {!simulation && (
+              <span className="metric-number" aria-hidden="true">
+                0{index + 1}
+              </span>
+            )}
             {item.title}
-            <span
-              className={`metric-dot metric-dot--${result ?? 'unavailable'}`}
-              aria-hidden="true"
-            />
+            {simulation ? (
+              <span className="metric-tab-score">{percentage(criterion?.scoring?.score, '—')}</span>
+            ) : (
+              <span
+                className={`metric-dot metric-dot--${criterion?.result ?? 'unavailable'}`}
+                aria-hidden="true"
+              />
+            )}
           </NavLink>
         )
       })}

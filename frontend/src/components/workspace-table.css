@@ -1,0 +1,55 @@
+.workspace-table-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.conversation-table-scroll {
+  position: relative;
+  overflow-x: auto;
+  padding: 3px;
+  margin: -3px;
+}
+.conversation-table {
+  width: 100%;
+  min-width: 1136px;
+  border-collapse: separate;
+  table-layout: fixed;
+  text-align: left;
+}
+.conversation-table td:last-child {
+  color: var(--color-link);
+}
+.conversation-table th,
+.conversation-table td {
+  padding: 0 8px 0 0;
+  border-bottom: 1px solid var(--color-table-border);
+  overflow-wrap: anywhere;
+}
+.conversation-table th:first-child,
+.conversation-table td:first-child {
+  padding-left: 16px;
+}
+.conversation-table th {
+  height: 48px;
+  color: var(--color-muted);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.conversation-table td {
+  height: 64px;
+}
+.conversation-table tbody tr {
+  position: relative;
+}
+.conversation-table tbody tr:hover {
+  background: #f2f5fb;
+}
+.conversation-table.workspace-table td {
+  height: auto;
+  padding-block: 16px;
+  vertical-align: middle;
+}

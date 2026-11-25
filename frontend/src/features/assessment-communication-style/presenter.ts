@@ -1,8 +1,8 @@
-import { checkTurns, featuredChecks, type AssessmentData } from '../assessment-shared/assessment'
+import { featuredChecks, type AssessmentData } from '../assessment-shared/assessment'
 
-export function presentCommunication(data: AssessmentData, selected: number | undefined) {
+export function presentCommunication(data: AssessmentData) {
   const checks = featuredChecks(data.checks).filter(
-    (check) => check.outcome === 'supported' || check.outcome === 'breach',
+    (check) => ['supported', 'partial', 'breach'].includes(check.outcome),
   )
   const phrases = checks
     .flatMap((check) =>
@@ -24,8 +24,5 @@ export function presentCommunication(data: AssessmentData, selected: number | un
             other.quote === citation.quote,
         ) === index,
     )
-  const selectedCheck = checks.find((check) =>
-    checkTurns(check).includes(selected ?? -1),
-  )
-  return { checks, phrases, selectedCheck }
+  return { checks, phrases }
 }

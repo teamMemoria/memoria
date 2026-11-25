@@ -48,6 +48,37 @@ describe('Manager review queue', () => {
     expect(router.state.location.search).toBe('')
   })
 
+  it('sorts the demo by overall score and shares its filter between the bar and dropdown', async () => {
+    vi.stubEnv('MODE', 'simulation')
+    try {
+      const api = createDevTeamReviewApi()
+      const [example] = await api.listForManager(manager.id)
+      const records = [82.1, 43, 82.4].map((simulationScore, index) => ({
+        ...example,
+        id: `demo-${index}`,
+        sourceId: String(9901 + index),
+        flag: null,
+        simulationScore,
+      }))
+      openApp({ path, viewerApi: asManager, teamReviewApi: { ...api, listForManager: async () => records } })
+      await screen.findByRole('table')
+      expect(calls()).toEqual(['ABCD 9903', 'ABCD 9901', 'ABCD 9902'])
+
+      const dropdown = screen.getByRole('combobox', { name: 'Overall score' })
+      expect(dropdown.textContent).toContain('All scores')
+      fireEvent.keyDown(dropdown, { key: 'ArrowDown' })
+      fireEvent.click(await screen.findByRole('option', { name: 'Below 60%' }))
+      expect(calls()).toEqual(['ABCD 9902'])
+      expect(screen.getByRole('button', { name: 'Below 60% (1)' }).getAttribute('aria-pressed')).toBe('true')
+
+      fireEvent.click(screen.getByRole('button', { name: '80–100% (2)' }))
+      expect(dropdown.textContent).toContain('80–100%')
+      expect(calls()).toEqual(['ABCD 9903', 'ABCD 9901'])
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('opens the flagged finding from its row and keeps the filters on return', async () => {
     const { router } = openApp({ path: `${path}?q=lamp`, viewerApi: asManager })
     fireEvent.click(await screen.findByRole('link', { name: 'Review C1051: Exchange offered without checking stock.' }))

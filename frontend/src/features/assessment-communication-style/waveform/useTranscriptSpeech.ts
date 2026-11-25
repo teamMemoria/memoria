@@ -39,11 +39,13 @@ export function useTranscriptSpeech(
   agent: VoiceStyle,
   customer: VoiceStyle,
   loadNarration?: NarrationLoader,
+  enabledByDefault = false,
 ) {
-  const [enabled, setEnabled] = useState(false)
+  const [enabled, setEnabled] = useState(enabledByDefault)
   const [speaking, setSpeaking] = useState<number | null>(null)
   const [error, setError] = useState('')
-  const enabledRef = useRef(false)
+  const enabledRef = useRef(enabledByDefault)
+  const requiresGesture = useRef(false)
   const requested = useRef<number | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const run = useRef(0)
@@ -93,7 +95,6 @@ export function useTranscriptSpeech(
     document.addEventListener('visibilitychange', hide)
     document.addEventListener('keydown', escape)
     return () => {
-      enabledRef.current = false
       stop()
       cachedClips.clear()
       window.removeEventListener('blur', stop)
@@ -102,10 +103,13 @@ export function useTranscriptSpeech(
     }
   }, [stop, turns])
 
-  function fail(message = 'Playback failed. Click Demo voice to retry.') {
+  const retry = enabledByDefault ? 'Select a spoken turn to retry.' : 'Click Demo voice to retry.'
+  function fail(message = `Playback failed. ${retry}`) {
     stop()
-    enabledRef.current = false
-    setEnabled(false)
+    if (!enabledByDefault) {
+      enabledRef.current = false
+      setEnabled(false)
+    }
     setError(message)
   }
   async function play(turn: TranscriptTurn) {
@@ -162,32 +166,49 @@ export function useTranscriptSpeech(
       }
       await audio.play()
     } catch (error) {
-      if (run.current === token)
-        fail(
-          error instanceof Error && error.name !== 'AbortError'
-            ? `${error.message} Click Demo voice to retry.`
-            : 'Playback timed out. Click Demo voice to retry.',
-        )
+      if (run.current === token) {
+        const blocked = error instanceof Error && error.name === 'NotAllowedError'
+        requiresGesture.current = blocked
+        fail(blocked
+          ? `The browser requires a click or tap to start narration. ${retry}`
+          : error instanceof Error && error.name !== 'AbortError'
+            ? `${error.message} ${retry}`
+            : `Playback timed out. ${retry}`)
+      }
     } finally {
       clearTimeout(timeout)
       if (pending.current === controller) pending.current = null
     }
   }
+  function unlockPlayer() {
+    if (!player.current) player.current = new Audio()
+    const audio = player.current
+    // Start the reusable element during the gesture, before the clip fetch.
+    audio.setAttribute(
+      'src',
+      'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==',
+    )
+    void audio.play().catch(() => {})
+  }
   function preview(turn: TranscriptTurn, immediate = false) {
-    if (!enabledRef.current || unavailable) return
+    if (!enabledRef.current || unavailable || (requiresGesture.current && !immediate)) return
     if (turn.speaker === 'System action' || !turn.text.trim()) {
       stop()
       return
     }
     if (
       requested.current === turn.number &&
-      (!immediate || timer.current === null)
+      (!immediate || (!enabledByDefault && timer.current === null))
     )
       return
     stop()
+    setError('')
     requested.current = turn.number
-    if (immediate) void play(turn)
-    else
+    if (immediate) {
+      requiresGesture.current = false
+      unlockPlayer()
+      void play(turn)
+    } else
       timer.current = setTimeout(() => {
         timer.current = null
         void play(turn)
@@ -201,15 +222,8 @@ export function useTranscriptSpeech(
     setEnabled(next)
     setError('')
     if (next) {
-      // Unlock this single reusable media element in the user's gesture (Safari).
-      if (!player.current) player.current = new Audio()
-      const audio = player.current
-      audio.setAttribute(
-        'src',
-        'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==',
-      )
-      void audio.play().catch(() => {})
-      if (turn) preview(turn, true)
+      if (turn?.speaker !== 'System action' && turn?.text.trim()) preview(turn, true)
+      else unlockPlayer()
     }
   }
   return {

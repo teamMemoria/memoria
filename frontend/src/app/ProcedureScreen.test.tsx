@@ -22,7 +22,8 @@ it('draws the stored percentage, keeps critical deductions visible and does not 
       document.querySelector('.gauge-value')?.getAttribute('stroke-dasharray'),
     ).toBe('75 100')
     expect(screen.getByText('Evidence coverage: 50%')).toBeTruthy()
-    expect(screen.getByText('4 / 8')).toBeTruthy()
+    expect(screen.queryByText('Assessed points')).toBeNull()
+    expect(screen.queryByText('Unresolved checks', { exact: true })).toBeNull()
     expect(document.querySelector('.critical-check')?.textContent).toContain(
       'Confirm the required input',
     )
@@ -36,6 +37,11 @@ it('maps canonical check turns even when legacy evidence links are empty', async
     const data = assessmentData(call, 'procedure')
     expect(data.turns.map((turn) => turn.number)).toEqual([8])
     await openCategory('procedure', call)
+    expect(document.querySelector('.action-area .check-excerpt')).toBeNull()
+    const finding = document.querySelector<HTMLElement>('.finding-card')!
+    expect(within(finding).getByText('Deduction')).toBeTruthy()
+    expect(finding.querySelector('blockquote')?.textContent).toBe(data.turns[0].text)
+    expect(within(finding).getByRole('button', { name: 'View turn 8' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Compare evidence' }))
     const dialog = await screen.findByRole('dialog')
     expect(
@@ -55,7 +61,7 @@ it('opens the original check row with its exact evidence and rejects an unrelate
     const { router } = await openCategory('procedure', call)
     fireEvent.click(
       screen.getByRole('button', {
-        name: /Critical · Confirm the required input/,
+        name: /Confirm the required input \(critical\)/,
       }),
     )
     const dialog = await screen.findByRole('dialog')

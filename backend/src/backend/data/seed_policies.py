@@ -8,8 +8,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import get_settings
+from backend.entities.policies import AUTHORED_POLICY_PREFIX
 from backend.frameworks.data_access.authored_policies import (
-    AUTHORED_POLICY_PREFIX,
     authored_answer,
     load_authored_catalogue,
 )

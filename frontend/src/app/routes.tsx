@@ -48,6 +48,7 @@ export function AppRoutes({
   knowledgeReviewApi?: KnowledgeReviewApi | null
 }) {
   const home = `/${viewer.role}/conversations`
+  const simulation = import.meta.env.MODE === 'simulation'
 
   return (
     <Routes>
@@ -71,7 +72,7 @@ export function AppRoutes({
             <Route
               index
               element={
-                <AgentConversations viewer={viewer} api={conversationsApi} />
+                <AgentConversations viewer={viewer} api={conversationsApi} simulation={simulation} />
               }
             />
             <Route
@@ -125,7 +126,7 @@ export function AppRoutes({
           <Route path="conversations">
             <Route
               index
-              element={<ReviewQueue viewer={viewer} api={teamReviewApi} />}
+              element={<ReviewQueue viewer={viewer} api={teamReviewApi} simulation={simulation} />}
             />
             <Route
               path=":conversationId"

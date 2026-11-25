@@ -1,0 +1,75 @@
+.count-bar {
+  margin: 0;
+}
+.count-bar-track,
+.count-bar-legend {
+  display: grid;
+  grid-template-columns: var(--count-bar-columns);
+}
+.count-bar-track {
+  height: 36px;
+}
+.count-bar-segment {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.count-bar-segment:first-child {
+  border-start-start-radius: var(--control-radius);
+  border-end-start-radius: var(--control-radius);
+}
+.count-bar-segment:last-child {
+  border-start-end-radius: var(--control-radius);
+  border-end-end-radius: var(--control-radius);
+}
+@media (hover: hover) and (pointer: fine) {
+  .count-bar-segment:hover {
+    transform: scaleY(1.2);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .count-bar-segment {
+    transition: transform 150ms ease;
+  }
+}
+.count-bar-fill--positive {
+  background: var(--color-positive-fill);
+}
+.count-bar-fill--attention {
+  background: var(--color-accent);
+}
+.count-bar-fill--negative {
+  background: var(--color-negative-fill);
+}
+.count-bar-fill--neutral {
+  background: #f3f5fa url('./count-bar-hatch.svg') repeat-x left top;
+}
+.count-bar-legend {
+  margin-top: 12px;
+  align-items: start;
+}
+.count-bar-legend .status-label {
+  min-width: 0;
+  padding-inline-end: 8px;
+  align-items: flex-start;
+}
+.count-bar-legend .status-label > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.count-bar-legend .status-dot {
+  margin-top: 6px;
+}
+@media (max-width: 580px) {
+  .count-bar-legend .status-label {
+    gap: 4px;
+    padding-inline-end: 4px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .count-bar-legend .status-dot {
+    width: 8px;
+    height: 8px;
+  }
+}

@@ -15,7 +15,7 @@ describe('Agent approved knowledge', () => {
     const { router } = openApp()
     await screen.findByRole('heading', { name: 'My conversations' })
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge Base' }))
-    await screen.findByRole('list', { name: 'Approved entries' })
+    await screen.findByRole('table', { name: 'Approved entries' })
     const search = screen.getByRole('searchbox', { name: 'Search approved knowledge' })
     fireEvent.change(search, { target: { value: 'no such guidance' } })
     expect(screen.getByRole('heading', { name: 'No matching guidance' })).toBeTruthy()
@@ -89,8 +89,8 @@ describe('Agent approved knowledge', () => {
       { ...reference, id: 'DRAFT', title: 'Unverified guidance', status: 'draft' },
       { ...reference, id: 'PRIVATE', title: 'Private guidance', availableToAgentIds: ['another-agent'] },
     ]) })
-    const list = await screen.findByRole('list', { name: 'Approved entries' })
-    expect(within(list).getAllByRole('link')).toHaveLength(1)
+    const table = await screen.findByRole('table', { name: 'Approved entries' })
+    expect(within(table).getAllByRole('link')).toHaveLength(1)
     expect(screen.queryByText('Unverified guidance')).toBeNull()
     expect(screen.queryByText('Private guidance')).toBeNull()
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'guidance' } })
@@ -127,7 +127,7 @@ describe('Agent approved knowledge', () => {
     expect(screen.getByRole('status').textContent).toContain('Loading approved knowledge')
     await act(() => response.resolve(detail ? reference : [reference]))
     if (detail) await screen.findByRole('region', { name: 'Refund handling' })
-    else await screen.findByRole('list', { name: 'Approved entries' })
+    else await screen.findByRole('table', { name: 'Approved entries' })
     expect(request).toHaveBeenCalledTimes(2)
     expect(request).toHaveBeenLastCalledWith(...(detail ? [agent.id, 'RP-01'] : [agent.id]))
   })
@@ -153,7 +153,7 @@ describe('Agent approved knowledge', () => {
   it('explains disconnected knowledge without inventing articles or offering a nonfunctional retry', async () => {
     openApp({ path: '/agent/knowledge', knowledgeApi: null })
     await screen.findByRole('heading', { name: 'Knowledge unavailable' })
-    expect(screen.queryByRole('list', { name: 'Approved entries' })).toBeNull()
+    expect(screen.queryByRole('table', { name: 'Approved entries' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
     fireEvent.click(screen.getByRole('link', { name: 'Conversations' }))
     await screen.findByRole('table')

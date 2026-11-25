@@ -127,3 +127,36 @@ it('retains changed, withdrawn and promised requests with their distinct context
     ).toBeTruthy()
     expect(document.querySelector('.critical-check')).toBeTruthy()
   })
+
+it('opens archived evidence for a simulation check without saved review controls', async () => {
+  const call = await scoredCall('completeness')
+  call.assessmentSource = 'simulation'
+  call.sourceId = '117'
+  const check = call.criteria[0].scoring!.checks[0]
+  check.ruleId = 'completeness.direct_response'
+  check.outcome = 'partial'
+  check.earned = 0.5
+  check.critical = false
+  const reference = check.citations.find((citation) => citation.kind === 'reference')!
+  reference.origin = 'synthetic assumptions'
+  const customer = call.transcript!.turns.find((turn) => turn.speaker === 'Customer')!
+  const agent = check.citations.find((citation) => citation.kind === 'conversation')!
+  check.citations.push(
+    { ...agent, turn_id: customer.number, quote: customer.text },
+    { ...agent, turn_id: 13, quote: 'A quotation absent from the cited turn.' },
+  )
+
+  await openCategory('completeness', call)
+  expect(screen.queryByText('Simulation', { exact: true })).toBeNull()
+  expect(screen.getByRole('img', { name: '75%' })).toBeTruthy()
+  expect(screen.queryByText('No supported request links supplied.')).toBeNull()
+  const timeline = screen.getByRole('group', { name: 'Cited passages by retained turn order' })
+  expect(within(timeline).getAllByRole('button')).toHaveLength(2)
+  expect(within(timeline).queryByRole('button', { name: /Chart point: turn 13,/ })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: /Confirm the required input.*Partial credit/ }))
+  const evidence = await screen.findByRole('dialog')
+  expect(within(evidence).getAllByText(call.transcript!.turns[7].text).length).toBeGreaterThan(0)
+  expect(within(evidence).getByText(/Synthetic assumption/)).toBeTruthy()
+  expect(evidence.textContent).not.toContain('eligible at the recorded assessment date')
+  expect(screen.queryByRole('region', { name: 'Review actions' })).toBeNull()
+})

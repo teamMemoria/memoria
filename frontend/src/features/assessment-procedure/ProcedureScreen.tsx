@@ -5,35 +5,46 @@ import { Card } from '../../components/ui/card'
 import {
   Coaching,
   ScoreCard,
-  Quote,
   EvidenceLink,
   AssessmentSummary,
   CheckList,
   EvidenceNotes,
   MaterialLimits,
+  Quote,
 } from '../assessment-shared/AssessmentElements'
 import {
+  checkLabels,
   checkTitle,
   type ScreenProps,
 } from '../assessment-shared/assessment'
 import './procedure.css'
 
 export function ProcedureScreen({ data, onOpen }: ScreenProps) {
-  const { featured, selected, actions, activeTurn, steps, setActiveNumber } = useProcedure(data)
+  const { featured, linked, selected, actions, activeTurn, steps, setActiveNumber } = useProcedure(data)
+  const hasDeduction = featured?.outcome === 'partial' || featured?.outcome === 'breach'
+  const hasFeaturedReference = featured?.citations.some(
+    (citation) => citation.kind === 'reference',
+  )
+
   return (
     <>
       <section
-        className="dashboard-top dashboard-top--three"
+        className="dashboard-top dashboard-top--three procedure-top"
         aria-label="Procedure checks"
       >
         <ScoreCard data={data} label="Procedure checks" visual="half" />
-        <Card className="dashboard-card finding-card">
+        <Card className={`dashboard-card finding-card${hasDeduction ? ' finding-card--attention' : ''}`}>
           <div className="card-eyebrow">
-            {featured?.outcome === 'breach' ? 'Finding' : 'Assessment'}
+            {featured ? 'Finding' : 'Assessment'}
+            {featured && (
+              <span className={`card-badge procedure-finding-status--${featured.outcome}`}>
+                {checkLabels[featured.outcome]}
+              </span>
+            )}
           </div>
           {featured ? (
             <>
-              <h2>{featured.requirement.replace(/^Recorded action: /, '')}</h2>
+              <h2>{checkTitle(featured)}</h2>
               <p className="card-subtitle check-excerpt">
                 {featured.explanation}
               </p>
@@ -41,30 +52,25 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
           ) : (
             <AssessmentSummary data={data} onOpen={onOpen} />
           )}
-          {selected.length > 0 && (
-            <div className="compact-evidence">
-              {data.turns
-                .filter((turn) => selected.includes(turn.number))
-                .slice(0, 2)
-                .map((turn) => (
-                  <Quote key={turn.number} turn={turn} onOpen={onOpen} />
-                ))}
+          {linked.length > 0 && (
+            <div className="procedure-finding-quotes">
+              {linked.slice(0, 2).map((turn) => (
+                <Quote key={turn.number} turn={turn} onOpen={onOpen} />
+              ))}
             </div>
           )}
           {featured && (
-            <EvidenceLink
-              turns={selected}
-              checkId={featured.id}
-              onOpen={onOpen}
-            >
-              Compare evidence
-            </EvidenceLink>
+            <div className="procedure-card-links">
+              <EvidenceLink turns={selected} checkId={featured.id} onOpen={onOpen}>
+                Compare evidence
+              </EvidenceLink>
+            </div>
           )}
         </Card>
         <Card className="dashboard-card action-area">
           <h2>Agent actions</h2>
           {data.criterion?.scoring ? (
-            <CheckList checks={data.checks} onOpen={onOpen} />
+            <CheckList checks={data.checks} onOpen={onOpen} showExplanations={false} />
           ) : (
             <div className="procedure-checks">
               {steps.map((step, index) => (
@@ -87,24 +93,25 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
               ))}
             </div>
           )}
-          {featured?.citations.some(
-            (citation) => citation.kind === 'reference',
-          ) && (
-            <EvidenceLink turns={[]} checkId={featured.id} onOpen={onOpen}>
-              Procedure reference
-            </EvidenceLink>
+          {(hasFeaturedReference || data.referenceIds.length > 0) && (
+            <div className="procedure-card-links">
+              {hasFeaturedReference && (
+                <EvidenceLink turns={[]} checkId={featured.id} onOpen={onOpen}>
+                  Procedure reference
+                </EvidenceLink>
+              )}
+              {data.referenceIds.map((id) => (
+                <EvidenceLink key={id} turns={[]} referenceId={id} onOpen={onOpen}>
+                  Reference {id}
+                </EvidenceLink>
+              ))}
+            </div>
           )}
-          {data.referenceIds.map((id) => (
-            <EvidenceLink key={id} turns={[]} referenceId={id} onOpen={onOpen}>
-              Reference {id}
-            </EvidenceLink>
-          ))}
         </Card>
       </section>
-      <Card className="dashboard-card evidence-section">
+      <section className="evidence-section evidence-section--plain" aria-labelledby="procedure-evidence-title">
         <div className="section-heading">
-          <h2>Evidence</h2>
-          <span className="chart-legend">Recorded turn / action order</span>
+          <h2 id="procedure-evidence-title">Evidence</h2>
         </div>
         <ConversationChart
           turns={data.call.transcript?.turns ?? []}
@@ -160,7 +167,7 @@ export function ProcedureScreen({ data, onOpen }: ScreenProps) {
         )}
         <EvidenceNotes data={data} />
         <MaterialLimits data={data} />
-      </Card>
+      </section>
       <Coaching data={data} />
     </>
   )

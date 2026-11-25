@@ -203,3 +203,6 @@ table tbody tr:last-child td:last-child {
 .status-label--attention {
   color: var(--color-attention);
 }
+.status-label--negative {
+  color: var(--color-negative);
+}

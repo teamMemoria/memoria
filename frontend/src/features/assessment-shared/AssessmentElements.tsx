@@ -4,6 +4,8 @@ import { Icon } from '../../components/Icon'
 import { StatusLabel } from '../../components/controls'
 import {
   auditResults,
+  assessmentPercentage,
+  hasMidpointScoring,
   percentage,
   type TranscriptTurn,
   type ScoringCheck,
@@ -45,7 +47,6 @@ export function EvidenceLink({
       }}
     >
       <span>{children}</span>
-      <Icon name="arrowRight" size={15} />
     </button>
   )
 }
@@ -82,21 +83,20 @@ export function ScoreCard({
 }) {
   const result = data.criterion && auditResults[data.criterion.result]
   const scoring = data.criterion?.scoring
-  const available = !scoring?.processingError && scoring?.score != null
+  const simulation = data.call.assessmentSource === 'simulation'
+  const available =
+    !scoring?.processingError && scoring?.score != null && (simulation || scoring.coverage !== 0)
   const scoreLabel = scoring?.processingError
     ? 'Processing error'
     : scoring
-      ? percentage(scoring.score)
+      ? simulation ? percentage(scoring.score) : assessmentPercentage(scoring)
       : 'Score unavailable'
   const scoreText = available ? percentage(scoring!.score) : '—'
   return (
     <Card
       className={`dashboard-card score-area ${visual === 'wording' ? 'score-area--wording' : ''} ${available ? '' : 'score-area--unavailable'}`}
     >
-      <div className="card-eyebrow">
-        {label}
-        {visual === 'wording' && <span className="card-badge">Text only</span>}
-      </div>
+      <div className="card-eyebrow">{label}</div>
       <div className="score-measurement">
         {visual === 'number' ? (
           <div className="big-score">
@@ -144,12 +144,14 @@ export function ScoreCard({
             </div>
           </div>
         )}
-        {(available || visual === 'number') && (
+        {((available && !simulation) || (!available && visual === 'number')) && (
           <p className="score-description">
-            {!available ? scoreLabel : 'of assessed points'}
+            {!available ? scoreLabel : hasMidpointScoring(data.call.assessmentVersion?.scoringMethod)
+              ? 'Includes half the unresolved points.'
+              : 'of assessed points'}
           </p>
         )}
-        {!scoring && result && (
+        {!simulation && !scoring && result && (
           <StatusLabel tone={result.tone}>{result.label}</StatusLabel>
         )}
         <p className="score-description">
@@ -157,23 +159,6 @@ export function ScoreCard({
             ? `Evidence coverage: ${percentage(scoring.coverage, 'Unknown')}`
             : 'Check totals unavailable.'}
         </p>
-      </div>
-      <div className="score-footer">
-        <span>
-          Assessed points
-          <strong>
-            {scoring?.assessable ?? '—'} / {scoring?.possible ?? '—'}
-          </strong>
-        </span>
-        <span>
-          Unresolved checks
-          <strong>
-            {scoring
-              ? data.checks.filter((check) => check.outcome === 'unresolved')
-                  .length
-              : '—'}
-          </strong>
-        </span>
       </div>
     </Card>
   )
@@ -188,9 +173,10 @@ export function Quote({
 }) {
   return (
     <figure className="inline-quote">
-      <figcaption>
-        {turn.speaker} · Turn {turn.number}
-        {turn.time ? ` · ${turn.time}` : ''}
+      <figcaption className="assessment-metadata">
+        <span>{turn.speaker}</span>
+        <span>Turn {turn.number}</span>
+        {turn.time && <span>{turn.time}</span>}
       </figcaption>
       <blockquote>{turn.text}</blockquote>
       <EvidenceLink turns={[turn.number]} onOpen={onOpen}>
@@ -212,8 +198,8 @@ export function AssessmentSummary({
     return (
       <>
         <h2>
-          {check.critical && 'Critical · '}
           {checkTitle(check)}
+          {check.critical && ' (critical)'}
         </h2>
         <p className="card-subtitle">{check.explanation}</p>
         <CheckEvidence check={check} onOpen={onOpen} />
@@ -228,8 +214,8 @@ export function AssessmentSummary({
       {data.findings.map((finding) => (
         <section className="recorded-finding" key={finding.id}>
           <h3>
-            {finding.critical && 'Critical · '}
             {finding.title}
+            {finding.critical && ' (critical)'}
           </h3>
           <p>{finding.explanation}</p>
           <ItemEvidence item={finding} onOpen={onOpen} />
@@ -255,11 +241,9 @@ export function CheckEvidence({
       <h3>{check.requirement}</h3>
       <p>{check.explanation}</p>
       {check.advice && <p>{check.advice}</p>}
-      <p>
-        {check.earned == null
-          ? 'Unscored'
-          : `${check.earned}/${check.maximum} points`}{' '}
-        · {checkLabels[check.outcome]}
+      <p className="assessment-metadata">
+        <span>{check.earned == null ? 'Unscored' : `${check.earned}/${check.maximum} points`}</span>
+        <span>{checkLabels[check.outcome]}</span>
       </p>
       {check.citations.map((citation, index) => (
         <figure key={index} className="source-quote">
@@ -268,28 +252,24 @@ export function CheckEvidence({
             {citation.kind === 'conversation' ? (
               <>
                 <EvidenceLink turns={[citation.turn_id]} onOpen={onOpen}>
-                  Turn {citation.turn_id} · {citation.event_kind}
+                  Turn {citation.turn_id} ({citation.event_kind})
                 </EvidenceLink>
                 <details className="source-provenance">
                   <summary>Source version</summary>
-                  <small>
-                    Source {citation.conversation_id} ·{' '}
-                    {citation.transcript_version}
-                  </small>
+                  <small>Source {citation.conversation_id}</small>
+                  <small>Version {citation.transcript_version}</small>
                 </details>
               </>
             ) : (
               <>
-                <span>
-                  Guideline/rubric section {citation.section_id} ·{' '}
-                  {citation.reference_id}
+                <span className="assessment-metadata">
+                  <span>{citation.origin === 'synthetic assumptions' ? 'Synthetic assumption' : citation.origin === 'ABCD publisher guidance' ? 'ABCD publisher guidance' : 'Guideline/rubric section'} {citation.section_id}</span>
+                  <span>Reference {citation.reference_id}</span>
                 </span>
                 <details className="source-provenance">
-                  <summary>Reference version and eligibility</summary>
-                  <small>
-                    {citation.reference_version} · eligible at the recorded
-                    assessment date
-                  </small>
+                  <summary>{citation.origin ? 'Source version' : 'Reference version and eligibility'}</summary>
+                  <small>Version {citation.reference_version}</small>
+                  {!citation.origin && <small>Eligible at the recorded assessment date</small>}
                 </details>
               </>
             )}
@@ -304,9 +284,11 @@ export function CheckEvidence({
 export function CheckList({
   checks,
   onOpen,
+  showExplanations = true,
 }: {
   checks: ScoringCheck[]
   onOpen: EvidenceHandler
+  showExplanations?: boolean
 }) {
   const ordered = featuredChecks(checks)
   const visible = Math.max(3, ordered.filter((check) => check.critical).length)
@@ -327,10 +309,10 @@ export function CheckList({
       </span>
       <span>
         <strong>
-          {check.critical && 'Critical · '}
           {checkTitle(check)}
+          {check.critical && ' (critical)'}
         </strong>
-        <small className="check-excerpt">{check.explanation}</small>
+        {showExplanations && <small className="check-excerpt">{check.explanation}</small>}
       </span>
       <span
         className={`mini-status ${check.outcome === 'breach' ? 'mini-status--attention' : check.outcome === 'supported' ? '' : 'mini-status--neutral'}`}
@@ -344,10 +326,8 @@ export function CheckList({
       {ordered.slice(0, visible).map(row)}
       {ordered.length > visible && (
         <details className="more-checks">
-          <summary>
-            All {ordered.length} checks ·{' '}
-            {ordered.filter((check) => check.outcome === 'unresolved').length}{' '}
-            unresolved
+          <summary className="more-checks-toggle" aria-label="Additional checks" title="Additional checks">
+            <Icon name="chevronDown" size={20} />
           </summary>
           {ordered.slice(visible).map(row)}
         </details>
@@ -375,7 +355,7 @@ export function EvidenceRows({
               Turn {turn.number}
               <small>
                 {turn.speaker}
-                {turn.time ? ` · ${turn.time}` : ''}
+                {turn.time ? ` (${turn.time})` : ''}
               </small>
             </span>
             <p className="check-excerpt">{turn.text}</p>
@@ -407,7 +387,7 @@ export function MaterialLimits({ data }: { data: AssessmentData }) {
         .filter((check) => check.critical)
         .map((check) => (
           <p key={check.id} className="critical-check">
-            <strong>Critical · {check.requirement}</strong> {check.explanation}
+            <strong>{check.requirement} (critical)</strong> {check.explanation}
           </p>
         ))}
       {limits.length > 0 && (
@@ -431,6 +411,7 @@ export function Coaching({ data }: { data: AssessmentData }) {
   const suggestions = data.findings.filter((finding) =>
     finding.suggestion.trim(),
   )
+  if (data.call.assessmentSource === 'simulation' && !suggestions.length) return null
 
   return (
     <section

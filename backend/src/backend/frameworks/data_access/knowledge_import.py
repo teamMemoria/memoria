@@ -6,7 +6,7 @@ conflicts, and its own verification hints. This module checks that output and
 stores it as pending for review:
 
 * only the built-in Layer 2 pilot can auto-approve source-verified facts;
-* a draft a reviewer has already decided keeps its content;
+* a draft a reviewer has edited, unapproved or otherwise decided keeps its content;
 * possible conflicts go to ``knowledge_conflicts`` and never change an entry's
   status, so they stay separate from disputes a reviewer confirms.
 
@@ -55,12 +55,15 @@ from backend.frameworks.data_access.knowledge_approval import approve_draft
 from backend.frameworks.database.models import (
     Conversation,
     DraftStatus,
+    EntryStatus,
     KnowledgeConflict,
     KnowledgeDraft,
     KnowledgeDraftEntryMatch,
     KnowledgeDraftPassage,
     KnowledgeEntry,
+    KnowledgeReview,
     Organization,
+    ReviewAction,
     Topic,
 )
 from backend.interface_adapters.ports import RecordNotFoundError
@@ -69,6 +72,11 @@ from backend.use_cases.knowledge import KnowledgeImportInteractor
 
 # PostgreSQL lock namespace; deliberately outside the business rules.
 IMPORT_LOCK = 7901
+
+
+MANAGER_CHANGED_DRAFT = KnowledgeDraft.reviews.any(
+    KnowledgeReview.action.in_((ReviewAction.EDITED, ReviewAction.UNAPPROVED))
+)
 
 
 @dataclass
@@ -187,6 +195,12 @@ class KnowledgeImportService:
                 .limit(1)
             ):
                 continue
+            if await session.scalar(
+                select(KnowledgeDraft.id)
+                .where(KnowledgeDraft.id == draft.id, MANAGER_CHANGED_DRAFT)
+                .limit(1)
+            ):
+                continue
             await session.refresh(draft, ["topic"])
             if draft.topic.disputed:
                 continue
@@ -241,22 +255,32 @@ class KnowledgeImportService:
                 result.skipped.append({"draftId": draft_id, "reason": reason})
                 continue
 
-            existing = await session.scalar(
-                select(KnowledgeDraft)
-                .where(
-                    KnowledgeDraft.organization_id == organization.id,
-                    KnowledgeDraft.source_key == draft_id,
+            existing_row = (
+                await session.execute(
+                    select(
+                        KnowledgeDraft,
+                        MANAGER_CHANGED_DRAFT,
+                    )
+                    .where(
+                        KnowledgeDraft.organization_id == organization.id,
+                        KnowledgeDraft.source_key == draft_id,
+                    )
+                    .options(
+                        selectinload(KnowledgeDraft.passages),
+                        selectinload(KnowledgeDraft.supporting_conversations),
+                    )
+                    # Held until commit, so a reviewer's decision cannot land between
+                    # the "still pending" check below and the update.
+                    .with_for_update()
                 )
-                .options(
-                    selectinload(KnowledgeDraft.passages),
-                    selectinload(KnowledgeDraft.supporting_conversations),
-                )
-                # Held until commit, so a reviewer's decision cannot land between
-                # the "still pending" check below and the update.
-                .with_for_update()
+            ).one_or_none()
+            existing, manager_changed = (
+                existing_row if existing_row is not None else (None, False)
             )
-            if existing is not None and existing.status is not DraftStatus.PENDING:
-                # A reviewer has decided; the pipeline never changes that draft.
+            if existing is not None and (
+                manager_changed or existing.status is not DraftStatus.PENDING
+            ):
+                # The reviewer's content takes priority over another import.
                 stored[draft_id] = existing
                 result.unchanged += 1
                 continue
@@ -467,7 +491,8 @@ class KnowledgeImportService:
         entry_ids = set(
             await session.scalars(
                 select(KnowledgeEntry.id).where(
-                    KnowledgeEntry.organization_id == organization.id
+                    KnowledgeEntry.organization_id == organization.id,
+                    KnowledgeEntry.status != EntryStatus.WITHDRAWN,
                 )
             )
         )
@@ -560,7 +585,8 @@ class KnowledgeImportService:
         entry_ids = set(
             await session.scalars(
                 select(KnowledgeEntry.id).where(
-                    KnowledgeEntry.organization_id == organization.id
+                    KnowledgeEntry.organization_id == organization.id,
+                    KnowledgeEntry.status != EntryStatus.WITHDRAWN,
                 )
             )
         )

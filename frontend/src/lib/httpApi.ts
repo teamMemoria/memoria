@@ -30,7 +30,7 @@ import type {
 } from '../features/review-queue/teamQueue'
 import { demoLoginEnabled } from './demoLogin'
 
-export function createHttpApis(baseUrl = '') {
+export function createHttpApis(baseUrl = '', simulation = false) {
   const base = baseUrl.replace(/\/$/, '')
   async function request<T>(
     userId: string | undefined,
@@ -152,6 +152,10 @@ export function createHttpApis(baseUrl = '') {
         'GET',
         true,
       ),
+    ...(!simulation && import.meta.env.VITE_LAYER2_TEMPLATE_PILOT === 'true' && {
+      startAnalysis: (userId, id) =>
+        request(userId, `${managerPath(id)}/analysis`, undefined, 'POST'),
+    }),
     saveDecision: (userId, id, findingId, decision) =>
       request<ManagerDecision>(
         userId,
@@ -168,6 +172,8 @@ export function createHttpApis(baseUrl = '') {
         userId, '/api/manager/knowledge/imports', undefined, 'POST',
       ),
     }),
+    editDraft: (userId, id, content) =>
+      request<KnowledgeDraft>(userId, `${draftPath(id)}/content`, content, 'PUT'),
     attachVerification: (userId, id, reference) =>
       request<KnowledgeDraft>(userId, `${draftPath(id)}/verification`, reference, 'PUT'),
     listForManager: (userId) =>
@@ -194,6 +200,8 @@ export function createHttpApis(baseUrl = '') {
         { reason, version },
         'POST',
       ),
+    unapprove: (userId, id, version) =>
+      request<KnowledgeDraft>(userId, `${draftPath(id)}/unapprove`, { version }, 'POST'),
   }
   return {
     viewerApi,

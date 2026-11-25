@@ -4,7 +4,8 @@ import json
 from hashlib import sha256
 from pathlib import Path
 
-AUTHORED_POLICY_PREFIX = "layer1-memoria-"
+from backend.entities.policies import AUTHORED_POLICY_PREFIX
+
 CATALOGUE_PATH = Path(__file__).resolve().parents[5] / "ml/layer1/policies.json"
 
 
@@ -24,7 +25,7 @@ def authored_answer(policy: dict) -> str:
 
 def authored_policy_version(draft) -> str | None:
     key = draft.source_key or ""
-    if not key.startswith(AUTHORED_POLICY_PREFIX):
+    if not key.startswith(AUTHORED_POLICY_PREFIX) or draft.edited_question is not None:
         return None
     catalogue = load_authored_catalogue()
     if catalogue is None:

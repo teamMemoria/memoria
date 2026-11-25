@@ -15,6 +15,98 @@ const conversation: Conversation = {
 }
 
 describe('Agent call review', () => {
+  it('shows the saved overall percentage on the conversation overview', async () => {
+    const call = await callFixture()
+    call.overallScoring = {
+      score: 81.25, coverage: 62.5, reason: null,
+      weights: { procedure: 25, completeness: 25, 'communication-style': 25, 'answer-support': 25 },
+      profileId: 'evaluation-form', profileVersion: '2',
+    }
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    expect(await screen.findByText('Overall 81%')).toBeTruthy()
+  })
+
+  it('colors the overview scores using the same rounded bands as the score bar', async () => {
+    const call = await callFixture()
+    call.assessmentSource = 'simulation'
+    const scores = { procedure: 79.5, completeness: 59.5, 'answer-support': 59.4, 'communication-style': null }
+    call.criteria = call.criteria.map((criterion) => ({
+      ...criterion,
+      scoring: {
+        score: scores[criterion.id], earned: 0, assessable: 0, possible: 100, coverage: 0,
+        inventoryComplete: true, processingError: null, checks: [], limitations: [], interpretationLimits: [],
+      },
+    }))
+    call.overallScoring = {
+      score: 72, coverage: 75, reason: null, weights: null, profileId: null, profileVersion: null,
+    }
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    const overview = await screen.findByRole('region', { name: 'Assessment scores' })
+    expect(within(overview).getByText('72%').closest('[data-score-tone]')?.getAttribute('data-score-tone')).toBe('attention')
+    for (const [name, tone] of [
+      ['Procedure: 80%', 'positive'],
+      ['Completeness: 60%', 'attention'],
+      ['Answer support: 59%', 'negative'],
+      ['Communication style: Not scored', undefined],
+    ]) {
+      expect(within(overview).getByRole('link', { name }).closest('[data-score-tone]')?.getAttribute('data-score-tone')).toBe(tone)
+    }
+  })
+
+  it('ranks only owned demo calls and keeps the score bar and dropdown in sync', async () => {
+    vi.stubEnv('MODE', 'simulation')
+    const records = [63, 91, 12].map((simulationScore, index) => ({
+      ...conversation,
+      id: `demo-${index}`,
+      sourceId: String(9901 + index),
+      agentId: index === 2 ? 'another-agent' : agent.id,
+      simulationScore,
+    }))
+    const { router } = openApp({
+      path: '/agent/conversations',
+      conversationsApi: { listForAgent: async () => records },
+    })
+    const table = await screen.findByRole('table')
+    const calls = () => within(table).getAllByRole('link').map((link) => link.textContent)
+    expect(calls()).toEqual(['ABCD 9902', 'ABCD 9901'])
+    expect(screen.queryByRole('button', { name: /Below 60%/ })).toBeNull()
+
+    const dropdown = screen.getByRole('combobox', { name: 'Overall score' })
+    fireEvent.keyDown(dropdown, { key: 'ArrowDown' })
+    fireEvent.click(await screen.findByRole('option', { name: '60–79%' }))
+    expect(calls()).toEqual(['ABCD 9901'])
+    expect(router.state.location.search).toBe('?status=middle')
+    const band = screen.getByRole('button', { name: '60–79% (1)' })
+    expect(band.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(band)
+    expect(dropdown.textContent).toContain('All scores')
+    expect(calls()).toEqual(['ABCD 9902', 'ABCD 9901'])
+  })
+
+  it('shows Cannot assess for an older zero-evidence midpoint and keeps an evidenced 50%', async () => {
+    const call = await callFixture()
+    const scoring = {
+      score: 50, earned: 0, assessable: 0, possible: 100, coverage: 0,
+      inventoryComplete: true, processingError: null, checks: [],
+      limitations: ['The policy conditions could not be verified.'], interpretationLimits: [],
+    }
+    call.criteria = call.criteria.map((criterion) => ({
+      ...criterion,
+      scoring: criterion.id === 'procedure' ? scoring
+        : criterion.id === 'answer-support' ? { ...scoring, assessable: 100, earned: 50, coverage: 100 }
+        : criterion.scoring,
+    }))
+    call.overallScoring = {
+      score: 60, coverage: 75, reason: null,
+      weights: { procedure: 25, completeness: 25, 'communication-style': 25, 'answer-support': 25 },
+      profileId: 'evaluation-form', profileVersion: '2',
+    }
+    openApp({ path: callPath, callApi: { ...createDevCallApi(), getCallForAgent: async () => call } })
+    expect(await screen.findByText('Overall Cannot assess')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Procedure: Cannot assess' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Answer support: 50%' })).toBeTruthy()
+  })
+
   it('connects conversations, feedback, evidence and the approved procedure, preserving filters and history', async () => {
     const search = '?q=Refund&status=feedback-ready'
     const { router } = openApp({ path: '/agent/conversations' + search })
@@ -22,7 +114,7 @@ describe('Agent call review', () => {
     await screen.findByRole('heading', { name: 'Damaged jacket refund' })
     const feedback = screen.getByRole('region', { name: 'Automatic feedback' })
     expect(within(feedback).getByRole('link', { name: 'Procedure: Needs review' })).toBeTruthy()
-    expect(within(feedback).getByText('Text only')).toBeTruthy()
+    expect(within(feedback).queryByText('Text only')).toBeNull()
     fireEvent.click(screen.getByRole('link', { name: 'View feedback' }))
     await screen.findByRole('heading', { name: 'Procedure finding' })
     expect(screen.getByText('I can offer you a refund.')).toBeTruthy()
@@ -209,7 +301,7 @@ describe('Agent call review', () => {
     openApp({ conversationsApi: { listForAgent } })
     await screen.findByText('Loading your conversations…')
     fireEvent.click(screen.getByRole('link', { name: 'Knowledge Base' }))
-    await screen.findByRole('list', { name: 'Approved entries' })
+    await screen.findByRole('table', { name: 'Approved entries' })
     fireEvent.click(screen.getByRole('link', { name: 'Conversations' }))
     const table = await screen.findByRole('table')
     await act(() => previous.resolve([{ ...conversation, id: 'OLD-RESPONSE' }]))

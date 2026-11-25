@@ -12,10 +12,15 @@ import {
 } from '../assessment-shared/AssessmentElements'
 import { checkTurns, type ScreenProps } from '../assessment-shared/assessment'
 import { ConversationChart } from '../assessment-shared/ConversationChart'
+import { ArchivedCompleteness } from './ArchivedCompleteness'
 import './completeness.css'
 
 export function CompletenessScreen({ data, onOpen }: ScreenProps) {
   const { requests, promises, unresolved, answered, selected, previewTurns, setSelection, selectResponse } = useCompleteness(data)
+  if (data.call.assessmentSource === 'simulation' && !requests.length) {
+    return <ArchivedCompleteness data={data} onOpen={onOpen} />
+  }
+
   return (
     <>
       <section
@@ -45,10 +50,10 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
                 <span>
                   <strong className="check-excerpt">{request.text}</strong>
                   <small>
-                    Turns {request.requestTurns.join(', ')}
+                    Request turns {request.requestTurns.join(', ')}
                     {request.responseTurns.length
-                      ? ` → ${request.responseTurns.join(', ')}`
-                      : ' · response unresolved'}
+                      ? `, response turns ${request.responseTurns.join(', ')}`
+                      : ' (response unresolved)'}
                   </small>
                 </span>
                 <span
@@ -64,8 +69,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
             <details className="request-limitations">
               <summary>{unresolved.length} unresolved checks</summary>
               <p>
-                Assessment limitations · these are not additional customer
-                requests.
+                These checks describe limits in the assessment.
               </p>
               {unresolved.map((check) => (
                 <div key={check.id}>
@@ -119,11 +123,11 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
           <p className="request-boundary">Addressed does not mean completed.</p>
         </Card>
       </section>
-      <Card className="dashboard-card evidence-section">
+      <section className="evidence-section evidence-section--plain" aria-labelledby="completeness-evidence-title">
         <div className="section-heading">
-          <h2>Evidence</h2>
+          <h2 id="completeness-evidence-title">Evidence</h2>
           <span className="card-badge">
-            {requests.length} recognised requests · {promises.length} promises
+            {requests.length} recognised requests, {promises.length} promises
           </span>
         </div>
         <ConversationChart
@@ -159,7 +163,7 @@ export function CompletenessScreen({ data, onOpen }: ScreenProps) {
         </div>
         <EvidenceNotes data={data} />
         <MaterialLimits data={data} />
-      </Card>
+      </section>
       <Coaching data={data} />
     </>
   )

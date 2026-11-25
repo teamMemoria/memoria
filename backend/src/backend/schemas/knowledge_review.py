@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, StringConstraints
 
 from backend.schemas.base import ApiModel
 from backend.schemas.knowledge import KnowledgeEntry
@@ -40,6 +40,19 @@ class AttachVerificationInput(VerificationReference):
     quote: str = Field(min_length=1, max_length=500)
 
 
+class EditKnowledgeDraftInput(ApiModel):
+    version: str = Field(min_length=1, max_length=100)
+    title: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=140)
+    ]
+    question: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)
+    ]
+    guidance: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)
+    ]
+
+
 class PossibleConflict(ApiModel):
     """A conflict the pipeline suspects. Never a confirmed dispute."""
 
@@ -62,10 +75,12 @@ class KnowledgeDraft(KnowledgeEntry):
     updated_at: str
     passages: list[ConversationPassage]
     verification_reference: VerificationReference | None
+    approval_reference: VerificationReference | None = None
     can_attach_verification: bool = False
     authored_policy_version: str | None = None
     decision: KnowledgeDecision | None
     question: str | None
+    layer: Literal["layer1", "layer2"] | None = None
     # Distinct stored conversations behind this draft's group, counted once each.
     distinct_conversation_count: int
     duplicate_of_id: str | None
@@ -79,6 +94,7 @@ class KnowledgeReviewDetail(ApiModel):
     entry: KnowledgeDraft
     # Knowledge permission, separate from call review.
     can_decide: bool
+    can_edit: bool = False
 
 
 class KnowledgeQueueCounts(ApiModel):

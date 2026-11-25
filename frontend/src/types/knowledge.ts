@@ -43,11 +43,14 @@ export type KnowledgeDecision = {
 
 // A knowledge entry as Managers see it in the review queue.
 export type KnowledgeDraft = KnowledgeEntry & {
+  question?: string | null
+  layer?: 'layer1' | 'layer2' | null
   sourceConversationIds: string[]
   updatedAt: string
   passages: ConversationPassage[]
   // The authoritative source a Manager must check before approving.
   verificationReference: { title: string; url: string } | null
+  approvalReference?: { title: string; url: string } | null
   decision: KnowledgeDecision | null
   possibleConflicts?: { id: string; status: string; explanation: string }[]
   canAttachVerification?: boolean
@@ -59,12 +62,24 @@ export type KnowledgeReviewDetail = {
   entry: KnowledgeDraft
   // Knowledge permission, supplied by the backend; separate from call review.
   canDecide: boolean
+  canEdit?: boolean
+}
+
+export type KnowledgeDraftContent = {
+  title: string
+  question: string
+  guidance: string
 }
 
 export interface KnowledgeReviewApi {
   // Transport capability, separate from the Manager permission returned by the server.
   decisionsAvailable?: boolean
   generateDrafts?(managerId: string): Promise<{ created: number; skipped: unknown[] }>
+  editDraft?(
+    managerId: string,
+    entryId: string,
+    content: KnowledgeDraftContent & { version: string },
+  ): Promise<KnowledgeDraft>
   attachVerification?(
     managerId: string,
     entryId: string,
@@ -88,6 +103,7 @@ export interface KnowledgeReviewApi {
     reason: string,
     version?: string,
   ): Promise<KnowledgeDraft>
+  unapprove(managerId: string, entryId: string, version: string): Promise<KnowledgeDraft>
 }
 
 export function canDecideKnowledge(entry: KnowledgeDraft) {

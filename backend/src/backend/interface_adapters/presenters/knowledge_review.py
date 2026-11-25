@@ -5,9 +5,12 @@ import json
 
 from backend.data.demo_profiles import profile_display_name
 from backend.entities.policies import (
+    AUTHORED_POLICY_PREFIX,
     EXTENSION_KEY,
     FAQ_KEY,
     GOLD_EXTENSION_KEY,
+    SOURCE_PREFIX,
+    matches_verification,
     verification_source,
 )
 from backend.entities.results import DraftStatus, ReviewAction, Speaker
@@ -37,6 +40,8 @@ SPEAKERS_BY_VALUE = {speaker.value: name for speaker, name in SPEAKER_NAMES.item
 
 
 def _decision(draft: KnowledgeDraft) -> KnowledgeDecision | None:
+    if draft.status is DraftStatus.PENDING:
+        return None
     decisions = [
         review
         for review in draft.reviews
@@ -58,6 +63,25 @@ def _decision(draft: KnowledgeDraft) -> KnowledgeDecision | None:
     )
 
 
+def pinned_draft_reference(draft) -> dict[str, str] | None:
+    if draft.edited_question is not None:
+        return None
+    source = verification_source(draft.source_key, draft.answer_text)
+    if source is None:
+        return None
+    _, quote, url = source
+    stored = draft.verification_reference
+    if stored is not None and not matches_verification(
+        draft.source_key, draft.answer_text, stored.get("quote", ""), stored.get("url")
+    ):
+        return None
+    return {
+        "title": "ABCD publisher guideline",
+        "url": url,
+        "quote": "\n".join(quote) if isinstance(quote, tuple) else quote,
+    }
+
+
 def draft_version(draft):
     # Content-bound: a changed answer or reference requires another review.
     content = [
@@ -68,6 +92,12 @@ def draft_version(draft):
         draft.verification_reference,
         str(draft.updated_at),
     ]
+    if draft.title is not None or draft.edited_question is not None:
+        content.extend([draft.title, draft.edited_question])
+    if draft.verification_reference is None and (
+        pinned := pinned_draft_reference(draft)
+    ):
+        content.append(pinned)
     return (
         "sha256:"
         + hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
@@ -95,9 +125,20 @@ def draft_schema(
         if draft.source_key in {FAQ_KEY, EXTENSION_KEY, GOLD_EXTENSION_KEY}
         or passage.speaker != Speaker.SYSTEM_ACTION.value
     ]
+    source_key = draft.source_key or ""
+    layer = (
+        "layer1"
+        if source_key.startswith(AUTHORED_POLICY_PREFIX)
+        else "layer2"
+        if source_key.startswith(SOURCE_PREFIX)
+        else None
+    )
+    approval_reference = (
+        pinned_draft_reference(draft) if draft.status is DraftStatus.PENDING else None
+    )
     return KnowledgeDraftSchema(
         id=str(draft.id),
-        title=draft.question or draft.topic.name,
+        title=draft.title or draft.question or draft.topic.name,
         topic=draft.topic.name,
         kind="knowledge",
         status=STATUS_NAMES[draft.status],
@@ -126,13 +167,20 @@ def draft_schema(
             if draft.verification_reference
             else None
         ),
+        approval_reference=(
+            {key: approval_reference[key] for key in ("title", "url")}
+            if approval_reference
+            else None
+        ),
         can_attach_verification=(
             draft.status is DraftStatus.PENDING
+            and draft.edited_question is None
             and verification_source(draft.source_key, draft.answer_text) is not None
         ),
         authored_policy_version=authored_policy_version,
         decision=_decision(draft),
-        question=draft.question,
+        question=draft.edited_question or draft.question,
+        layer=layer,
         distinct_conversation_count=distinct_conversations,
         duplicate_of_id=(
             str(draft.duplicate_of_id) if draft.duplicate_of_id is not None else None

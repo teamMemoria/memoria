@@ -7,7 +7,7 @@
 .wording-check { display: block; width: 100%; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--color-text); text-align: left; }
 .wording-check > span:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .wording-check strong { font-size: 18px; font-weight: 600; }
-.wording-source { display: inline-flex; align-items: center; gap: 5px; color: var(--color-muted); font-size: 14px; }
+.wording-source { color: var(--color-muted); font-size: 14px; }
 .wording-track { height: 6px; }
 .wording-check--blue .wording-track i { background: #5277bc; }
 .wording-check--orange .wording-track i { background: #f08b5d; }
