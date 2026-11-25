@@ -38,6 +38,7 @@ export function EvidenceSheet({
   onFullTranscript: () => void
   restoreFocus: () => void
 }) {
+  const sourceId = call.sourceId ?? call.assessmentVersion?.sourceId
   const check = checks.find((item) => item.id === selection.checkId)
   const [context, setContext] = useState(false)
   const { turns, missing, selected } = transcriptEvidence(
@@ -68,7 +69,7 @@ export function EvidenceSheet({
           }}
         >
           <div data-slot="sheet-header">
-            <p className="eyebrow">CONVERSATION {call.id}</p>
+            <p className="eyebrow">Call {sourceId ? `ABCD ${sourceId}` : call.id}</p>
             <Sheet.Title data-slot="sheet-title">
               {selection.full ? 'Full transcript' : 'Evidence'}
             </Sheet.Title>
@@ -184,10 +185,6 @@ export function EvidenceSheet({
                 )}
               </section>
             )}
-            <p className="source-note">
-              <Icon name="info" />
-              Agent statements do not verify system actions.
-            </p>
           </div>
           <div data-slot="sheet-footer">
             {!selection.full && (
@@ -202,7 +199,9 @@ export function EvidenceSheet({
               Back to assessment
             </button>
           </div>
-          <Sheet.Close data-slot="sheet-close" className="close-dialog grid-center" aria-label="Close evidence">×</Sheet.Close>
+          <Sheet.Close data-slot="sheet-close" className="close-dialog grid-center" aria-label="Close evidence">
+            <Icon name="close" size={20} />
+          </Sheet.Close>
         </Sheet.Content>
       </Sheet.Portal>
     </Sheet.Root>
