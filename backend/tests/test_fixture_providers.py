@@ -3,9 +3,8 @@ from fastapi.testclient import TestClient
 
 from backend.frameworks.http.dependencies import get_providers
 from backend.main import create_app
-from backend.providers import create_fixture_providers
 from backend.providers.fixture_data import ALEX, HARBOR, NORTHWIND, RILEY, SAM
-from backend.providers.fixtures import load_fixture_data
+from backend.providers.fixtures import create_fixture_providers, load_fixture_data
 
 
 @pytest.fixture

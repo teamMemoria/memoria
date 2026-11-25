@@ -12,9 +12,10 @@ from backend.core.auth import (
     can_read_agent_record,
 )
 from backend.core.config import Settings
+from backend.errors import ProviderUnavailableError
 from backend.frameworks.http.auth import require_permission
 from backend.main import create_app
-from backend.providers import ProviderUnavailableError, create_fixture_providers
+from backend.providers.fixtures import create_fixture_providers
 
 ALEX = "agent-alex-morgan"
 SAM = "agent-sam-rivera"

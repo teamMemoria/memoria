@@ -16,6 +16,7 @@ from backend.frameworks.data_access.analysis import (
     RetryRequiredError,
     parse_report,
 )
+from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.database.models import (
     AnalysisRun,
     AnalysisRunStatus,
@@ -23,7 +24,6 @@ from backend.frameworks.database.models import (
     EvaluationFormVersion,
 )
 from backend.main import create_app
-from backend.providers.database import create_database_providers
 from tests.database_seed import ALEX, MAYA, NORTHWIND, seed, sessions_for
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)

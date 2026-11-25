@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from backend.providers.base import Providers
+from backend.interface_adapters.ports import Providers
 from backend.providers.fixture_data import CALLS, CONVERSATIONS, KNOWLEDGE, VIEWERS
 from backend.schemas import (
     CallReview,

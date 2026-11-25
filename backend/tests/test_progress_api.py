@@ -8,8 +8,9 @@ from fastapi.testclient import TestClient
 
 from backend.core.config import Settings
 from backend.entities.progress import DateRange, ProgressPeriod
+from backend.errors import ProviderUnavailableError
 from backend.main import create_app
-from backend.providers import ProviderUnavailableError, create_fixture_providers
+from backend.providers.fixtures import create_fixture_providers
 from backend.schemas.progress import AgentProgress
 
 ALEX = {"X-Dev-User": "agent-alex-morgan"}

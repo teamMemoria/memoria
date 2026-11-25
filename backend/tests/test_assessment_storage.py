@@ -10,13 +10,16 @@ from sqlalchemy import select
 from backend.core.config import Settings
 from backend.frameworks.data_access.analysis import AnalysisService, parse_report
 from backend.frameworks.data_access.assessment_storage import import_prepared
+from backend.frameworks.data_access.database import (
+    create_database_providers,
+    with_scoring,
+)
 from backend.frameworks.database.models import (
     AnalysisRunStatus,
     Audit,
 )
 from backend.main import create_app
-from backend.providers import create_fixture_providers
-from backend.providers.database import create_database_providers, with_scoring
+from backend.providers.fixtures import create_fixture_providers
 from backend.schemas.call_review import CallFinding
 from tests.database_seed import (
     ALEX,

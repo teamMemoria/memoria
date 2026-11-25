@@ -14,6 +14,7 @@ from backend.core.config import Settings
 from backend.entities.inferred_knowledge import Settings as AgreementSettings
 from backend.entities.policies import PROMO_PREFIX, VERIFIED_PROMO_KEY
 from backend.frameworks.data_access.assessment_storage import import_prepared
+from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.data_access.draft_setup import pilot_knowledge_import
 from backend.frameworks.data_access.knowledge_import import (
     ImportRejectedError,
@@ -33,8 +34,7 @@ from backend.frameworks.database.models import (
 )
 from backend.interface_adapters.drafts import draft_candidates
 from backend.main import create_app
-from backend.providers import create_fixture_providers
-from backend.providers.database import create_database_providers
+from backend.providers.fixtures import create_fixture_providers
 from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, seed, sessions_for
 
 FIXTURE = Path(__file__).parent / "fixtures" / "knowledge_pipeline_output.json"

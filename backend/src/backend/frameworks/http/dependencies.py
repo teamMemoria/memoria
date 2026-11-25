@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from backend.providers import Providers
+from backend.interface_adapters.ports import Providers
 
 
 def get_providers(request: Request) -> Providers:

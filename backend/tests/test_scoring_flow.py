@@ -10,10 +10,10 @@ from backend.entities.extension import extension_refusal
 from backend.entities.policies import _VERIFICATION_SOURCES, PROMO_PREFIX
 from backend.entities.score_policy import overall_for_form, overall_for_profile
 from backend.frameworks.data_access.assessment_storage import import_prepared
+from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.data_access.scoring_setup import pilot_services
 from backend.interface_adapters.controllers.assessments import validate_payload
 from backend.main import create_app
-from backend.providers.database import create_database_providers
 from tests.database_seed import ALEX, MAYA, RILEY, SAM, scoring_data, sessions_for
 from tests.scoring_fixtures import events, scoring_request, scoring_service
 

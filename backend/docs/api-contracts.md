@@ -486,11 +486,11 @@ The profiles are the users created by `seed-demo-profiles` (IDs starting with
 
 ## Providers
 
-Routes read data through the interfaces in `backend/src/backend/providers/base.py`
+Routes read data through the interfaces in `backend/src/backend/interface_adapters/ports.py`
 (`ViewerProvider`, `ConversationProvider`, `CallReviewProvider`, `KnowledgeProvider`).
 Every method takes an `organization_id` and returns `None` for records that are missing
 or not visible to that agent. Runtime uses PostgreSQL providers in
-`backend/src/backend/providers/database.py`; tests can pass their own
+`backend/src/backend/frameworks/data_access/database.py`; tests can pass their own
 `Providers` to `create_app()`. `tests/test_database_providers.py` runs the same
 checks against database and fixture providers, so they cannot drift apart.
 

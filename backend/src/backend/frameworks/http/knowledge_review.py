@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from backend.entities.identity import CurrentUser, Permission
+from backend.errors import ProviderUnavailableError, RecordNotFoundError
 from backend.frameworks.data_access.knowledge_import import (
     ImportRejectedError,
     KnowledgeImportService,
@@ -12,12 +13,7 @@ from backend.frameworks.data_access.knowledge_import import (
 from backend.frameworks.data_access.knowledge_review import KnowledgeDecisionRejected
 from backend.frameworks.http.auth import require_permission
 from backend.frameworks.http.dependencies import ProvidersDep
-from backend.providers import (
-    KnowledgeReviewProvider,
-    Providers,
-    ProviderUnavailableError,
-    RecordNotFoundError,
-)
+from backend.interface_adapters.ports import KnowledgeReviewProvider, Providers
 from backend.schemas.knowledge_review import (
     AttachVerificationInput,
     DraftQueueStatus,

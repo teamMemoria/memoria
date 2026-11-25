@@ -15,6 +15,7 @@ from backend.entities.policies import (
     GOLD_EXTENSION_KEY,
     GOLD_EXTENSION_QUOTES,
 )
+from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.database.models import (
     DraftStatus,
     KnowledgeDraft,
@@ -22,7 +23,6 @@ from backend.frameworks.database.models import (
     ReviewAction,
 )
 from backend.main import create_app
-from backend.providers.database import create_database_providers
 from tests.database_seed import ALEX, MAYA, NORTHWIND, RILEY, seed, sessions_for
 from tests.test_knowledge_import import draft_by_key, import_fixture
 
