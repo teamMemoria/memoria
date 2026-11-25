@@ -98,6 +98,20 @@ async def test_knowledge_rejection_does_not_require_reference_but_checks_version
     assert repository.saved == [decision]
 
 
+def test_first_party_policy_approval_requires_the_exact_authored_version():
+    state = DraftDecisionState(True, "v1", None, False, False, "sha256:published")
+    decision = KnowledgeInput("approved", "v1", None, None, "sha256:published")
+    validate_decision(state, decision)
+
+    for invalid in (None, "sha256:changed"):
+        with pytest.raises(KnowledgeDecisionRejected):
+            validate_decision(state, replace(decision, authored_policy_version=invalid))
+    with pytest.raises(KnowledgeDecisionRejected, match="conflict"):
+        validate_decision(replace(state, has_conflict=True), decision)
+    with pytest.raises(KnowledgeDecisionRejected):
+        validate_decision(replace(state, authored_policy_version=None), decision)
+
+
 async def test_assessment_validation_is_required_before_returning():
     calls = []
     request = AnalysisRequest({}, [], [], 1, "2026-11-15", "test")

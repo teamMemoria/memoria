@@ -30,7 +30,7 @@ export function canReadKnowledge(entry: KnowledgeEntry, agentId: string) {
 export type ConversationPassage = {
   conversationId: string
   turnNumber: number
-  speaker: 'Agent' | 'Customer'
+  speaker: 'Agent' | 'Customer' | 'System action'
   text: string
 }
 
@@ -50,6 +50,8 @@ export type KnowledgeDraft = KnowledgeEntry & {
   verificationReference: { title: string; url: string } | null
   decision: KnowledgeDecision | null
   possibleConflicts?: { id: string; status: string; explanation: string }[]
+  canAttachVerification?: boolean
+  authoredPolicyVersion?: string | null
   duplicateOfId?: string | null
 }
 
@@ -62,6 +64,11 @@ export type KnowledgeReviewDetail = {
 export interface KnowledgeReviewApi {
   // Transport capability, separate from the Manager permission returned by the server.
   decisionsAvailable?: boolean
+  attachVerification?(
+    managerId: string,
+    entryId: string,
+    reference: { title: string; url: string; quote: string; version: string },
+  ): Promise<KnowledgeDraft>
   listForManager(managerId: string): Promise<KnowledgeDraft[]>
   getForManager(
     managerId: string,
@@ -70,8 +77,9 @@ export interface KnowledgeReviewApi {
   approve(
     managerId: string,
     entryId: string,
-    verifiedReferenceUrl: string,
+    verifiedReferenceUrl: string | null,
     version?: string,
+    authoredPolicyVersion?: string,
   ): Promise<KnowledgeDraft>
   reject(
     managerId: string,

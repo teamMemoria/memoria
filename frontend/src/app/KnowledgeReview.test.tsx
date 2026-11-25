@@ -131,14 +131,77 @@ describe('Manager knowledge verification and approval', () => {
 
   it('does not treat repeated answers as verification when no reference exists', async () => {
     const reviewApi = createDevKnowledgeReviewApi()
-    openReview('KD-104', reviewApi)
+    openReview('KD-104', { ...reviewApi, attachVerification: vi.fn() })
     await screen.findByText(/Found in 3 conversations/)
     expect(
       screen.getByText(/No authoritative reference is available/),
     ).toBeTruthy()
     expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Attach reference' })).toBeNull()
     expect(approve().disabled).toBe(true)
     await expect(reviewApi.approve(manager.id, 'KD-104', '')).rejects.toThrow()
+  })
+
+  it('publishes the exact Memoria-authored version after explicit acknowledgement', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const draft = (await api.getForManager(manager.id, 'KD-104'))!.entry
+    const entry = { ...draft, authoredPolicyVersion: 'sha256:memoria' }
+    const publish = vi.fn().mockResolvedValue({ ...entry, status: 'approved' })
+    openReview('KD-104', {
+      ...api,
+      getForManager: async () => ({ entry, canDecide: true }),
+      approve: publish,
+    })
+    const acknowledge = await screen.findByRole('checkbox', { name: /for future calls/ })
+    expect(approve().disabled).toBe(true)
+    fireEvent.click(acknowledge)
+    expect(approve().disabled).toBe(false)
+    fireEvent.click(approve())
+    await waitFor(() => expect(publish).toHaveBeenCalledWith(
+      manager.id, entry.id, null, entry.version, entry.authoredPolicyVersion,
+    ))
+  })
+
+  it('requires Manager verification after attaching a pilot source', async () => {
+    const api = createDevKnowledgeReviewApi()
+    const detail = await api.getForManager(manager.id, 'KD-104')
+    if (!detail) throw new Error('Missing draft fixture')
+    const reference = {
+      title: 'Publisher guideline',
+      url: 'https://example.test/policy',
+      quote: 'Typically promotions only last 7 days.',
+      version: detail.entry.version,
+    }
+    const attachVerification = vi.fn(async () => ({
+      ...detail.entry,
+      version: 'v2',
+      verificationReference: { title: reference.title, url: reference.url },
+    }))
+    openReview('KD-104', {
+      ...api,
+      getForManager: async () => ({
+        ...detail,
+        entry: { ...detail.entry, canAttachVerification: true },
+      }),
+      attachVerification,
+    })
+    await screen.findByRole('heading', { name: 'Attach a verification source' })
+    expect(approve().disabled).toBe(true)
+    for (const [label, value] of [
+      ['Source title', reference.title],
+      ['Source URL', reference.url],
+      ['Exact policy quotation', reference.quote],
+    ]) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } })
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Attach reference' }))
+    await screen.findByRole('button', { name: 'Verify reference' })
+    expect(attachVerification).toHaveBeenCalledWith(manager.id, 'KD-104', reference)
+    expect(approve().disabled).toBe(true)
+    openReference()
+    expect(approve().disabled).toBe(true)
+    fireEvent.click(checkbox())
+    expect(approve().disabled).toBe(false)
   })
 
   it('hides decisions from a Manager without knowledge permission', async () => {

@@ -14,6 +14,7 @@ class KnowledgeInput:
     version: str
     verified_reference_url: str | None
     reason: str | None
+    authored_policy_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class DraftDecisionState:
     reference: dict | None
     has_conflict: bool
     duplicate: bool
+    authored_policy_version: str | None = None
 
 
 def validate_decision(draft: DraftDecisionState, decision: KnowledgeInput):
@@ -32,7 +34,16 @@ def validate_decision(draft: DraftDecisionState, decision: KnowledgeInput):
         )
     if decision.outcome == "approved":
         reference = draft.reference
-        if (
+        if decision.authored_policy_version is not None:
+            if (
+                decision.authored_policy_version != draft.authored_policy_version
+                or decision.verified_reference_url is not None
+                or reference is not None
+            ):
+                raise KnowledgeDecisionRejected(
+                    "The Memoria-authored policy version has changed. Reload before approving."
+                )
+        elif (
             not reference
             or urlparse(reference.get("url", "")).scheme not in {"http", "https"}
             or reference["url"] != decision.verified_reference_url

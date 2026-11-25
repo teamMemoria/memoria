@@ -11,9 +11,8 @@ export function useKnowledgeDecision(api: KnowledgeReviewApi, managerId: string,
   const decisionAllowed = canDecide && api.decisionsAvailable !== false
   const needsDecision = canDecideKnowledge(entry)
   const canApprove =
-    reference !== null &&
-    referenceOpened &&
     verified &&
+    (Boolean(entry.authoredPolicyVersion) || (reference !== null && referenceOpened)) &&
     !entry.duplicateOfId &&
     !entry.possibleConflicts?.length
 
@@ -29,8 +28,9 @@ export function useKnowledgeDecision(api: KnowledgeReviewApi, managerId: string,
           ? await api.approve(
               managerId,
               entry.id,
-              reference!.url,
+              reference?.url ?? null,
               entry.version,
+              entry.authoredPolicyVersion ?? undefined,
             )
           : await api.reject(managerId, entry.id, reason, entry.version),
       )

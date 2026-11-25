@@ -10,6 +10,7 @@ from backend.data import (
     assign_topics,
     import_conversations,
     seed_demo_profiles,
+    seed_policies,
     setup_demo,
 )
 
@@ -28,6 +29,7 @@ def steps(monkeypatch):
     monkeypatch.setattr(assign_topics, "run", record("topics"))
     monkeypatch.setattr(assign_synthetic_dates, "run", record("dates"))
     monkeypatch.setattr(seed_demo_profiles, "run", record("profiles"))
+    monkeypatch.setattr(seed_policies, "run", record("policies"))
     return called
 
 
@@ -57,6 +59,7 @@ def test_runs_every_step_in_the_documented_order(monkeypatch, steps, conversatio
             ),
         ),
         ("profiles", ("acme",)),
+        ("policies", ("acme",)),
     ]
 
 

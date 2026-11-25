@@ -6,6 +6,7 @@ are never shown to agents: the approved-knowledge routes read
 """
 
 from collections import defaultdict
+from urllib.parse import urlparse
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,8 @@ from backend.entities.knowledge import (
     KnowledgeDecisionRejected,
     KnowledgeInput,
 )
+from backend.entities.policies import matches_verification
+from backend.frameworks.data_access.authored_policies import authored_policy_version
 from backend.frameworks.data_access.database import (
     SPEAKER_NAMES,
     SessionFactory,
@@ -161,7 +164,11 @@ class DatabaseKnowledgeReviewProvider:
         counts = await _group_counts(session, organization_id, drafts)
         return [
             draft_schema(
-                draft, counts[draft.id], conflicts[draft.id], matches[draft.id]
+                draft,
+                counts[draft.id],
+                conflicts[draft.id],
+                matches[draft.id],
+                authored_policy_version=authored_policy_version(draft),
             )
             for draft in drafts
         ]
@@ -224,6 +231,54 @@ class DatabaseKnowledgeReviewProvider:
         return KnowledgeReviewDetail(entry=drafts[0], can_decide=True)
 
     @unavailable_on_database_error
+    async def attach_verification(self, organization_id, user_id, draft_id, reference):
+        async with self._sessions() as session:
+            membership = await _approver(session, organization_id, user_id)
+            draft = await session.scalar(
+                select(KnowledgeDraft)
+                .where(
+                    KnowledgeDraft.organization_id == membership.organization_id,
+                    KnowledgeDraft.id == parse_id(draft_id),
+                )
+                .with_for_update()
+            )
+            if draft is None:
+                raise RecordNotFoundError("Knowledge draft not found")
+            if (
+                draft.status is not DraftStatus.PENDING
+                or draft_version(draft) != reference.version
+            ):
+                raise KnowledgeDecisionRejected(
+                    "Draft changed or already decided. Reload before reviewing."
+                )
+            try:
+                url = urlparse(reference.url)
+            except ValueError:
+                raise KnowledgeDecisionRejected(
+                    "Enter a valid verification source URL."
+                ) from None
+            if (
+                url.scheme not in {"http", "https"}
+                or not url.hostname
+                or url.username
+                or url.password
+                or not reference.title.strip()
+                or not matches_verification(
+                    draft.source_key, draft.answer_text, reference.quote, reference.url
+                )
+            ):
+                raise KnowledgeDecisionRejected(
+                    "Attach the exact quotation from the applicable independent guideline."
+                )
+            draft.verification_reference = {
+                "title": reference.title.strip(),
+                "url": reference.url,
+                "quote": reference.quote.strip(),
+            }
+            await session.commit()
+        return (await self.get_for_approver(organization_id, user_id, draft_id)).entry
+
+    @unavailable_on_database_error
     async def decide(self, organization_id, user_id, draft_id, outcome, decision):
         key = parse_id(draft_id)
         async with self._sessions() as session:
@@ -249,6 +304,7 @@ class DatabaseKnowledgeReviewProvider:
                     decision.version,
                     decision.verified_reference_url,
                     decision.reason,
+                    decision.authored_policy_version,
                 ),
                 KnowledgeTransaction(session, draft, membership),
             )
@@ -282,15 +338,22 @@ class KnowledgeTransaction:
             draft.verification_reference,
             bool(conflicts),
             bool(draft.duplicate_of_id),
+            authored_policy_version(draft),
         )
 
     async def save(self, decision):
         session, draft, membership = self.session, self.draft, self.membership
         if decision.outcome == "approved":
             entry = await approve_draft(session, draft, membership)
-            entry.approved_review.verified_reference_url = draft.verification_reference[
-                "url"
-            ]
+            if decision.authored_policy_version is not None:
+                entry.approved_review.note = (
+                    "Approved as Memoria policy for future calls. "
+                    f"Published version {decision.authored_policy_version}."
+                )
+            else:
+                entry.approved_review.verified_reference_url = (
+                    draft.verification_reference["url"]
+                )
         else:
             draft.status = DraftStatus.REJECTED
             session.add(

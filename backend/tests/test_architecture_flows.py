@@ -6,8 +6,15 @@ import httpx
 from sqlalchemy import select
 
 from backend.core.config import Settings
+from backend.data.demo_profiles import load_profiles
+from backend.data.seed_demo_profiles import seed_demo_profiles
+from backend.data.seed_policies import seed_demo_policies
+from backend.frameworks.data_access.authored_policies import (
+    authored_answer,
+    load_authored_catalogue,
+)
 from backend.main import create_app
-from backend.models import DraftStatus, KnowledgeDraft, User
+from backend.models import DraftStatus, KnowledgeDraft, Organization, User
 from tests.conftest import TEST_DATABASE_URL
 from tests.database_seed import ALEX, MAYA, SAM, seed
 
@@ -144,3 +151,70 @@ async def test_profiles_review_and_knowledge_survive_restart(committed_sessions)
             or "Authored test guidance 2." in str(e)
             for e in entries
         )
+
+
+async def test_demo_policies_import_and_publish_to_agent_knowledge(committed_sessions):
+    profiles = load_profiles()
+    policies = load_authored_catalogue()["policies"]
+    expected = {policy["title"]: authored_answer(policy) for policy in policies}
+    assert len(expected) == 5
+    async with committed_sessions() as session, session.begin():
+        organization_id = await session.scalar(
+            select(Organization.id).where(Organization.slug == "default")
+        )
+        await seed_demo_profiles(session, organization_id, profiles)
+        assert await seed_demo_policies(session, "default") == 5
+        assert await seed_demo_policies(session, "default") == 0
+
+    manager = {"X-Dev-User": profiles.manager_id, "X-Organization": "default"}
+    agent = {"X-Dev-User": profiles.agents[0].id, "X-Organization": "default"}
+    draft_path = "/api/manager/knowledge/drafts"
+    async with running_app() as client:
+        response = await client.get("/api/agent/knowledge", headers=agent)
+        assert response.status_code == 200, response.text
+        assert not expected.keys() & {entry["title"] for entry in response.json()}
+
+        response = await client.get(
+            draft_path, headers=manager, params={"status": "draft"}
+        )
+        assert response.status_code == 200, response.text
+        drafts = [draft for draft in response.json() if draft["topic"] in expected]
+        assert len(drafts) == 5
+        assert {draft["topic"]: draft["paragraphs"] for draft in drafts} == {
+            title: [body] for title, body in expected.items()
+        }
+        for index, draft in enumerate(drafts):
+            assert draft["decision"] is None
+            assert draft["authoredPolicyVersion"].startswith("sha256:")
+            approval_path = f"{draft_path}/{draft['id']}/approve"
+            body = {
+                "version": draft["version"],
+                "authoredPolicyVersion": draft["authoredPolicyVersion"],
+            }
+            if index == 0:
+                assert (
+                    await client.post(approval_path, headers=agent, json=body)
+                ).status_code == 403
+                stale = {**body, "authoredPolicyVersion": "sha256:stale"}
+                assert (
+                    await client.post(approval_path, headers=manager, json=stale)
+                ).status_code == 409
+            response = await client.post(approval_path, headers=manager, json=body)
+            assert response.status_code == 200, response.text
+            assert response.json()["status"] == "approved"
+            assert (
+                body["authoredPolicyVersion"] in response.json()["decision"]["reason"]
+            )
+
+    async with committed_sessions() as session, session.begin():
+        assert await seed_demo_policies(session, "default") == 0
+
+    async with running_app() as client:
+        response = await client.get("/api/agent/knowledge", headers=agent)
+        assert response.status_code == 200, response.text
+        entries = [entry for entry in response.json() if entry["title"] in expected]
+        assert len(entries) == 5
+        assert all(entry["status"] == "approved" for entry in entries)
+        assert {entry["title"]: entry["paragraphs"] for entry in entries} == {
+            title: [body] for title, body in expected.items()
+        }

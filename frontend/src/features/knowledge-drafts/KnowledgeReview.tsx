@@ -1,5 +1,5 @@
 import { useKnowledgeDecision } from './controller'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { Icon } from '../../components/Icon'
 import {
@@ -91,6 +91,29 @@ function ReviewContent({
   const { reference, referenceOpened, setReferenceOpened, verified, setVerified, reason, setReason, saving, failed, canDecide: decisionAllowed, needsDecision, canApprove, decide, reject } = useKnowledgeDecision(api, managerId, entry, canDecide, onDecided)
   canDecide = decisionAllowed
   const tab = queueTabFor(entry)
+  const attach = api.attachVerification
+  const [attaching, setAttaching] = useState(false)
+  const [attachmentError, setAttachmentError] = useState(false)
+
+  async function attachReference(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!attach || attaching) return
+    const fields = new FormData(event.currentTarget)
+    setAttaching(true)
+    setAttachmentError(false)
+    try {
+      onDecided(await attach(managerId, entry.id, {
+        title: String(fields.get('title')),
+        url: String(fields.get('url')),
+        quote: String(fields.get('quote')),
+        version: entry.version,
+      }))
+    } catch {
+      setAttachmentError(true)
+    } finally {
+      setAttaching(false)
+    }
+  }
 
   return (
     <>
@@ -146,6 +169,18 @@ function ReviewContent({
             <p>No draft content is available.</p>
           )}
         </div>
+        {needsDecision && canDecide && entry.canAttachVerification && attach && !reference && (
+          <form className="knowledge-review-step" onSubmit={attachReference}>
+            <h3>Attach a verification source</h3>
+            <label>Source title <input name="title" required maxLength={200} /></label>
+            <label>Source URL <input name="url" type="url" required maxLength={2000} /></label>
+            <label>Exact policy quotation <textarea name="quote" required maxLength={500} /></label>
+            <Button type="submit" variant="secondary" disabled={attaching || saving !== null}>
+              {attaching ? 'Saving…' : 'Attach reference'}
+            </Button>
+            {attachmentError && <p role="alert">Check the policy quotation, source URL and draft version.</p>}
+          </form>
+        )}
         {needsDecision && canDecide && reference && (
           <Collapsible className="knowledge-verification">
             <CollapsibleTrigger asChild>
@@ -175,8 +210,22 @@ function ReviewContent({
             </CollapsibleContent>
           </Collapsible>
         )}
+        {needsDecision && canDecide && entry.authoredPolicyVersion && (
+          <label className="knowledge-review-check" htmlFor={verifiedId}>
+            <input
+              id={verifiedId}
+              type="checkbox"
+              checked={verified}
+              disabled={saving !== null}
+              onChange={(event) => setVerified(event.target.checked)}
+            />
+            I approve this Memoria-authored policy for future calls.
+          </label>
+        )}
         <p className="metadata-line">
-          {reference
+          {entry.authoredPolicyVersion
+            ? 'Memoria-authored guidance for future calls. Historical ABCD scoring uses independently verified sources.'
+            : reference
             ? 'Review the verification source before approving. Source calls show examples, not policy authority.'
             : 'No authoritative reference is available, so this entry cannot be approved. Matching conversations alone do not verify it.'}
         </p>
