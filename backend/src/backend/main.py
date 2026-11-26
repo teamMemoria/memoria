@@ -71,7 +71,7 @@ def create_app(
     app.state.providers = providers
     app.state.settings = settings
     # Analysis always reads and writes PostgreSQL; tests inject their own adapter.
-    if settings.layer2_template_pilot and settings.dev_identity_enabled:
+    if settings.layer2_pilot_enabled:
         from backend.frameworks.data_access.scoring_setup import pilot_services
 
         pilot_analysis, pilot_import = pilot_services(database.sessions, settings)
