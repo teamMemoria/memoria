@@ -147,26 +147,10 @@ scores. Pass `--overwrite` only when you mean to start the sheet again.
 
 ## Agent progress scores
 
-`backend.db.performance_trends` provides
-`get_agent_weekly_category_scores(session, organization_id=..., agent_id=..., window=...)`
-and `get_agent_overall_trend` with the same arguments. Both use the conversations'
-synthetic timestamps and a `DateWindow(start, end)` with timezone-aware bounds.
-The window includes start and excludes end, including only in-range calls in
-partial first/last weeks. Weeks begin Monday at 00:00 UTC, independently of the
-Postgres session's timezone.
-
-Each `WeeklyScore` includes counts and `average_score`: pass = 1, needs work = 0,
-with `cannot_assess` excluded from the denominator. Category scores combine all
-topics for that category. Overall scores count all assessed findings directly,
-so they weight each assessed finding equally rather than averaging category or
-topic percentages. Scores range from 0 to 1.
-
-Every week intersecting the window is returned, with all categories for the
-category query. Weeks with no calls and buckets containing only `cannot_assess`
-findings return `None` for the average, allowing a graph to show a gap instead
-of a failure. Queries require both the agent and organization IDs; no other
-agent's findings contribute. Existing topic-level trend/comparison queries
-remain available.
+`get_agent_performance_trends` in `backend.db.performance_trends` counts an
+agent's results per period, category and topic, using the conversations'
+synthetic timestamps. The window includes its start and excludes its end. The
+progress page (`frameworks/data_access/progress.py`) builds on it.
 
 ## Database index verification
 
