@@ -24,6 +24,11 @@ import {
 } from './assessment'
 export type { EvidenceHandler } from './assessment'
 
+const pointsFormat = new Intl.NumberFormat('en', {
+  maximumFractionDigits: 2,
+  useGrouping: false,
+})
+
 export function EvidenceLink({
   turns,
   referenceId,
@@ -246,7 +251,11 @@ export function CheckEvidence({
       <p>{check.explanation}</p>
       {check.advice && <p>{check.advice}</p>}
       <p className="assessment-metadata">
-        <span>{check.earned == null ? 'Unscored' : `${check.earned}/${check.maximum} points`}</span>
+        <span>
+          {check.earned == null
+            ? 'Unscored'
+            : `${pointsFormat.format(check.earned)}/${pointsFormat.format(check.maximum)} points`}
+        </span>
         <span>{checkLabels[check.outcome]}</span>
       </p>
       {check.citations.map((citation, index) => (
