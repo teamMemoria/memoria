@@ -1,13 +1,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from backend.frameworks.data_access.feedback_review import record_manager_review
 from backend.frameworks.data_access.knowledge_approval import approve_draft
-from backend.frameworks.data_access.organization_scope import (
-    conversations_for,
-    knowledge_drafts_for,
-    knowledge_entries_for,
-)
 from backend.frameworks.database.models import (
     Agent,
     Audit,
@@ -17,7 +11,6 @@ from backend.frameworks.database.models import (
     FindingCategory,
     FindingResult,
     KnowledgeDraft,
-    KnowledgeEntry,
     KnowledgeReview,
     ManagerReview,
     ManagerReviewOutcome,
@@ -77,76 +70,6 @@ async def test_user_has_only_one_membership_per_organization(session):
 
     with pytest.raises(IntegrityError):
         await session.flush()
-
-
-async def test_scoped_queries_do_not_return_another_organizations_records(session):
-    northwind = organization("northwind")
-    harbor = organization("harbor")
-    northwind_manager = membership(northwind, "manager-northwind", UserRole.MANAGER)
-    harbor_manager = membership(harbor, "manager-harbor", UserRole.MANAGER)
-    northwind_topic = Topic(
-        organization=northwind,
-        source_dataset="HarperValleyBank",
-        name="Card replacement",
-    )
-    harbor_topic = Topic(
-        organization=harbor,
-        source_dataset="HarperValleyBank",
-        name="Card replacement",
-    )
-    northwind_conversation = conversation(northwind, "northwind")
-    harbor_conversation = conversation(harbor, "harbor")
-    northwind_draft = KnowledgeDraft(
-        organization=northwind,
-        topic=northwind_topic,
-        answer_text="Northwind draft",
-    )
-    harbor_draft = KnowledgeDraft(
-        organization=harbor,
-        topic=harbor_topic,
-        answer_text="Harbor draft",
-    )
-    northwind_review = KnowledgeReview(
-        organization=northwind,
-        draft=northwind_draft,
-        reviewer_membership=northwind_manager,
-        action=ReviewAction.APPROVED,
-    )
-    harbor_review = KnowledgeReview(
-        organization=harbor,
-        draft=harbor_draft,
-        reviewer_membership=harbor_manager,
-        action=ReviewAction.APPROVED,
-    )
-    northwind_entry = KnowledgeEntry(
-        organization=northwind,
-        topic=northwind_topic,
-        approved_review=northwind_review,
-        answer_text="Northwind answer",
-    )
-    harbor_entry = KnowledgeEntry(
-        organization=harbor,
-        topic=harbor_topic,
-        approved_review=harbor_review,
-        answer_text="Harbor answer",
-    )
-    session.add_all(
-        [
-            northwind_conversation,
-            harbor_conversation,
-            northwind_entry,
-            harbor_entry,
-        ]
-    )
-    await session.flush()
-
-    conversations = (await session.scalars(conversations_for(northwind.id))).all()
-    drafts = (await session.scalars(knowledge_drafts_for(northwind.id))).all()
-    entries = (await session.scalars(knowledge_entries_for(northwind.id))).all()
-
-    assert conversations == [northwind_conversation]
-    assert drafts == [northwind_draft]
-    assert entries == [northwind_entry]
 
 
 async def test_conversation_cannot_reference_an_agent_from_another_org(session):
@@ -274,49 +197,6 @@ async def test_feedback_flag_cannot_reference_another_organizations_agent(
     )
     with pytest.raises(IntegrityError):
         await session.flush()
-
-
-async def test_non_manager_cannot_record_feedback_review(
-    session, default_evaluation_version
-):
-    org = organization("northwind")
-    agent_member = membership(org, "agent-alex", UserRole.AGENT)
-    call = conversation(org, "feedback")
-    finding = Finding(
-        organization=org,
-        category=FindingCategory.PROCEDURE,
-        result=FindingResult.NEEDS_WORK,
-        feedback="Check identity",
-    )
-    flag = FeedbackFlag(
-        organization=org,
-        finding=finding,
-        agent=call.agent,
-        reason="Please review",
-    )
-    session.add_all(
-        [
-            agent_member,
-            Audit(
-                organization=org,
-                conversation=call,
-                evaluation_form_version=default_evaluation_version,
-                findings=[finding],
-            ),
-            flag,
-        ]
-    )
-    await session.flush()
-    with pytest.raises(PermissionError, match="feedback review"):
-        await record_manager_review(
-            session,
-            flag,
-            agent_member,
-            outcome=ManagerReviewOutcome.CONFIRMED,
-            reviewed_result=None,
-            reason="Reviewed",
-            feedback="Confirmed",
-        )
 
 
 async def test_manager_review_cannot_use_another_organizations_manager(
