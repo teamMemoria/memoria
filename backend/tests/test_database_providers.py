@@ -5,20 +5,17 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 
-from backend.core.auth import Permission
 from backend.core.config import Settings
-from backend.main import create_app
-from backend.models import OrganizationMembership, User, UserRole
-from backend.providers import (
-    FixtureIdentityProvider,
-    Providers,
-    create_fixture_providers,
-)
-from backend.providers.database import (
+from backend.entities.identity import Permission
+from backend.frameworks.data_access.database import (
     DatabaseCallReviewProvider,
     create_database_providers,
 )
+from backend.frameworks.database.models import OrganizationMembership, User, UserRole
+from backend.interface_adapters.ports import FixtureIdentityProvider, Providers
+from backend.main import create_app
 from backend.providers.fixture_data import KNOWLEDGE
+from backend.providers.fixtures import create_fixture_providers
 from tests.database_seed import (
     ALEX,
     HARBOR,

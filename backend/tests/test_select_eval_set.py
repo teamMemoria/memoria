@@ -11,7 +11,7 @@ from backend.data.select_eval_set import (
     template_columns,
     write_template,
 )
-from backend.models import FindingCategory, FindingResult
+from backend.frameworks.database.models import FindingCategory, FindingResult
 
 
 def candidates(dataset: str, n: int, topics: int, agents: int) -> list[Candidate]:

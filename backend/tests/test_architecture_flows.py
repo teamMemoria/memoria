@@ -13,8 +13,13 @@ from backend.frameworks.data_access.authored_policies import (
     authored_answer,
     load_authored_catalogue,
 )
+from backend.frameworks.database.models import (
+    DraftStatus,
+    KnowledgeDraft,
+    Organization,
+    User,
+)
 from backend.main import create_app
-from backend.models import DraftStatus, KnowledgeDraft, Organization, User
 from tests.conftest import TEST_DATABASE_URL
 from tests.database_seed import ALEX, MAYA, SAM, seed
 

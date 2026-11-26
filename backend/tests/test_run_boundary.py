@@ -8,7 +8,7 @@ import httpx
 from backend.core.config import Settings
 from backend.frameworks.data_access.analysis import AnalysisRunsAdapter
 from backend.main import create_app
-from backend.providers import create_fixture_providers
+from backend.providers.fixtures import create_fixture_providers
 from backend.use_cases.assessment_runs import (
     AssessmentRunsInteractor,
     RunOutput,

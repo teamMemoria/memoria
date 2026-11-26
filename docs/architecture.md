@@ -135,9 +135,9 @@ flowchart LR
 - Repository implementations retain SQL-specific locking, eager loading,
   uniqueness handling and transactions. Policy decisions use the inner rules.
 - Existing API schema modules and import/seed scripts keep their established
-  paths. Old model/service/provider imports are compatibility aliases, not
-  duplicate implementations. Removing those aliases belongs in a later,
-  explicitly breaking cleanup.
+  paths. The old `api`, `models`, `core.auth` and shim `services`/`providers`
+  import paths have been removed; import from `frameworks`, `interface_adapters`
+  and `entities` instead.
 - Existing focused review-queue, evidence and small form components remain
   components. React interaction is a valid View/Controller responsibility;
   extraction was limited to actual mixed responsibilities.

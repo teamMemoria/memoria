@@ -5,10 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.entities.progress import DateRange, ProgressPeriod, periods_in
+from backend.errors import ProviderUnavailableError
 from backend.frameworks.http.conversations import AgentDep
 from backend.frameworks.http.dependencies import ProvidersDep
 from backend.frameworks.http.reviews import ReviewerDep
-from backend.providers import ProgressProvider, Providers, ProviderUnavailableError
+from backend.interface_adapters.ports import ProgressProvider, Providers
 from backend.schemas.progress import AgentProgress
 
 router = APIRouter()

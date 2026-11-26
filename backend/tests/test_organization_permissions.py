@@ -1,7 +1,14 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from backend.models import (
+from backend.frameworks.data_access.feedback_review import record_manager_review
+from backend.frameworks.data_access.knowledge_approval import approve_draft
+from backend.frameworks.data_access.organization_scope import (
+    conversations_for,
+    knowledge_drafts_for,
+    knowledge_entries_for,
+)
+from backend.frameworks.database.models import (
     Agent,
     Audit,
     Conversation,
@@ -20,13 +27,6 @@ from backend.models import (
     Topic,
     User,
     UserRole,
-)
-from backend.services.feedback_review import record_manager_review
-from backend.services.knowledge_approval import approve_draft
-from backend.services.organization_scope import (
-    conversations_for,
-    knowledge_drafts_for,
-    knowledge_entries_for,
 )
 
 

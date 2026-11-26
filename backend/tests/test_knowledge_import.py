@@ -13,10 +13,14 @@ from sqlalchemy import func, select
 from backend.core.config import Settings
 from backend.entities.inferred_knowledge import Settings as AgreementSettings
 from backend.entities.policies import PROMO_PREFIX, VERIFIED_PROMO_KEY
+from backend.frameworks.data_access.assessment_storage import import_prepared
+from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.data_access.draft_setup import pilot_knowledge_import
-from backend.interface_adapters.drafts import draft_candidates
-from backend.main import create_app
-from backend.models import (
+from backend.frameworks.data_access.knowledge_import import (
+    ImportRejectedError,
+    KnowledgeImportService,
+)
+from backend.frameworks.database.models import (
     DraftStatus,
     EntryStatus,
     KnowledgeConflict,
@@ -28,13 +32,9 @@ from backend.models import (
     ReviewAction,
     knowledge_draft_conversations,
 )
-from backend.providers import create_fixture_providers
-from backend.providers.database import create_database_providers
-from backend.services.assessment_storage import import_prepared
-from backend.services.knowledge_import import (
-    ImportRejectedError,
-    KnowledgeImportService,
-)
+from backend.interface_adapters.drafts import draft_candidates
+from backend.main import create_app
+from backend.providers.fixtures import create_fixture_providers
 from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, seed, sessions_for
 
 FIXTURE = Path(__file__).parent / "fixtures" / "knowledge_pipeline_output.json"
@@ -673,7 +673,7 @@ async def test_canonical_source_version_and_exact_span_are_required(session, dat
 async def test_import_preserves_resolved_or_disputed_conflict_history(
     session, data, resolved
 ):
-    from backend.models import Topic
+    from backend.frameworks.database.models import Topic
 
     await import_fixture(session, data)
     conflict = await session.scalar(

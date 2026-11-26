@@ -5,8 +5,13 @@ from enum import StrEnum
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.audit import Audit, Finding, FindingCategory, FindingResult
-from backend.models.conversation import Conversation, Topic
+from backend.frameworks.database.models.audit import (
+    Audit,
+    Finding,
+    FindingCategory,
+    FindingResult,
+)
+from backend.frameworks.database.models.conversation import Conversation, Topic
 
 
 class TrendPeriod(StrEnum):

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from backend.entities.identity import can_read_agent_record
+from backend.errors import ProviderUnavailableError, RecordNotFoundError
 from backend.frameworks.http.conversations import AgentDep
 from backend.frameworks.http.demo_scorecards import (
     DemoScorecardsDep,
@@ -8,12 +9,7 @@ from backend.frameworks.http.demo_scorecards import (
 )
 from backend.frameworks.http.dependencies import ProvidersDep
 from backend.frameworks.http.knowledge import for_requester
-from backend.providers import (
-    FeedbackProvider,
-    Providers,
-    ProviderUnavailableError,
-    RecordNotFoundError,
-)
+from backend.interface_adapters.ports import FeedbackProvider, Providers
 from backend.schemas import AgentContext, CallReview, ReviewRequest
 from backend.schemas.feedback import RequestReviewInput, SaveContextInput
 

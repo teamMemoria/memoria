@@ -5,7 +5,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import selectinload
 
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Audit,
     Conversation,

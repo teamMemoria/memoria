@@ -34,11 +34,11 @@ is always `null` while a call is processing.
 ## Identity and permissions
 
 Every route except `/health` reads the requester from `get_current_user`
-(`backend/src/backend/api/auth.py`), which returns a `CurrentUser` with a user ID,
+(`backend/src/backend/frameworks/http/auth.py`), which returns a `CurrentUser` with a user ID,
 organization ID and set of permissions.
 
 There is no login system yet. When `MEMORIA_APP_ENV` is `development` or `test`, the requester
-is one of the fixed identities in `backend/src/backend/core/auth.py`, named in the `X-Dev-User`
+is one of the fixed identities in `backend/src/backend/entities/identity.py`, named in the `X-Dev-User`
 header:
 
 | `X-Dev-User` | Organization | Permissions |
@@ -66,7 +66,7 @@ See [deployed frontend access](deployed-frontend-access.md).
    `CurrentUser`:
    - At runtime it is built from the user's stored `OrganizationMembership`:
      `organization_id` is the organization's `slug`, and permissions come from
-     `permissions_for_membership` in `backend/core/auth.py`. Tests can inject
+     `permissions_for_membership` in `backend/src/backend/entities/identity.py`. Tests can inject
      fixture providers explicitly.
 
    | Membership | Permissions |
@@ -349,7 +349,7 @@ Counts come from `get_agent_performance_trends` in `backend/src/backend/db/perfo
 
 ## Knowledge drafts from the pipeline
 
-`backend/src/backend/services/knowledge_import.py` stores the knowledge pipeline's output
+`backend/src/backend/frameworks/data_access/knowledge_import.py` stores the knowledge pipeline's output
 (`knowledge-pipeline/1`) for an authorized reviewer, and the routes below read it back. Every route
 needs `knowledge:approve` and is scoped to the requester's organization. Reads need the database;
 with fixtures they answer `503`.
@@ -414,7 +414,7 @@ No pipeline is configured by default, so the import route answers `503` until on
 
 ## Post-call analysis
 
-`backend/src/backend/services/analysis.py` runs the post-call feedback report and saves its result
+`backend/src/backend/frameworks/data_access/analysis.py` runs the post-call feedback report and saves its result
 as the conversation's audit. Each attempt is an `analysis_runs` row, so processing status and
 technical failures are recorded apart from any audit.
 
@@ -486,11 +486,11 @@ The profiles are the users created by `seed-demo-profiles` (IDs starting with
 
 ## Providers
 
-Routes read data through the interfaces in `backend/src/backend/providers/base.py`
+Routes read data through the interfaces in `backend/src/backend/interface_adapters/ports.py`
 (`ViewerProvider`, `ConversationProvider`, `CallReviewProvider`, `KnowledgeProvider`).
 Every method takes an `organization_id` and returns `None` for records that are missing
 or not visible to that agent. Runtime uses PostgreSQL providers in
-`backend/src/backend/providers/database.py`; tests can pass their own
+`backend/src/backend/frameworks/data_access/database.py`; tests can pass their own
 `Providers` to `create_app()`. `tests/test_database_providers.py` runs the same
 checks against database and fixture providers, so they cannot drift apart.
 

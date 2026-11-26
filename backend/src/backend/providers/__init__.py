@@ -1,44 +1,6 @@
-"""Replaceable data providers for the read APIs.
+"""In-memory fixture providers.
 
-Routes depend on the interfaces in ``base``. The fixture implementation lets the
-API run without PostgreSQL or ML; ``database`` reads the same records from
-PostgreSQL. Routes cannot tell them apart.
+They implement the interfaces in ``interface_adapters.ports`` from the records
+in ``fixture_data``, so the API runs without PostgreSQL. The PostgreSQL
+providers live in ``frameworks.data_access.database``.
 """
-
-from backend.providers.base import (
-    CallReviewProvider,
-    ConflictError,
-    ConversationProvider,
-    DemoProfileProvider,
-    FeedbackProvider,
-    FixtureIdentityProvider,
-    IdentityProvider,
-    KnowledgeProvider,
-    KnowledgeReviewProvider,
-    ProgressProvider,
-    Providers,
-    ProviderUnavailableError,
-    RecordNotFoundError,
-    ReviewProvider,
-    ViewerProvider,
-)
-from backend.providers.fixtures import create_fixture_providers
-
-__all__ = [
-    "CallReviewProvider",
-    "ConflictError",
-    "ConversationProvider",
-    "DemoProfileProvider",
-    "FeedbackProvider",
-    "FixtureIdentityProvider",
-    "IdentityProvider",
-    "KnowledgeProvider",
-    "KnowledgeReviewProvider",
-    "ProgressProvider",
-    "ProviderUnavailableError",
-    "Providers",
-    "RecordNotFoundError",
-    "ReviewProvider",
-    "ViewerProvider",
-    "create_fixture_providers",
-]

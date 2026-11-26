@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import Settings
 from backend.db.session import get_db_session
+from backend.errors import ProviderUnavailableError
 from backend.frameworks.data_access.analysis import AnalysisRunsAdapter, AnalysisService
 from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.data_access.knowledge_import import KnowledgeImportService
@@ -29,10 +30,7 @@ from backend.frameworks.http import (
     viewer,
 )
 from backend.frameworks.http.demo_scorecards import DemoScorecards
-from backend.providers import (
-    Providers,
-    ProviderUnavailableError,
-)
+from backend.interface_adapters.ports import Providers
 from backend.use_cases.assessment_runs import AssessmentRunsInteractor
 
 logger = logging.getLogger(__name__)

@@ -7,11 +7,16 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from backend.core.config import Settings
+from backend.frameworks.data_access.database import create_database_providers
+from backend.frameworks.data_access.feedback import DatabaseFeedbackProvider
+from backend.frameworks.database.models import (
+    AgentContext,
+    FeedbackFlag,
+    Finding,
+    FindingResult,
+)
 from backend.main import create_app
-from backend.models import AgentContext, FeedbackFlag, Finding, FindingResult
-from backend.providers import create_fixture_providers
-from backend.providers.database import create_database_providers
-from backend.providers.feedback import DatabaseFeedbackProvider
+from backend.providers.fixtures import create_fixture_providers
 from tests.database_seed import ALEX, MAYA, SAM, seed, sessions_for
 
 NOW = datetime(2026, 11, 2, 10, 30, tzinfo=UTC)

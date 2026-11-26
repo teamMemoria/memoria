@@ -22,7 +22,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation, Organization
+from backend.frameworks.database.models import Agent, Conversation, Organization
 
 DEFAULT_START = date(2026, 1, 5)  # a Monday
 DEFAULT_WEEKS = 8

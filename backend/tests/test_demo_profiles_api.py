@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 
 from backend.core.config import Settings
 from backend.data.demo_profiles import load_profiles, profile_display_name
+from backend.errors import ProviderUnavailableError
 from backend.main import create_app
-from backend.providers import ProviderUnavailableError, create_fixture_providers
+from backend.providers.fixtures import create_fixture_providers
 from backend.schemas import DemoProfile
 
 

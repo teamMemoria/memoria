@@ -9,21 +9,21 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from backend.core.config import Settings
-from backend.main import create_app
-from backend.models import (
-    AnalysisRun,
-    AnalysisRunStatus,
-    Audit,
-    EvaluationFormVersion,
-)
-from backend.providers.database import create_database_providers
-from backend.services.analysis import (
+from backend.frameworks.data_access.analysis import (
     AlreadyAnalysedError,
     AnalysisRequest,
     AnalysisService,
     RetryRequiredError,
     parse_report,
 )
+from backend.frameworks.data_access.database import create_database_providers
+from backend.frameworks.database.models import (
+    AnalysisRun,
+    AnalysisRunStatus,
+    Audit,
+    EvaluationFormVersion,
+)
+from backend.main import create_app
 from tests.database_seed import ALEX, MAYA, NORTHWIND, seed, sessions_for
 
 NOW = datetime(2026, 11, 2, 9, 0, tzinfo=UTC)
@@ -582,7 +582,7 @@ async def test_a_recent_run_is_not_replaced_by_a_retry(session, data):
 
 
 async def test_disputed_topic_is_excluded_from_accuracy_references(session, data):
-    from backend.models import Topic
+    from backend.frameworks.database.models import Topic
 
     topic = await session.get(Topic, data.approved_entry.topic_id)
     topic.disputed = True

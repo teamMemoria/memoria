@@ -13,7 +13,8 @@ from backend.data.import_conversations import (
     placeholder_agent_id,
 )
 from backend.data.seed_demo_profiles import seed_demo_profiles
-from backend.models import (
+from backend.frameworks.data_access.database import create_database_providers
+from backend.frameworks.database.models import (
     Agent,
     Conversation,
     Organization,
@@ -21,7 +22,6 @@ from backend.models import (
     User,
     UserRole,
 )
-from backend.providers.database import create_database_providers
 from tests.database_seed import sessions_for
 
 PROFILES = DemoProfiles(

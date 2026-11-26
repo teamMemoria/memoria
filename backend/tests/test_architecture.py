@@ -43,8 +43,8 @@ def test_business_dependencies_point_inward():
         "import datetime as d; d.date.today()",
         "from time import monotonic as tick; tick()",
         "from builtins import open as read; read('x')",
-        "import importlib as loader; loader.import_module('backend.models')",
-        "__import__('backend.models')",
+        "import importlib as loader; loader.import_module('backend.frameworks.database.models')",
+        "__import__('backend.frameworks.database.models')",
     ],
 )
 def test_guard_rejects_boundary_violations(source):
@@ -126,9 +126,7 @@ def test_presenters_have_no_persistence_dependency():
         assert not [
             name
             for name in imports(path)
-            if name.startswith(
-                ("sqlalchemy", "backend.frameworks", "backend.models", "backend.db")
-            )
+            if name.startswith(("sqlalchemy", "backend.frameworks", "backend.db"))
         ], path
     code = r"""
 import importlib, importlib.abc, sys
@@ -152,7 +150,6 @@ def test_analysis_http_uses_application_boundary():
             (
                 "backend.frameworks.data_access",
                 "backend.frameworks.database",
-                "backend.models",
             )
         )
     ]

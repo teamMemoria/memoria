@@ -3,20 +3,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from backend.entities.identity import CurrentUser, Permission
+from backend.errors import ConflictError, ProviderUnavailableError, RecordNotFoundError
 from backend.frameworks.http.auth import require_permission
 from backend.frameworks.http.demo_scorecards import (
     DemoScorecardsDep,
     require_saved_calls,
 )
 from backend.frameworks.http.dependencies import ProvidersDep
+from backend.interface_adapters.ports import Providers, ReviewProvider
 from backend.interface_adapters.presenters.reviews import present_decision
-from backend.providers import (
-    ConflictError,
-    Providers,
-    ProviderUnavailableError,
-    RecordNotFoundError,
-    ReviewProvider,
-)
 from backend.schemas import ManagerDecision
 from backend.schemas.reviews import (
     DecisionInput,

@@ -15,11 +15,11 @@ from sqlalchemy.exc import OperationalError
 
 from backend.core.config import Settings
 from backend.entities.progress import DateRange, ProgressPeriod
+from backend.errors import ProviderUnavailableError
+from backend.frameworks.data_access.database import create_database_providers
 from backend.frameworks.data_access.progress import DatabaseProgressProvider
+from backend.frameworks.database.models import Conversation
 from backend.main import create_app
-from backend.models import Conversation
-from backend.providers import ProviderUnavailableError
-from backend.providers.database import create_database_providers
 from tests.database_seed import (
     ALEX,
     HARBOR,

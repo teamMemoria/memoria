@@ -4,9 +4,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.core.config import Settings
+from backend.errors import ProviderUnavailableError
 from backend.main import create_app
-from backend.providers import ProviderUnavailableError, create_fixture_providers
 from backend.providers.fixture_data import CALLS, NORTHWIND
+from backend.providers.fixtures import create_fixture_providers
 from backend.schemas import CallReview
 
 ALEX = "agent-alex-morgan"

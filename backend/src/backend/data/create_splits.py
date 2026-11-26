@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.session import async_session_factory
-from backend.models import Agent, Conversation, Topic
+from backend.frameworks.database.models import Agent, Conversation, Topic
 
 DEFAULT_DEVELOPMENT_RATIO = 0.7
 DEFAULT_SEED = 43

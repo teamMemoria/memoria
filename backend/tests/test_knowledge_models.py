@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
-from backend.models import (
+from backend.frameworks.database.models import (
     EMBEDDING_DIM,
     Agent,
     Conversation,

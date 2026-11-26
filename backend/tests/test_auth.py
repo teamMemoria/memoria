@@ -5,16 +5,17 @@ import pytest
 from fastapi import Depends
 from fastapi.testclient import TestClient
 
-from backend.api.auth import require_permission
-from backend.core.auth import (
+from backend.core.config import Settings
+from backend.entities.identity import (
     DEV_IDENTITIES,
     CurrentUser,
     Permission,
     can_read_agent_record,
 )
-from backend.core.config import Settings
+from backend.errors import ProviderUnavailableError
+from backend.frameworks.http.auth import require_permission
 from backend.main import create_app
-from backend.providers import ProviderUnavailableError, create_fixture_providers
+from backend.providers.fixtures import create_fixture_providers
 
 ALEX = "agent-alex-morgan"
 SAM = "agent-sam-rivera"

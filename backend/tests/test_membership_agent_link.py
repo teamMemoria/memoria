@@ -1,8 +1,14 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from backend.core.auth import Permission, permissions_for_membership
-from backend.models import Agent, Organization, OrganizationMembership, User, UserRole
+from backend.entities.identity import Permission, permissions_for_membership
+from backend.frameworks.database.models import (
+    Agent,
+    Organization,
+    OrganizationMembership,
+    User,
+    UserRole,
+)
 
 
 def member(org, external_id, role, agent=None):

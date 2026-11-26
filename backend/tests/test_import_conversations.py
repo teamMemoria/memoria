@@ -8,7 +8,7 @@ from backend.data.import_conversations import (
     import_conversations,
     load_directory,
 )
-from backend.models import (
+from backend.frameworks.database.models import (
     Agent,
     Conversation,
     ConversationMetric,

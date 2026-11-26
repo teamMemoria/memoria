@@ -8,16 +8,19 @@ from ml.test_evidence import prepared
 from sqlalchemy import select
 
 from backend.core.config import Settings
-from backend.main import create_app
-from backend.models import (
+from backend.frameworks.data_access.analysis import AnalysisService, parse_report
+from backend.frameworks.data_access.assessment_storage import import_prepared
+from backend.frameworks.data_access.database import (
+    create_database_providers,
+    with_scoring,
+)
+from backend.frameworks.database.models import (
     AnalysisRunStatus,
     Audit,
 )
-from backend.providers import create_fixture_providers
-from backend.providers.database import create_database_providers, with_scoring
+from backend.main import create_app
+from backend.providers.fixtures import create_fixture_providers
 from backend.schemas.call_review import CallFinding
-from backend.services.analysis import AnalysisService, parse_report
-from backend.services.assessment_storage import import_prepared
 from tests.database_seed import (
     ALEX,
     HARBOR,

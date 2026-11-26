@@ -7,8 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from backend.core.config import Settings
-from backend.main import create_app
-from backend.models import (
+from backend.errors import ConflictError
+from backend.frameworks.data_access.database import create_database_providers
+from backend.frameworks.data_access.reviews import DatabaseReviewProvider
+from backend.frameworks.database.models import (
     AgentContext,
     FeedbackFlag,
     Finding,
@@ -16,10 +18,8 @@ from backend.models import (
     ManagerReview,
     ManagerReviewOutcome,
 )
-from backend.providers import create_fixture_providers
-from backend.providers.base import ConflictError
-from backend.providers.database import create_database_providers
-from backend.providers.reviews import DatabaseReviewProvider
+from backend.main import create_app
+from backend.providers.fixtures import create_fixture_providers
 from backend.schemas.reviews import DecisionInput
 from backend.use_cases.record_review_decision import RecordReviewDecision
 from tests.database_seed import ALEX, HARBOR, MAYA, NORTHWIND, SAM, seed, sessions_for
