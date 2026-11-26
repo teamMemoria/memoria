@@ -13,11 +13,12 @@ export const DialogDescription = DialogPrimitive.Description
 export function DialogContent({
   children,
   className = '',
+  overlayClassName,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Content>) {
+}: ComponentProps<typeof DialogPrimitive.Content> & { overlayClassName?: string }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="ui-dialog-overlay" />
+      <DialogPrimitive.Overlay className={overlayClassName ? `ui-dialog-overlay ${overlayClassName}` : 'ui-dialog-overlay'} />
       <DialogPrimitive.Content
         {...props}
         className={`ui-dialog-content panel-frame ${className}`}

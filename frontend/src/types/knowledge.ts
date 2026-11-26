@@ -29,6 +29,7 @@ export function canReadKnowledge(entry: KnowledgeEntry, agentId: string) {
 
 export type ConversationPassage = {
   conversationId: string
+  sourceKey?: string
   turnNumber: number
   speaker: 'Agent' | 'Customer' | 'System action'
   text: string

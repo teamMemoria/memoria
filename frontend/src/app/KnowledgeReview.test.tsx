@@ -113,6 +113,25 @@ it('shows absent passages and refuses to treat multiple source calls as verifica
   await expect(api.approve(manager.id, promotion, '')).rejects.toThrow()
 })
 
+it('shows all 17 sources and opens evidence for the last one', async () => {
+  const sourceConversationIds = [...Array.from({ length: 16 }, (_, index) => `C${1042 + index}`), 'C1058']
+  const entry = await draftFixture(refund, { layer: 'layer2', sourceConversationIds })
+  entry.passages = entry.passages.map((passage) => passage.conversationId === 'C1058'
+    ? { ...passage, sourceKey: 'ABCD:1734' }
+    : passage)
+  review(entry.id, { getForManager: async () => ({ entry, canDecide: true }) })
+
+  const panel = within(await screen.findByRole('region', { name: 'Sources' }))
+  expect(panel.getAllByRole('button', { name: /^View source call / })).toHaveLength(17)
+  const source = panel.getByRole('button', { name: 'View source call ABCD 1734' })
+  expect(source.textContent).toContain('ABCD 1734')
+  fireEvent.click(source)
+  const dialog = within(await screen.findByRole('dialog', { name: 'ABCD 1734' }))
+  expect(dialog.getByText('Turn 11')).toBeTruthy()
+  fireEvent.click(dialog.getByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(document.activeElement).toBe(source))
+})
+
 it('requires fresh verification when navigating to a different draft', async () => {
   const api = createDevKnowledgeReviewApi()
   const response = deferred<Awaited<ReturnType<KnowledgeReviewApi['getForManager']>>>()
