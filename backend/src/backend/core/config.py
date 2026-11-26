@@ -63,6 +63,11 @@ class Settings(BaseSettings):
         return self.dev_identity_enabled or self.public_demo
 
     @property
+    def layer2_pilot_enabled(self) -> bool:
+        """The pilot runs locally and in the public demo, never in a real deployment."""
+        return self.layer2_template_pilot and self.demo_profile_selection_enabled
+
+    @property
     def allowed_cors_origins(self) -> list[str]:
         """Exact browser origins configured for the deployed frontend."""
         origins = [
