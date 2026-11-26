@@ -4,7 +4,8 @@ import { ResourceNotice } from '../../components/ResourceNotice'
 import { useKnowledgeDecision } from './controller'
 import { useResource } from '../../lib/useResource'
 import { useCallback, useId, useRef, useState, type FormEvent } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
+import { BackLink } from '../../components/BackLink'
 import { Icon } from '../../components/Icon'
 import {
   Button,
@@ -370,9 +371,9 @@ export function KnowledgeReview({
   const dismissApproval = () => state.update((detail) => ({ ...detail, showApproval: false }))
 
   const back = (
-    <Link ref={backLink} className="knowledge-drafts-back inline-center" to={`/manager/knowledge${search}`}>
+    <BackLink ref={backLink} to={`/manager/knowledge${search}`}>
       Knowledge drafts
-    </Link>
+    </BackLink>
   )
 
   if (!api || state.status !== 'ready') {

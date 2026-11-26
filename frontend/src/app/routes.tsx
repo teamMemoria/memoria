@@ -5,7 +5,8 @@ import {
   ApprovedKnowledge,
   KnowledgeArticle,
 } from '../features/approved-knowledge/ApprovedKnowledge'
-import { Navigate, Outlet, Route, Routes, Link } from 'react-router'
+import { Navigate, Outlet, Route, Routes } from 'react-router'
+import { BackLink } from '../components/BackLink'
 import type { Viewer } from '../types/viewer'
 import { AppLayout } from './layout/AppLayout'
 import { AgentConversations } from '../features/conversations/AgentConversations'
@@ -20,7 +21,7 @@ function RouteMessage({ title, home }: { title: string; home: string }) {
   return (
     <>
       <h1>{title}</h1>
-      <Link to={home}>Back to your conversations</Link>
+      <BackLink to={home}>Back to your conversations</BackLink>
     </>
   )
 }

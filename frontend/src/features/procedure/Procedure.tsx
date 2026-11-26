@@ -10,6 +10,7 @@ import {
   useSearchParams,
 } from 'react-router'
 import { ApprovedReference } from '../../components/ApprovedReference'
+import { BackLink } from '../../components/BackLink'
 import { Button, Panel } from '../../components/controls'
 import { Icon } from '../../components/Icon'
 import { useCallReview } from '../../lib/useCallReview'
@@ -167,9 +168,7 @@ export function Procedure({
   const search = backParams.size ? `?${backParams}` : ''
   const overviewPath = `/agent/conversations/${encodeURIComponent(conversationId)}${search}`
   const back = (
-    <Link className="evidence-back inline-center" to={overviewPath}>
-      Call overview
-    </Link>
+    <BackLink className="evidence-back" to={overviewPath}>Call overview</BackLink>
   )
 
   if (state.status !== 'ready') {

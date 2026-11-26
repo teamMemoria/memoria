@@ -44,10 +44,6 @@
 .knowledge-drafts [role='search'] .control-input {
   border-radius: 6px;
 }
-.knowledge-drafts-back {
-  gap: 12px;
-  justify-self: start;
-}
 .knowledge-review {
   gap: 24px;
 }

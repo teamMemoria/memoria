@@ -9,8 +9,6 @@
   position: absolute;
   top: -60px;
   left: 0;
-  gap: 12px;
-  justify-self: start;
   min-height: 40px;
   text-decoration: none;
 }

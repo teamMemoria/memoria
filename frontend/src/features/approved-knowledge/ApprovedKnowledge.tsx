@@ -3,6 +3,7 @@ import { formatDate } from '../../lib/dates'
 import { useResource } from '../../lib/useResource'
 import { useCallback } from 'react'
 import { Link, useParams } from 'react-router'
+import { BackLink } from '../../components/BackLink'
 import { WorkspaceTable } from '../../components/WorkspaceTable'
 import { Button, Panel, TextField } from '../../components/controls'
 import type { ApprovedKnowledgeApi } from '../../types/knowledge'
@@ -36,9 +37,7 @@ export function ApprovedKnowledge({ viewer, api }: Props) {
     <div className={`approved-knowledge${articleEntry ? ' approved-knowledge--article' : ''}`}>
       {entryId && (
         <nav className="approved-knowledge-breadcrumb flex-center" aria-label="Breadcrumb">
-          <Link className="approved-knowledge-back inline-center" to={`/agent/knowledge${search}`}>
-            Approved knowledge
-          </Link>
+          <BackLink to={`/agent/knowledge${search}`}>Approved knowledge</BackLink>
           {articleEntry && (
             <>
               <span aria-hidden="true">/</span>

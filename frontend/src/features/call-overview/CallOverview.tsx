@@ -6,6 +6,7 @@ import { ResourceNotice } from '../../components/ResourceNotice'
 import { ConversationMetadata } from '../../components/ConversationMetadata'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { BackLink } from '../../components/BackLink'
 import { Icon } from '../../components/Icon'
 import { Button, Panel, StatusLabel } from '../../components/controls'
 import { useCallReview } from '../../lib/useCallReview'
@@ -51,12 +52,12 @@ export function CallOverview({
 
   return (
     <div className="call-overview">
-      <Link
-        className="call-overview-back inline-center"
+      <BackLink
+        className="call-overview-back"
         to={`/${viewer.role}/conversations${search}`}
       >
         Conversations
-      </Link>
+      </BackLink>
       {state.status === 'ready' ? (
         <>
           <CallContent

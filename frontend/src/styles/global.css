@@ -122,6 +122,13 @@ a {
   display: inline-flex;
   align-items: center;
 }
+.back-link {
+  gap: 12px;
+  justify-self: start;
+}
+.back-link > .codicon {
+  flex-shrink: 0;
+}
 .grid-center {
   display: grid;
   place-items: center;

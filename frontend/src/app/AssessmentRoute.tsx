@@ -7,6 +7,7 @@ import { screens } from '../features/assessment-shared/screens'
 import { decisionOutcomes } from '../types/callReview'
 import { useEffect, useRef } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { BackLink } from '../components/BackLink'
 import { Panel, StatusLabel } from '../components/controls'
 import { Icon } from '../components/Icon'
 import { useCallReview } from '../lib/useCallReview'
@@ -141,10 +142,9 @@ function AssessmentContent({
   const Screen = screens[category]
   return (
     <div className="assessment-page">
-      <Link className="detail-back inline-center" to={`${base}${search}`}>
-        <Icon name="arrowLeft" />
+      <BackLink className="detail-back" to={`${base}${search}`}>
         {sourceId ? `ABCD ${sourceId}` : `Call ${call.id}`}
-      </Link>
+      </BackLink>
       <header className="assessment-heading">
         <div className="assessment-intro">
           <h1 ref={heading} tabIndex={-1}>

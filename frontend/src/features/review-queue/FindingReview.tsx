@@ -7,6 +7,7 @@ import { useCallReview } from '../../lib/useCallReview'
 import { useId, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ApprovedReference } from '../../components/ApprovedReference'
+import { BackLink } from '../../components/BackLink'
 import {
   Button,
   Panel,
@@ -192,9 +193,7 @@ export function FindingReview({
   const state = useCallReview(null, viewer.id, conversationId, api)
 
   const back = (
-    <Link className="review-queue-back inline-center" to={`/manager/conversations${search}`}>
-      Team conversations
-    </Link>
+    <BackLink to={`/manager/conversations${search}`}>Team conversations</BackLink>
   )
   const finding =
     state.status === 'ready'
