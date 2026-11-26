@@ -458,7 +458,7 @@ their explanations, suggestions and evidence turns are combined, and the first c
 linked.
 
 Analysis uses an adapter supplied through `create_app(analysis=AnalysisService(sessions, adapter))`
-or the scoring pilot when `layer2_template_pilot` and development identity are enabled. Without a
+or the scoring pilot when `layer2_template_pilot` is set locally or in the public demo. Without a
 configured adapter, a run fails with `analysis-unavailable`.
 
 Runs execute as background tasks in the API process. Any error during a run, including a report
