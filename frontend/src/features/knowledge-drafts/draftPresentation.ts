@@ -10,7 +10,7 @@ export type DraftLayer = keyof typeof draftLayers
 
 // Match original questions so display labels survive database reseeding.
 // The stored questions and versioned content still drive review decisions.
-const demoDrafts: Record<string, readonly [DraftLayer, string]> = {
+const draftLabels: Record<string, readonly [DraftLayer, string]> = {
   'How should an agent answer a product question when the FAQ lacks the detail?':
     ['layer1', 'Product details, care and warranty'],
   'How should an agent answer whether a specific size is in stock or coming back?':
@@ -51,13 +51,14 @@ const demoDrafts: Record<string, readonly [DraftLayer, string]> = {
 }
 
 export function draftPresentation(originalTitle: string, layer?: DraftLayer | null): { title: string; layer: DraftLayer } {
-  const match = demoScorecardsEnabled() && Object.hasOwn(demoDrafts, originalTitle)
-    ? demoDrafts[originalTitle]
+  const match = Object.hasOwn(draftLabels, originalTitle)
+    ? draftLabels[originalTitle]
     : undefined
-  return { title: match?.[1] ?? originalTitle, layer: layer ?? match?.[0] ?? 'other' }
+  const displayLayer = layer ?? (demoScorecardsEnabled() ? match?.[0] : undefined) ?? 'other'
+  return { title: match?.[1] ?? originalTitle, layer: displayLayer }
 }
 
-const demoTopics = new Map([
+const topicLabels = new Map([
   ['Adding an item to a refund', 'Refunds'],
   ['Cart not updating', 'Website'],
   ['Initial refund methods', 'Refunds'],
@@ -78,5 +79,5 @@ const demoTopics = new Map([
 ])
 
 export function draftTopic(topic: string) {
-  return demoScorecardsEnabled() ? demoTopics.get(topic) ?? topic : topic
+  return topicLabels.get(topic) ?? topic
 }

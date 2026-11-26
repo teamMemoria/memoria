@@ -1,11 +1,12 @@
 import { transcriptEvidence } from '../../lib/transcriptEvidence'
 import { TranscriptNotice } from '../../components/TranscriptNotice'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { ApprovedReference } from '../../components/ApprovedReference'
+import { Button } from '../../components/controls'
 import * as Sheet from '@radix-ui/react-dialog'
-import { CheckEvidence } from './AssessmentElements'
-import type { EvidenceHandler } from './assessment'
+import { CheckEvidenceSummary } from './CheckEvidenceSummary'
+import { checkTitle, checkTurns } from './assessment'
 import type { CallReview, ScoringCheck } from '../../types/callReview'
 import { canReadKnowledge } from '../../types/knowledge'
 
@@ -19,19 +20,21 @@ export type EvidenceSelection = {
 
 export function EvidenceSheet({
   call,
+  categoryTitle,
   selection,
   referenceIds,
   checks,
-  onSelect,
+  onSelectTurn,
   open,
   onClose,
   onFullTranscript,
   restoreFocus,
 }: {
   call: CallReview
+  categoryTitle: string
   referenceIds: string[]
   checks: ScoringCheck[]
-  onSelect: EvidenceHandler
+  onSelectTurn: (number: number) => void
   selection: EvidenceSelection
   open: boolean
   onClose: () => void
@@ -40,17 +43,28 @@ export function EvidenceSheet({
 }) {
   const sourceId = call.sourceId ?? call.assessmentVersion?.sourceId
   const check = checks.find((item) => item.id === selection.checkId)
+  const selectedCheck = selection.full ? undefined : check
+  const title = selectedCheck ? checkTitle(selectedCheck) : selection.full ? 'Full transcript' : 'Evidence'
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const [context, setContext] = useState(false)
   const { turns, missing, selected } = transcriptEvidence(
     call.transcript, selection.turns,
     selection.full ? 'full' : context ? 'surrounding' : 'selected',
   )
+  const citedTurns = selectedCheck ? checkTurns(selectedCheck) : []
+  const showTranscript = !selectedCheck || selection.turns.some((number) => !citedTurns.includes(number))
   const reference = call.references.find(
     (entry) =>
       entry.id === selection.referenceId &&
       referenceIds.includes(entry.id) &&
       canReadKnowledge(entry, call.agentId),
   )
+  const backButton = (
+    <Button variant="secondary" onClick={onClose}>Back to assessment</Button>
+  )
+  function focusTitle() {
+    titleRef.current?.focus({ preventScroll: true })
+  }
   return (
     <Sheet.Root
       open={open}
@@ -62,25 +76,39 @@ export function EvidenceSheet({
         <Sheet.Overlay data-slot="sheet-overlay" />
         <Sheet.Content
           data-slot="sheet-content"
-          className="evidence-sheet"
+          className={selectedCheck ? 'evidence-sheet evidence-sheet--check' : 'evidence-sheet'}
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            focusTitle()
+          }}
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             restoreFocus()
           }}
         >
           <div data-slot="sheet-header">
-            <p className="eyebrow">Call {sourceId ? `ABCD ${sourceId}` : call.id}</p>
-            <Sheet.Title data-slot="sheet-title">
-              {selection.full ? 'Full transcript' : 'Evidence'}
-            </Sheet.Title>
-            <Sheet.Description data-slot="sheet-description">
+            <p className="eyebrow">{selectedCheck && `${categoryTitle} · `}Call {sourceId ? `ABCD ${sourceId}` : call.id}</p>
+            <Sheet.Title data-slot="sheet-title" ref={titleRef} tabIndex={-1}>{title}</Sheet.Title>
+            <Sheet.Description data-slot="sheet-description" className={selectedCheck ? 'sr-only' : undefined}>
               {call.assessmentSource === 'simulation'
                 ? 'Archived ABCD passages and assessment sources.'
                 : 'Recorded conversation passages and applicable approved reference.'}
             </Sheet.Description>
           </div>
-          <div className="sheet-body">
-            {!selection.full && selection.turns.length > 0 && (
+          <div className="sheet-body" key={selection.full ? 'full' : selectedCheck?.id ?? selection.turns.join(',')}>
+            {selectedCheck && (
+              <CheckEvidenceSummary
+                check={selectedCheck}
+                checks={checks}
+                turns={call.transcript?.turns ?? []}
+                title={title}
+                onOpen={(number) => {
+                  onSelectTurn(number)
+                  focusTitle()
+                }}
+              />
+            )}
+            {showTranscript && !selection.full && selection.turns.length > 0 && (
               <div className="evidence-toolbar flex-center">
                 <span>
                   {selection.turns.length} selected{' '}
@@ -105,7 +133,7 @@ export function EvidenceSheet({
                 Selected passages unavailable: {missing.join(', ')}.
               </p>
             )}
-            <div className="evidence-thread">
+            {showTranscript && <div className="evidence-thread">
               {turns.map((turn) => (
                 <figure
                   key={turn.number}
@@ -131,8 +159,8 @@ export function EvidenceSheet({
                   )}
                 </figure>
               ))}
-            </div>
-            {!turns.length && (
+            </div>}
+            {showTranscript && !turns.length && (
               <p className="source-note">
                 No transcript passages available for this selection.
               </p>
@@ -152,19 +180,7 @@ export function EvidenceSheet({
                   ))}
                 </section>
               ))}
-            {selection.checkId &&
-              (check ? (
-                <section className="selected-check">
-                  <CheckEvidence
-                    key={check.id}
-                    check={check}
-                    onOpen={onSelect}
-                    expanded
-                  />
-                </section>
-              ) : (
-                <p>Selected check unavailable for this category.</p>
-              ))}
+            {selection.checkId && !check && <p>Selected check unavailable for this category.</p>}
             {selection.referenceId && (
               <section className="source-reference">
                 <h3>Applicable reference</h3>
@@ -187,17 +203,16 @@ export function EvidenceSheet({
             )}
           </div>
           <div data-slot="sheet-footer">
+            {selectedCheck && backButton}
             {!selection.full && (
-              <button
-                className="button button--primary"
-                onClick={onFullTranscript}
-              >
+              <Button onClick={() => {
+                onFullTranscript()
+                focusTitle()
+              }}>
                 Full transcript
-              </button>
+              </Button>
             )}
-            <button className="button button--secondary" onClick={onClose}>
-              Back to assessment
-            </button>
+            {!selectedCheck && backButton}
           </div>
           <Sheet.Close data-slot="sheet-close" className="close-dialog grid-center" aria-label="Close evidence">
             <Icon name="close" size={20} />

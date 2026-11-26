@@ -23,6 +23,7 @@
 }
 [data-slot='sheet-header'] { flex-shrink: 0; padding: 32px 32px 24px; border-bottom: 1px solid #e6eaf1; }
 [data-slot='sheet-title'] { margin: 9px 35px 8px 0; font-size: 27px; line-height: 34px; letter-spacing: -0.7px; }
+[data-slot='sheet-title'][tabindex='-1']:focus-visible { outline: none; }
 [data-slot='sheet-description'] { color: var(--color-muted); font-size: 14px; line-height: 22px; }
 [data-slot='sheet-content'] > .close-dialog { position: absolute; top: 23px; right: 23px; border: 0; background: #f0f3f8; }
 .sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 32px; flex: 1; }

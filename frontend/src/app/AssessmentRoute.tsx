@@ -7,6 +7,7 @@ import { screens } from '../features/assessment-shared/screens'
 import { decisionOutcomes } from '../types/callReview'
 import { useEffect, useRef } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { BackLink } from '../components/BackLink'
 import { Panel, StatusLabel } from '../components/controls'
 import { Icon } from '../components/Icon'
 import { useCallReview } from '../lib/useCallReview'
@@ -125,10 +126,8 @@ function AssessmentContent({
     step?: number | null,
     checkId?: string,
   ) {
-    trigger.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
+    const active = document.activeElement
+    if (!open && active instanceof HTMLElement) trigger.current = active
     const next = new URLSearchParams(backParams)
     next.set('evidence', numbers.join(','))
     if (referenceId) next.set('reference', referenceId)
@@ -137,19 +136,19 @@ function AssessmentContent({
     setParams(next)
   }
   const data = assessmentData(call, category)
+  const categoryTitle = categories.find((item) => item.id === category)!.title
   const hasBreach = data.checks.some((check) => check.outcome === 'breach')
   const attention = hasBreach || (!simulation && data.criterion?.result === 'needs-review')
   const Screen = screens[category]
   return (
     <div className="assessment-page">
-      <Link className="detail-back inline-center" to={`${base}${search}`}>
-        <Icon name="arrowLeft" />
+      <BackLink className="detail-back" to={`${base}${search}`}>
         {sourceId ? `ABCD ${sourceId}` : `Call ${call.id}`}
-      </Link>
+      </BackLink>
       <header className="assessment-heading">
         <div className="assessment-intro">
           <h1 ref={heading} tabIndex={-1}>
-            {categories.find((item) => item.id === category)!.title}
+            {categoryTitle}
           </h1>
           {!simulation && pilotLabel(call) && <p className="metadata-line">{pilotLabel(call)}</p>}
           <ConversationMetadata call={call} sourceId={sourceId} />
@@ -225,9 +224,10 @@ function AssessmentContent({
       </section>}
       <EvidenceSheet
         call={call}
+        categoryTitle={categoryTitle}
         referenceIds={data.referenceIds}
         checks={data.checks}
-        onSelect={openEvidence}
+        onSelectTurn={(number) => openEvidence([number])}
         selection={selection}
         open={open}
         onClose={() => setParams(backParams)}
@@ -237,8 +237,7 @@ function AssessmentContent({
           setParams(next)
         }}
         restoreFocus={() => {
-          if (trigger.current?.isConnected) trigger.current.focus()
-          else document.querySelector<HTMLElement>('h1')?.focus()
+          (trigger.current?.isConnected ? trigger.current : heading.current)?.focus()
         }}
       />
     </div>

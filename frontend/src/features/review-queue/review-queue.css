@@ -19,10 +19,6 @@
 .review-queue-muted {
   color: var(--color-muted);
 }
-.review-queue-back {
-  gap: 12px;
-  justify-self: start;
-}
 
 .finding-review-header {
   display: grid;

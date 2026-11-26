@@ -3,8 +3,10 @@ import type {
   AuditCriterion,
   CallFinding,
   CallReview,
+  CanonicalCitation,
   CriterionId,
   ScoringCheck,
+  TranscriptTurn,
   NarrationLoader,
 } from '../../types/callReview'
 import { canReadKnowledge } from '../../types/knowledge'
@@ -93,14 +95,16 @@ export function checkTurns(check: ScoringCheck) {
 
 export function linkedCheckTurns(data: AssessmentData, check: ScoringCheck) {
   return data.turns.filter((turn) =>
-    check.citations.some((citation) =>
-      citation.kind === 'conversation' &&
-      citation.turn_id === turn.number &&
-      citation.event_kind === (turn.speaker === 'System action' ? 'action' : 'message') &&
-      citation.quote.trim() &&
-      turn.text.includes(citation.quote),
-    ),
+    check.citations.some((citation) => matchesRecordedTurn(citation, turn)),
   )
+}
+
+export function matchesRecordedTurn(citation: CanonicalCitation, turn: TranscriptTurn) {
+  return citation.kind === 'conversation' &&
+    citation.turn_id === turn.number &&
+    citation.event_kind === (turn.speaker === 'System action' ? 'action' : 'message') &&
+    Boolean(citation.quote.trim()) &&
+    turn.text.includes(citation.quote)
 }
 
 export function featuredChecks(checks: ScoringCheck[]) {
@@ -132,7 +136,10 @@ export function checkTitle(check: ScoringCheck) {
     'Give a specific understandable instruction': 'Clear instruction',
     'Express a respectful courtesy': 'Respectful courtesy',
     'Assess wording within supported patterns': 'Wording interpretation',
-    'Support the factual assertion and its qualifications': 'Factual support',
+    'Support the factual assertion and its qualifications': check.outcome === 'unresolved' ? 'Unresolved factual check' : 'Factual support',
+    'Ensure the troubleshooting recommendations are supported by applicable guidance': 'Troubleshooting guidance',
+    'Ensure claims that the recovery email was sent match the recorded outcome': 'Recovery email claim',
+    'Ensure recovery guidance accurately reflects the supplied recovery procedure': 'Recovery procedure guidance',
   }
   return (
     labels[check.requirement] ??

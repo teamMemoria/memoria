@@ -10,16 +10,16 @@ const rows = () => within(screen.getByRole('table')).getAllByRole('row').slice(1
 const tabs = () => screen.getAllByRole('tab').map((tab) => tab.textContent)
 const search = (value: string) => input('Search knowledge entries', value)
 
-it('groups simulation drafts and renders the document below Sources for Layer 2', async () => {
-  vi.stubEnv('MODE', 'simulation')
+it.each(['development', 'simulation'])('uses short draft labels and keeps the two layers in %s', async (mode) => {
+  vi.stubEnv('MODE', mode)
   const api = createDevKnowledgeReviewApi()
   const pending = (await api.listForManager(manager.id)).filter(({ status }) => status === 'draft')
   const policyQuestion = 'How should an agent answer whether a specific size is in stock or coming back?'
   const draftQuestion = 'What troubleshooting options can the Agent suggest when site search fails?'
   const guidance = 'Check the site version. Version 2.4 uses the new search. Ask the customer to try again.'
   const entries = [
-    { ...pending[0], title: policyQuestion, topic: 'Stock and restock answers' },
-    { ...pending[1], title: draftQuestion, topic: 'Site search troubleshooting', paragraphs: [guidance] },
+    { ...pending[0], layer: mode === 'development' ? 'layer1' as const : undefined, title: policyQuestion, topic: 'Stock and restock answers' },
+    { ...pending[1], layer: mode === 'development' ? 'layer2' as const : undefined, title: draftQuestion, topic: 'Site search troubleshooting', paragraphs: [guidance] },
     pending[2],
   ]
   const { router } = openQueue({
