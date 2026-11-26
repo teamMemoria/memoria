@@ -45,6 +45,22 @@ writes also send `Content-Type: application/json`. The current client uses
 `credentials: include`, so the backend returns credentialed CORS headers for
 the configured origin. Vite embeds these values at build time.
 
+## Layer 2 knowledge drafts
+
+To let the demo generate knowledge drafts and auto-approve the facts most
+calls agree on, also set:
+
+| Where | Variable | Value |
+| --- | --- | --- |
+| Railway backend | `LAYER2_TEMPLATE_PILOT` | `true` |
+| Netlify build | `VITE_LAYER2_TEMPLATE_PILOT` | `true` |
+
+The backend only runs the pilot locally or with `MEMORIA_PUBLIC_DEMO=true`,
+never in a deployment with real logins. After both are set and the frontend is
+redeployed, a Manager clicks "Generate pilot drafts" once. Facts with 10+ calls and
+70%+ agreement are approved straight away; conflicts and other drafts still
+wait in the review queue, and a Manager can edit or unapprove any of them.
+
 ## Hosted verification
 
 1. Configure the frontend build with the Railway API URL below.

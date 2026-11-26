@@ -181,8 +181,10 @@ For now it only learns facts with a value, like "promo codes last 7 days" or
   nothing gets to 70% but two values each have 5+ calls, it's a conflict for
   a manager. A call that lists several values for one topic doesn't vote.
 
-The ABCD pilot can publish a matching source-verified fact without an unresolved
-conflict. The scoring templates can use published guidance for answer support.
+The pilot publishes a candidate straight away unless it has an open conflict,
+its topic is disputed or a Manager already changed it. It runs locally and in
+the public demo (see `docs/deployed-frontend-access.md`). The scoring templates
+can use published guidance for answer support.
 
 Code: `entities/inferred_knowledge.py`, `use_cases/inferred_knowledge.py`,
 `data/value_claims.py`.
