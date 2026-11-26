@@ -145,6 +145,14 @@ write it somewhere else:
 `select-eval-set` won't replace an existing file, so it can't wipe recorded
 scores. Pass `--overwrite` only when you mean to start the sheet again.
 
+## Provenance manifests
+
+Generated artifacts store their provenance in a JSON sidecar beside the
+artifact. The sidecar name is `<artifact filename>.provenance.json`; for
+example, `evaluation.csv` uses `evaluation.csv.provenance.json`. Call
+`write_manifest(artifact_path, manifest)` from `backend.data.provenance` to
+apply this convention and write deterministic JSON.
+
 ## Agent progress scores
 
 `backend.db.performance_trends` provides
