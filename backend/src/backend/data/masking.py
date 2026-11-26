@@ -159,10 +159,3 @@ def mask_text(text: str, customer_record: dict[str, Any] | None = None) -> str:
         text = pattern.sub(label, text)
     text = USERNAME_MENTION.sub(rf"\g<1>{USERNAME}", text)
     return _mask_introductions(text)
-
-
-def mask_transcript(
-    texts: Iterable[str], customer_record: dict[str, Any] | None = None
-) -> list[str]:
-    """Mask every turn of one conversation using its customer record."""
-    return [mask_text(t, customer_record) for t in texts]

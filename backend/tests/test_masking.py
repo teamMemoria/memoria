@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from backend.data.masking import known_details, mask_text, mask_transcript
+from backend.data.masking import known_details, mask_text
 
 ABCD_RECORD = {
     "customer_name": "jordan testperson",
@@ -67,6 +67,10 @@ HVB_TRANSCRIPT = [
 ]
 
 
+def mask_all(turns: list[str], record) -> list[str]:
+    return [mask_text(turn, record) for turn in turns]
+
+
 def leaked(masked: list[str], record) -> list[str]:
     text = "\n".join(masked).lower()
     found = []
@@ -77,7 +81,7 @@ def leaked(masked: list[str], record) -> list[str]:
 
 
 def test_abcd_transcript_has_no_customer_details_left():
-    masked = mask_transcript(ABCD_TRANSCRIPT, ABCD_RECORD)
+    masked = mask_all(ABCD_TRANSCRIPT, ABCD_RECORD)
     joined = "\n".join(masked)
 
     assert leaked(masked, ABCD_RECORD) == []
@@ -90,7 +94,7 @@ def test_abcd_transcript_has_no_customer_details_left():
 
 
 def test_hvb_transcript_has_no_customer_details_left():
-    masked = mask_transcript(HVB_TRANSCRIPT, HVB_RECORD)
+    masked = mask_all(HVB_TRANSCRIPT, HVB_RECORD)
     joined = "\n".join(masked)
 
     assert leaked(masked, HVB_RECORD) == []
@@ -102,10 +106,10 @@ def test_hvb_transcript_has_no_customer_details_left():
 
 
 def test_bank_name_and_general_answers_are_untouched():
-    masked = mask_transcript(HVB_TRANSCRIPT, HVB_RECORD)
+    masked = mask_all(HVB_TRANSCRIPT, HVB_RECORD)
     assert masked[0].startswith("hello this is harper valley national bank")
     assert masked[-1] == "it will arrive in three to five business days"
-    assert mask_transcript(ABCD_TRANSCRIPT, ABCD_RECORD)[-1].endswith(
+    assert mask_all(ABCD_TRANSCRIPT, ABCD_RECORD)[-1].endswith(
         "Refunds take 5 to 7 business days."
     )
 
@@ -162,4 +166,4 @@ def test_non_identifying_record_fields_are_not_masked():
 
 def test_empty_record_is_fine():
     assert known_details(None) == []
-    assert mask_transcript(["hello"], None) == ["hello"]
+    assert mask_all(["hello"], None) == ["hello"]
