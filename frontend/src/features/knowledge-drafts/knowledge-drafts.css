@@ -279,8 +279,6 @@
   }
 }
 .knowledge-document-viewport {
-  max-height: 75vh;
-  overflow: auto;
   padding: clamp(8px, 2vw, 24px);
   background: var(--color-canvas);
 }

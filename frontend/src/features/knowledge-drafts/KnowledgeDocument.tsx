@@ -23,7 +23,7 @@ export function KnowledgeDocument({ title, question, children, onEdit, editor }:
         {onEdit && !editor && <Button onClick={onEdit}>Edit draft</Button>}
       </div>
       <div className="knowledge-document-body">
-        <div className="knowledge-document-viewport" role="region" aria-label="Document preview" tabIndex={0}>
+        <div className="knowledge-document-viewport" role="region" aria-label="Document preview">
           <article className="knowledge-document-paper" aria-labelledby={questionId}
             style={{ '--document-zoom': zoom } as CSSProperties}>
             <div className="knowledge-document-title">{title}</div>
