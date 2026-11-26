@@ -1,5 +1,5 @@
 import { useAnswer } from './controller'
-import { answerEvidencePreview, answerTableCheckTitle } from './presenter'
+import { answerEvidencePreview } from './presenter'
 import type { ScoringCheck } from '../../types/callReview'
 import { Card } from '../../components/ui/card'
 import {
@@ -13,6 +13,7 @@ import {
 } from '../assessment-shared/AssessmentElements'
 import {
   checkLabels,
+  checkTitle,
   checkTurns,
   type ScreenProps,
 } from '../assessment-shared/assessment'
@@ -41,7 +42,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
           <div role="row" key={check.id}>
             <span role="cell">
               <span className="check-excerpt">
-                {answerTableCheckTitle(check)}
+                {checkTitle(check)}
                 {check.critical && ' (critical)'}
               </span>
             </span>
@@ -143,7 +144,7 @@ export function AnswerScreen({ data, onOpen }: ScreenProps) {
             {featured && (
               <div className="answer-selected-check">
                 <div className="source-scope">
-                  <h3>{answerTableCheckTitle(featured)}</h3>
+                  <h3>{checkTitle(featured)}</h3>
                   <span className={`card-badge inline-center answer-status--${featured.outcome}`}>
                     {checkLabels[featured.outcome]}
                   </span>

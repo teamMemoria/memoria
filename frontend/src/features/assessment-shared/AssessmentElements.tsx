@@ -24,11 +24,6 @@ import {
 } from './assessment'
 export type { EvidenceHandler } from './assessment'
 
-const pointsFormat = new Intl.NumberFormat('en', {
-  maximumFractionDigits: 2,
-  useGrouping: false,
-})
-
 export function EvidenceLink({
   turns,
   referenceId,
@@ -202,18 +197,6 @@ export function AssessmentSummary({
   data: AssessmentData
   onOpen: EvidenceHandler
 }) {
-  const check = featuredChecks(data.checks)[0]
-  if (check)
-    return (
-      <>
-        <h2>
-          {checkTitle(check)}
-          {check.critical && ' (critical)'}
-        </h2>
-        <p className="card-subtitle">{check.explanation}</p>
-        <CheckEvidence check={check} onOpen={onOpen} />
-      </>
-    )
   return (
     <>
       <p className="card-subtitle">
@@ -231,74 +214,6 @@ export function AssessmentSummary({
         </section>
       ))}
     </>
-  )
-}
-
-// Canonical citation text stays intact; the evidence sheet supplies surrounding turns.
-export function CheckEvidence({
-  check,
-  onOpen,
-  expanded,
-}: {
-  check: ScoringCheck
-  onOpen: EvidenceHandler
-  expanded?: boolean
-}) {
-  return (
-    <details className="check-evidence" open={expanded}>
-      <summary>Evidence & details</summary>
-      <h3>{check.requirement}</h3>
-      <p>{check.explanation}</p>
-      {check.advice && <p>{check.advice}</p>}
-      <p className="assessment-metadata">
-        <span>
-          {check.earned == null
-            ? 'Unscored'
-            : `${pointsFormat.format(check.earned)}/${pointsFormat.format(check.maximum)} points`}
-        </span>
-        <span>{checkLabels[check.outcome]}</span>
-      </p>
-      {check.citations.map((citation, index) => (
-        <figure key={index} className="source-quote">
-          <blockquote>{citation.quote}</blockquote>
-          <CitationSource citation={citation} onOpen={onOpen} />
-        </figure>
-      ))}
-      {!check.citations.length && <p>No linked evidence supplied.</p>}
-    </details>
-  )
-}
-
-function CitationSource({ citation, onOpen }: {
-  citation: ScoringCheck['citations'][number]
-  onOpen: EvidenceHandler
-}) {
-  if (citation.kind === 'conversation') {
-    return (
-      <figcaption>
-        <EvidenceLink turns={[citation.turn_id]} onOpen={onOpen}>
-          Turn {citation.turn_id} ({citation.event_kind})
-        </EvidenceLink>
-      </figcaption>
-    )
-  }
-  if (citation.origin === 'synthetic assumptions') return null
-  const referenceLabel = citation.origin === 'ABCD publisher guidance'
-    ? 'ABCD publisher guidance' : 'Guideline/rubric section'
-  return (
-    <figcaption>
-      <span className="assessment-metadata">
-        <span>{referenceLabel} {citation.section_id}</span>
-        <span>Reference {citation.reference_id}</span>
-      </span>
-      {!citation.origin && (
-        <details className="source-provenance">
-          <summary>Reference version and eligibility</summary>
-          <small>Version {citation.reference_version}</small>
-          <small>Eligible at the recorded assessment date</small>
-        </details>
-      )}
-    </figcaption>
   )
 }
 

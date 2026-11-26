@@ -1,5 +1,34 @@
 import { it, expect } from 'vitest'
-import { fireEvent, screen, within, openCategory, scoredCall } from './AssessmentTestSupport'
+import { fireEvent, screen, within, openCategory, scoredCall, path } from './AssessmentTestSupport'
+import { openCall } from './TestSetup'
+
+it.each([true, false])('only shows a follow-up with related recorded evidence, linked: %s', async (linked) => {
+  const call = await scoredCall('answer-support')
+  const [check, otherCheck] = call.criteria[0].scoring!.checks
+  const originalCitation = check.citations.find((citation) => citation.kind === 'conversation')!
+  const text = 'Thanks, it worked.'
+  const assumption = 'Hypothetical unrecorded outcome.'
+  const followUp = { ...originalCitation, turn_id: 100, quote: text }
+  call.transcript!.turns.push({ number: 100, speaker: 'Customer', text, time: null })
+  check.citations.push({
+    kind: 'reference', origin: 'synthetic assumptions', quote: assumption,
+    section_id: 'assumptions', reference_id: 'demo-assumptions', reference_version: 'v1',
+  })
+  otherCheck.ruleId = 'answer-support.recorded_outcomes'
+  otherCheck.citations = linked ? [originalCitation, followUp] : [followUp]
+
+  const { router } = openCall(call, `${path}answer-support?evidence=8&check=${check.id}`)
+  const dialog = within(await screen.findByRole('dialog', { name: check.requirement }))
+  expect(dialog.getByText('0/1 points')).toBeTruthy()
+  expect(dialog.getByText(assumption).closest('details')?.open).toBe(false)
+  expect(Boolean(dialog.queryByRole('heading', { name: 'Customer follow-up' }))).toBe(linked)
+  if (linked) {
+    fireEvent.click(dialog.getByRole('button', { name: /^Turn 100/ }))
+    expect(router.state.location.search).toBe('?evidence=100')
+    expect(dialog.getByText(text)).toBeTruthy()
+  }
+})
+
 it('groups unresolved answer checks while retaining critical checks and selection-specific sources', async () => {
     const call = await scoredCall('answer-support')
     call.criteria[0].scoring!.checks.push({

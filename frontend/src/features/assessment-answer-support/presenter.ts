@@ -1,23 +1,8 @@
 import type { ScoringCheck } from '../../types/callReview'
-import { checkTitle, featuredChecks, type AssessmentData } from '../assessment-shared/assessment'
+import { featuredChecks, type AssessmentData } from '../assessment-shared/assessment'
 
 const sentenceSegmenter = new Intl.Segmenter('en', { granularity: 'sentence' })
 const recoveryEmailRequirement = 'Ensure claims that the recovery email was sent match the recorded outcome'
-
-export function answerTableCheckTitle(check: ScoringCheck) {
-  switch (check.requirement) {
-    case 'Support the factual assertion and its qualifications':
-      return check.outcome === 'unresolved' ? 'Unresolved factual check' : 'Factual support'
-    case 'Ensure the troubleshooting recommendations are supported by applicable guidance':
-      return 'Troubleshooting guidance'
-    case recoveryEmailRequirement:
-      return 'Recovery email claim'
-    case 'Ensure recovery guidance accurately reflects the supplied recovery procedure':
-      return 'Recovery procedure guidance'
-    default:
-      return checkTitle(check)
-  }
-}
 
 export function answerEvidencePreview(check: ScoringCheck) {
   const quote = check.citations.find((citation) => citation.kind === 'conversation')?.quote.trim()
