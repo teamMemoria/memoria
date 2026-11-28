@@ -1,191 +1,264 @@
 # Memoria
 
-A tool for support agents that suggests answers while a customer is on the call, and then learns from the finished call so the suggestions get better over time.
+**Post-conversation coaching for customer-service teams.**
 
-This is early. Right now the repo is just the scaffold: a React frontend, a FastAPI backend and a Postgres database with pgvector. None of the actual features are built yet.
+Memoria helps support agents understand how they handled a completed customer conversation and where they can improve. It connects quality assessments to transcript evidence and company knowledge, giving agents and managers a concrete starting point for coaching.
 
-## What it's supposed to do
+**[Open the hosted demo](https://memoria-ftl.netlify.app)**
 
-During a call, the app listens for what the customer needs, searches that company's knowledge base, and shows the agent a few relevant answers and next steps. The agent can thumbs up or thumbs down each suggestion, which changes how much we trust that entry.
+## The problem
 
-After a call, the transcript is cleaned of personal details and we pull out general facts from it. New facts are compared against what we already have. If a fact is new it waits as pending until a few different calls back it up (we're guessing three, not decided). Each entry keeps the calls it came from, how many calls support it, and the date it was last seen.
+Customer-service teams handle large numbers of conversations, but reviewing each one manually takes time. Agents need specific, actionable feedback, and managers need to understand the evidence behind an assessment. Company guidance can also become fragmented or outdated as recurring questions and policies change.
 
-Every company has its own knowledge base and they must never mix.
+Memoria brings conversation review and knowledge management into one workspace. It assesses completed conversations across four categories:
 
-## What you need installed
+| Category | Focus |
+| --- | --- |
+| Procedure | Whether the agent followed applicable steps and actions |
+| Answer support | Whether the agent’s answers are supported by available guidance |
+| Completeness | Whether the customer’s request was adequately addressed |
+| Communication style | How clearly and appropriately the agent communicated |
+
+Assessments show supporting evidence and evidence coverage. Missing evidence can produce **Cannot assess**, rather than treating uncertainty as proof of poor performance.
+
+## What you can do
+
+- Browse assigned conversations as an Agent or team conversations as a Manager.
+- Open a conversation’s assessment and inspect category results, checks, and cited transcript turns.
+- Consult the Agent knowledge base.
+- Review knowledge drafts, inspect their sources, and approve, reject, edit, or unapprove entries where permitted.
+- Explore an optional pilot that extracts recurring company facts from past conversations.
+
+## User guide
+
+### Agent: review a conversation before your next shift
+
+You are a support agent who wants to identify one practical improvement from a recent interaction.
+
+1. Open the demo and choose an **Agent** profile.
+2. Select a conversation from your conversation list.
+3. Open one of the four assessment categories.
+4. Inspect the checks and linked transcript evidence to understand the result.
+5. Check evidence coverage alongside the score. An unavailable assessment means the system lacks a usable result.
+6. Open the **Knowledge Base** to review published guidance relevant to your work.
+
+### Manager: review team conversations and guidance
+
+1. Choose the **Manager** profile.
+2. Open a team conversation and inspect its assessment and evidence.
+3. Open **Knowledge drafts** to browse pending, approved, flagged, or rejected entries.
+4. Select an entry and inspect its content, source conversations, and any verification reference.
+5. Use the available controls to edit, approve, reject, or unapprove it. Rejection requires a reason.
+
+When the Layer 2 pilot is enabled, **Generate pilot drafts** extracts recurring facts. Eligible consensus candidates can be approved automatically; conflicts and other drafts remain available for review.
+
+**The hosted profile picker is public demo access. Anyone with the link can choose a listed profile, including Manager. It is not an authentication system.**
+
+## System architecture
+
+| Part | Technology | Hosting |
+| --- | --- | --- |
+| Web interface | React, TypeScript, Vite | Netlify |
+| HTTP API | Python, FastAPI, Uvicorn | Railway |
+| Persistence | PostgreSQL 17 with pgvector | Railway |
+| Database access and migrations | SQLAlchemy, psycopg, Alembic | Backend service |
+| Assessment and knowledge processing | Python modules in `ml/` and backend adapters | Configured backend or local processing |
+
+```text
+Browser
+   │ HTTPS
+   ▼
+React frontend — Netlify
+   │ HTTPS / JSON
+   ▼
+FastAPI backend — Railway
+   ├── Conversation, assessment, and knowledge use cases
+   ├── Configured scoring and knowledge-processing adapters
+   └── PostgreSQL + pgvector
+```
+
+The frontend reads assessments and submits supported actions through the API. The backend enforces organization, role, and conversation-access rules. Assessment processing validates evidence and stores results for later viewing.
+
+The demo can also serve archived scorecards. Those are prepared assessment inputs, rather than a fresh model evaluation each time someone opens a conversation.
+
+## Code architecture
+
+The repository separates frontend, backend, and assessment processing. Within the backend, business rules and use cases are separated from HTTP and database details.
+
+```text
+frontend/
+  src/
+    app/                   Routing and dependency composition
+    features/              Conversation, assessment, and knowledge screens
+    components/            Shared interface components
+    lib/                   HTTP adapters and shared browser utilities
+    types/                 TypeScript contracts
+
+backend/
+  src/backend/
+    entities/              Business rules and domain values
+    use_cases/             Application workflows and their boundaries
+    interface_adapters/    Controllers, presenters, and adapter contracts
+    frameworks/
+      http/                FastAPI routes and HTTP integration
+      data_access/         Persistence adapters and transactions
+      database/            SQLAlchemy models and session management
+    data/                  Import, seed, and evaluation commands
+    schemas/               API request and response schemas
+    main.py                Application composition root
+  alembic/                 Database migrations
+  tests/                   Unit, integration, and architecture checks
+
+ml/                        Assessment rules, templates, evidence, and evaluation
+docs/                      Architecture documentation
+docker-compose.yml         Local database, demo setup, and API
+netlify.toml               Frontend hosting configuration
+```
+
+Core dependencies point toward business rules and use cases. External adapters implement the required boundaries, and `main.py` supplies concrete implementations. Frontend features separate interaction controllers and presentation calculations from React views where applicable.
+
+Python modules and functions use `snake_case`; classes use `PascalCase`. React components use `PascalCase`, hooks use the `use` prefix, and feature directories use descriptive names such as `assessment-procedure`.
+
+See the [architecture guide](docs/architecture.md) for dependency diagrams and boundary details.
+
+## Run locally
+
+### Prerequisites
 
 - Git
-- Node 20.19 or newer
-- Python 3.13 or newer
-- uv (https://docs.astral.sh/uv/)
-- Docker Desktop
+- Docker Desktop with Docker Compose
+- Node.js 22 and npm
+- Access to the course conversation-data repository
 
-## Running it locally
+Python 3.13+ and [uv](https://docs.astral.sh/uv/) are needed if you run the backend or its tests outside Docker.
 
-One command starts the database, loads the demo data and starts the backend. You need Docker Desktop
-running, and the conversation data cloned next to this repo:
+### 1. Clone the application and data
 
+```sh
+git clone https://github.com/teamMemoria/memoria.git
+git clone https://github.com/marcomarchesanogenesys/uoft-ftli-2026-genesys-docs.git
+cd memoria
 ```
-git clone https://github.com/marcomarchesanogenesys/uoft-ftli-2026-genesys-docs.git ../uoft-ftli-2026-genesys-docs
+
+Keep the repositories beside each other. The application reads conversations from:
+
+```text
+../uoft-ftli-2026-genesys-docs/curated/conversations
 ```
 
-Then, from the repo root:
+### 2. Start the database and backend
 
-```
+With Docker Desktop running:
+
+```sh
 docker compose up --build
 ```
 
-This:
+Compose starts PostgreSQL, applies migrations, imports the demo conversations, assigns topics and synthetic dates, seeds profiles and policy drafts, and starts the API.
 
-1. starts PostgreSQL with pgvector (`db`)
-2. runs the migrations and `setup-demo` (`setup`): it imports the conversations, assigns topics and
-   dates, and creates the demo profiles, then exits
-3. starts the backend in development mode on http://localhost:8000 (`backend`)
+- [API readiness](http://localhost:8000/ready): returns `{"status":"ready"}`
+- [Interactive API documentation](http://localhost:8000/docs)
 
-The backend is ready when http://localhost:8000/ready returns `{"status":"ready"}`. The endpoints are
-listed at http://localhost:8000/docs.
+Initial setup loads data and pending policies; it does not generate all conversation assessments.
 
-Run it again whenever you like: every step updates the same rows, so you get the same data, not
-duplicates. Data is kept between runs; `docker compose down -v` deletes it so the next run starts
-fresh. If the docs repo is somewhere else, point at its conversations first:
-`MEMORIA_CONVERSATIONS_DIR=/path/to/uoft-ftli-2026-genesys-docs/curated/conversations docker compose up --build`.
+### 3. Start the frontend
 
-Then start the frontend in a second terminal, from inside the `frontend` folder. It sends `/api` to the
-backend on port 8000:
+In another terminal:
 
-```
-npm install
-VITE_DEMO_BACKEND=true npm run dev
+```sh
+cd memoria/frontend
+npm ci
 ```
 
-It runs on http://localhost:5173. Pick a demo profile to sign in.
+On macOS or Linux:
 
-Development mode accepts the `X-Dev-User` header and lists the demo profiles. Never run it this way in
-production.
-
-### Running the backend without Docker
-
-Copy the example env file. The real `.env` is ignored by git, so put your keys there and never commit it.
-
-```
-cp .env.example .env
+```sh
+MEMORIA_API_TARGET=http://127.0.0.1:8000 npm run dev
 ```
 
-On Windows PowerShell use `Copy-Item .env.example .env` instead.
+On Windows PowerShell:
 
-Start only the database, then the backend from inside the `backend` folder:
-
+```powershell
+$env:MEMORIA_API_TARGET = "http://127.0.0.1:8000"
+npm run dev
 ```
-docker compose up -d db
+
+Open [localhost:5173](http://localhost:5173) and choose a demo profile.
+
+To use a different conversation-data location, set `MEMORIA_CONVERSATIONS_DIR` before starting Compose. Stop the services with `docker compose down`; the database volume is retained.
+
+For native backend setup, data commands, and migrations, see the [backend guide](backend/README.md). For archived assessment simulation and narration setup, see the [frontend guide](frontend/README.md).
+
+### Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Setup cannot find conversations | Confirm the data repository exists and `curated/conversations` contains JSON files. |
+| Frontend cannot load profiles | Check API readiness and explicitly set `MEMORIA_API_TARGET` to port 8000. |
+| Conversation has no assessment | Importing demo data does not run scoring. Use the configured pilot or documented archived-demo setup. |
+| Database connection fails | Confirm Docker is running and port 5432 is available. |
+
+## Hosting
+
+Netlify builds `frontend/` with `npm run build`, publishes `dist/`, and redirects application routes to `index.html`.
+
+Railway builds the backend using repository root `/` and Dockerfile `/backend/Dockerfile`. Set `DATABASE_URL` through the hosting environment. The startup script applies migrations before launching Uvicorn.
+
+For the public school demo:
+
+| Service | Setting |
+| --- | --- |
+| Netlify | `VITE_API_BASE_URL` = backend HTTPS origin, without `/api` |
+| Netlify | `VITE_DEMO_LOGIN=true` |
+| Railway | `MEMORIA_PUBLIC_DEMO=true` |
+| Railway | `MEMORIA_CORS_ORIGINS` = exact frontend origin |
+
+Frontend environment variables are embedded at build time, so changing them requires a rebuild. Additional pilot and archived-scorecard configuration is described in the [hosted access guide](backend/docs/deployed-frontend-access.md) and [frontend guide](frontend/README.md).
+
+## Development checks
+
+With the local PostgreSQL service running:
+
+```sh
 cd backend
-uv sync
-uv run alembic upgrade head
-uv run setup-demo
-MEMORIA_APP_ENV=development uv run uvicorn backend.main:app --reload
+uv sync --frozen
+uv run ruff check
+uv run ruff check ../ml
+uv run pytest
+uv run python -m pytest ../ml -q
 ```
 
-`setup-demo` loads the same demo data as above; it looks for the docs repo next to this one, or takes
-its `curated/conversations` path as an argument. Without `MEMORIA_APP_ENV=development` the backend
-runs in production mode and rejects every request, because there is no login yet.
+Backend database tests recreate a separate disposable test database. Use local development credentials and a dedicated test database.
 
-## Where things are
+From `frontend/`:
 
-```
-backend/     FastAPI app, code lives in src/backend
-frontend/    React + TypeScript + Vite
-docker-compose.yml   Postgres with pgvector, the demo data setup and the backend
-```
-
-Inside `backend/src/backend` there are folders for api routes, core (config), models (database tables) and services (the RAG and extraction logic). They're mostly empty for now.
-
-## Database
-
-Postgres 17 with pgvector, running in Docker. Migrations will use Alembic, which is initialised in `backend/alembic` but has no migrations yet. To check the vector extension is there:
-
-```
-docker compose exec db psql -U app -d callassist -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```sh
+npm ci
+npm run lint
+npm test
+npm run build
 ```
 
-The login in `docker-compose.yml` is for local development only.
+GitHub Actions also checks formatting, migration consistency, schema drift, backend and ML tests, and the frontend build.
 
-## Not decided yet
+## Data and prototype limitations
 
-- Which speech-to-text provider to use for live calls
-- Whether a fact needs manager approval after it hits the call threshold, or gets promoted automatically
-- Whether the threshold counts calls or distinct customers
+The curated course corpus contains HarperValleyBank voice conversations and ABCD support chats. Source conversations remain in the separate data repository. Generated dates are stored separately from original timestamps.
 
-## A note on data
+Layer 1 supplies authored generic policies. The optional Layer 2 pilot identifies recurring company facts, currently emphasizing values such as prices and durations. In the pilot, facts supported by at least 10 calls and 70% agreement can be published automatically, subject to conflict and review-state checks. Agreement does not independently establish correctness; repeated mistakes can produce incorrect guidance.
 
-This will eventually handle real call transcripts, so keep the repo private and don't commit any real call data. Use made-up examples for tests.
-## Database setup
+Archived assessments and generated narration are demonstration artifacts. Narration does not represent the original customer-call recording. Existing AI-generated evaluation labels do not establish independently measured assessment accuracy.
 
-Start only Postgres (with pgvector). Plain `docker compose up` also starts the backend:
+Agent performance comparisons over time remain planned work.
 
-    docker compose up -d db
+## Team
 
-Check that pgvector is enabled:
+Memoria is built by five teammates with overlapping contributions:
 
-    docker compose exec db psql -U app -d callassist -c "\dx"
-
-## Migrations
-
-From the `backend/` folder, with the database running:
-
-    uv run alembic upgrade head
-
-After changing models, create a new migration:
-
-    uv run alembic revision --autogenerate -m "describe the change"
-
-## Database checks and deployment startup
-
-The `Checks / backend` GitHub Actions job runs on every pull request and on
-pushes to `main`, using a disposable Postgres 17 service with pgvector. After
-`uv sync --frozen`, it enables the vector extension, requires exactly one
-Alembic head, runs upgrade → downgrade one revision → upgrade plus
-`alembic check`, then runs the full backend tests and plain `uv run ruff check`
-(including migration files). Broken migrations and multiple heads fail the PR
-check. Existing ML and frontend checks still run.
-
-For deployment from this source repository, use `./backend/start.sh` as the
-hosting dashboard's start command (or `./start.sh` if the service root is
-`backend/`). Install dependencies during the build with `uv sync --frozen` in
-`backend/`. Set `DATABASE_URL` through hosting secrets and enable pgvector first.
-The start script runs `uv run alembic upgrade head` before launching Uvicorn;
-a failed migration exits without starting the app. It listens on the hosting
-platform's `PORT`, defaulting to 8000. For multiple replicas, run migrations once
-as a release/pre-deploy step before starting replicas, to avoid concurrent DDL.
-No production database is provisioned by this change.
-
-## Knowledge health defaults
-
-The application settings in `backend/src/backend/core/config.py` read these
-values from environment variables (or your untracked `backend/.env`):
-
-| Setting | Default | Change with |
-| --- | --- | --- |
-| Draft threshold X (calls needed before creating a draft) | 10 | `KNOWLEDGE_DRAFT_THRESHOLD` |
-| Conflict threshold | ceil(X / 2), so 5 | `KNOWLEDGE_CONFLICT_THRESHOLD_OVERRIDE` for an independent override |
-| Recent supporting-call window | 30 days | `KNOWLEDGE_RECENT_CALL_DAYS` |
-| Stale approved-entry window | 60 days | `KNOWLEDGE_STALE_ENTRY_DAYS` |
-
-Changing X changes the conflict threshold unless the override is set. All four
-settings must be positive integers. No earlier draft threshold setting existed;
-X is defined once in `Settings` for reuse by draft creation. These database
-queries do not themselves generate drafts or infer contradictions from text.
-
-`frameworks/data_access/knowledge_health.py` reports stored draft/baseline
-conflicts with enough distinct supporting calls in the inclusive recent window
-and approved entries last confirmed before the stale cutoff. A never-confirmed
-entry ages from its approval date; an entry exactly at the cutoff is not stale.
-Calls use synthetic timestamps where present, otherwise their source date;
-future and undated calls do not count. Every query requires an organization ID.
-
-Pipeline suspected-conflict names stay unchanged. `knowledge_conflicts` adds
-`lifecycle_status` (`open`/`resolved`), creation and resolution timestamps so
-reviewer resolution remains separate from pipeline hints. An authorized manager
-can call `mark_topic_disputed` to pause a topic's use as an accuracy reference,
-and `resolve_knowledge_conflict` to preserve conflict history and resume
-scoring after the last open conflict is resolved. Imports retain resolved
-conflicts and conflicts on disputed topics. These are database operations;
-commit the surrounding session to persist them.
+| Teammate | Brief bio |
+| --- | --- |
+| [Daniel Wang](https://github.com/DanisLol) | Contributes organization and permission rules, knowledge-approval persistence, backend deployment, and hosted frontend API access. |
+| [Derek Sun](https://github.com/dereksun00) | Contributes database design, migrations, conversation ingestion, knowledge lifecycle support, query optimization, and database deployment. |
+| [Nicolas Cantanhede](https://github.com/nickcantanhede) | Contributes assessment scoring and evidence integration, application architecture, persistent workflow integration, and frontend review experiences. |
+| [Rayaan Wasay Iftikhar](https://github.com/rayaanw) | Contributes frontend workflows, knowledge-review interfaces, progress API integration, and frontend deployment. |
+| [Ritvik Aggarwal](https://github.com/ritvikagg) | Contributes knowledge extraction, Layer 2 inference and evaluation, draft persistence, and pilot integration. |
